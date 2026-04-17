@@ -23,8 +23,8 @@ export default async function Home() {
             className="absolute inset-0 bg-cover bg-center"
             style={{ backgroundImage: "url('/login-bg.jpeg')" }}
           />
-          <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(9,37,69,0.72),rgba(15,77,140,0.38))]" />
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.18)_0%,rgba(22,70,120,0.08)_35%,rgba(7,31,61,0.34)_100%)]" />
+          <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(16,20,28,0.64),rgba(16,20,28,0.26))]" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.16)_0%,rgba(20,24,30,0.06)_35%,rgba(10,14,20,0.30)_100%)]" />
           <div className="absolute inset-x-0 top-0 flex items-center justify-between px-12 py-8 text-sm text-zinc-700">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.3em] text-white/80">

@@ -6,7 +6,7 @@ Proyek ini adalah aplikasi web perpustakaan sekolah berbasis **Next.js** dengan 
 - **Siswa**
 - **Publik / Pengunjung**
 
-Saat ini proyek sudah memiliki fondasi autentikasi, navigasi per peran, layout dashboard, beberapa pembacaan data nyata dari database Supabase, serta sebagian action penting seperti pendaftaran siswa, verifikasi akun siswa, update password siswa oleh admin, dan absensi.
+Saat ini proyek sudah memiliki fondasi autentikasi, navigasi per peran, layout dashboard, pembacaan data nyata dari database Supabase, serta beberapa action penting seperti pendaftaran siswa, verifikasi akun siswa, update password siswa oleh admin, dan absensi.
 
 README ini merangkum:
 
@@ -229,6 +229,7 @@ Sudah:
 - top bar konsisten untuk admin, siswa, dan publik
 - menu sidebar bisa diklik dan menuju route berbeda
 - label menu berbahasa Indonesia
+- halaman admin, siswa, dan publik sudah dipisah per route utama
 
 File utama:
 
@@ -236,7 +237,7 @@ File utama:
 
 ## Fitur Yang Sudah Ada Tapi Masih Parsial
 
-Bagian berikut sudah ada sebagai tampilan / pembacaan data, tetapi belum menjadi CRUD atau proses bisnis lengkap.
+Bagian berikut sudah ada sebagai halaman dan pembacaan data nyata, tetapi belum menjadi CRUD atau proses bisnis lengkap.
 
 ### Admin - Buku
 
@@ -537,7 +538,8 @@ Status umum:
 Dengan kata lain:
 
 - proyek **sudah melewati tahap mockup murni**
-- tapi **belum selesai sebagai sistem perpustakaan penuh**
+- beberapa halaman **sudah menampilkan data nyata dari database**
+- tetapi sistem **belum selesai sebagai sistem perpustakaan penuh**
 
 ## Rekomendasi Langkah Berikutnya
 
@@ -548,4 +550,3 @@ Urutan yang paling masuk akal:
 3. lanjutkan **pengembalian**
 4. selesaikan **laporan**
 5. rapikan **katalog publik dan siswa** dengan search/filter
-
