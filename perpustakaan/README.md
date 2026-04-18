@@ -6,7 +6,7 @@ Proyek ini adalah aplikasi web perpustakaan sekolah berbasis **Next.js** dengan 
 - **Siswa**
 - **Publik / Pengunjung**
 
-Saat ini proyek sudah memiliki fondasi autentikasi, navigasi per peran, layout dashboard, pembacaan data nyata dari database Supabase, serta beberapa action penting seperti pendaftaran siswa, verifikasi akun siswa, update password siswa oleh admin, dan absensi.
+Saat ini proyek sudah memiliki fondasi autentikasi, navigasi per peran, layout dashboard, pembacaan data nyata dari database Supabase, serta beberapa action penting seperti pendaftaran siswa, verifikasi akun siswa, update password siswa oleh admin, reset password siswa berbasis bantuan admin, dan absensi.
 
 README ini merangkum:
 
@@ -34,6 +34,7 @@ Struktur saat ini masih satu aplikasi, tetapi sudah mulai dipisah ke area domain
   - signup siswa
   - verifikasi siswa
   - update password siswa
+  - reset password siswa
 - `modules/library`
   - data loader buku
   - data loader siswa
@@ -161,11 +162,15 @@ Sudah:
 
 - admin dapat mengubah password siswa dari halaman anggota
 - password baru disimpan dalam bentuk bcrypt hash
+- admin dapat mengosongkan password siswa dari panel anggota
+- siswa dapat membuat password baru sendiri lewat halaman lupa password jika password lama sudah dikosongkan admin
+- siswa yang masih ingat password lama juga dapat mengganti password sendiri dari halaman yang sama
 
 File utama:
 
 - [modules/access/ui/update-siswa-password-form.tsx](C:/Users/candra/Documents/GitHub/Kel2-Project-RPL-2026/perpustakaan/modules/access/ui/update-siswa-password-form.tsx)
 - [app/actions/auth.ts](C:/Users/candra/Documents/GitHub/Kel2-Project-RPL-2026/perpustakaan/app/actions/auth.ts)
+- [app/lupa-password/page.tsx](C:/Users/candra/Documents/GitHub/Kel2-Project-RPL-2026/perpustakaan/app/lupa-password/page.tsx)
 
 ### Absensi
 
@@ -260,6 +265,7 @@ Sudah:
 - lihat data siswa
 - verifikasi siswa
 - update password siswa
+- kosongkan password siswa agar bisa set ulang mandiri
 
 Belum:
 
@@ -312,6 +318,7 @@ Sudah:
 - lihat katalog
 - lihat transaksi sendiri
 - absensi siswa
+- ganti password sendiri lewat halaman lupa password
 
 Belum:
 
@@ -378,6 +385,7 @@ Sudah:
 - registrasi siswa
 - verifikasi siswa
 - update password siswa
+- reset password siswa dengan bantuan admin
 
 Belum:
 
@@ -503,6 +511,7 @@ node .\node_modules\typescript\bin\tsc --noEmit
 
 - `/`
 - `/signup`
+- `/lupa-password`
 - `/public`
 - `/public/absensi`
 - `/public/katalog`

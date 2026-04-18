@@ -21,11 +21,13 @@ type SiswaRow = {
 
 async function findAdminByIdentifier(identifier: string) {
   const supabase = getServerSupabaseClient();
+  const normalizedIdentifier = identifier.trim();
+  const lowerIdentifier = normalizedIdentifier.toLowerCase();
 
   const usernameResult = await supabase
     .from("admin")
     .select("id_admin, nama, username, password")
-    .eq("username", identifier)
+    .eq("username", lowerIdentifier)
     .limit(1)
     .maybeSingle<AdminRow>();
 
@@ -42,7 +44,7 @@ async function findAdminByIdentifier(identifier: string) {
   const nameResult = await supabase
     .from("admin")
     .select("id_admin, nama, username, password")
-    .ilike("nama", identifier)
+    .ilike("nama", normalizedIdentifier)
     .limit(1)
     .maybeSingle<AdminRow>();
 
@@ -55,11 +57,13 @@ async function findAdminByIdentifier(identifier: string) {
 
 async function findSiswaByIdentifier(identifier: string) {
   const supabase = getServerSupabaseClient();
+  const normalizedIdentifier = identifier.trim();
+  const lowerIdentifier = normalizedIdentifier.toLowerCase();
 
   const usernameResult = await supabase
     .from("siswa")
     .select("id_siswa, nama, username, email, password, kelas, status_keanggotaan")
-    .eq("username", identifier)
+    .eq("username", lowerIdentifier)
     .limit(1)
     .maybeSingle<SiswaRow>();
 
@@ -76,7 +80,7 @@ async function findSiswaByIdentifier(identifier: string) {
   const emailResult = await supabase
     .from("siswa")
     .select("id_siswa, nama, username, email, password, kelas, status_keanggotaan")
-    .eq("email", identifier)
+    .eq("email", lowerIdentifier)
     .limit(1)
     .maybeSingle<SiswaRow>();
 
@@ -91,7 +95,7 @@ async function findSiswaByIdentifier(identifier: string) {
   const nameResult = await supabase
     .from("siswa")
     .select("id_siswa, nama, username, email, password, kelas, status_keanggotaan")
-    .ilike("nama", identifier)
+    .ilike("nama", normalizedIdentifier)
     .limit(1)
     .maybeSingle<SiswaRow>();
 
@@ -100,6 +104,10 @@ async function findSiswaByIdentifier(identifier: string) {
   }
 
   return nameResult.data;
+}
+
+export async function findSiswaAccountByIdentifier(identifier: string) {
+  return findSiswaByIdentifier(identifier);
 }
 
 async function verifyPassword(password: string, hash: string | null | undefined) {

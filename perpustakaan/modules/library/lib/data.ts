@@ -72,6 +72,24 @@ export async function getStudents() {
   return data ?? [];
 }
 
+export async function getStudentById(idSiswa: number) {
+  const supabase = getServerSupabaseClient();
+  const { data, error } = await supabase
+    .from("siswa")
+    .select(
+      "id_siswa, nama, nisn, username, email, kelas, tahun_masuk, nomor_whatsapp, status_keanggotaan"
+    )
+    .eq("id_siswa", idSiswa)
+    .limit(1)
+    .maybeSingle<SiswaRecord>();
+
+  if (error) {
+    throw new Error(`Failed to load student profile: ${error.message}`);
+  }
+
+  return data;
+}
+
 export async function getTransactions() {
   const supabase = getServerSupabaseClient();
   const { data, error } = await supabase

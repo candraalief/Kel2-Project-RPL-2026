@@ -5,7 +5,7 @@ import {
 import { requireRole } from "@/modules/access/lib/guards";
 import { DashboardShell } from "@/modules/access/ui/dashboard-shell";
 import { ApproveSiswaForm } from "@/modules/access/ui/approve-siswa-form";
-import { UpdateSiswaPasswordForm } from "@/modules/access/ui/update-siswa-password-form";
+import { ClearSiswaPasswordForm } from "@/modules/access/ui/clear-siswa-password-form";
 import { EmptyState, SectionCard } from "@/modules/library/ui/library-cards";
 
 export default async function AdminMembersPage() {
@@ -20,7 +20,7 @@ export default async function AdminMembersPage() {
       role="admin"
       user={user}
       title="Modul Anggota"
-      description="Kelola data siswa, verifikasi akun baru, dan update password akun siswa."
+      description="Kelola data siswa, verifikasi akun baru, dan kosongkan password lama agar siswa bisa mengatur password baru sendiri."
       activeNav="Anggota"
     >
       <section className="grid gap-4 xl:grid-cols-2">
@@ -58,7 +58,7 @@ export default async function AdminMembersPage() {
 
         <SectionCard
           title="Password siswa"
-          subtitle="Perbarui password akun siswa"
+          subtitle="Admin hanya dapat mengosongkan password lama agar siswa bisa membuat password baru sendiri"
         >
           <div className="space-y-4">
             {allSiswa.length === 0 ? (
@@ -76,8 +76,14 @@ export default async function AdminMembersPage() {
                     <p>Username: {siswa.username ?? "-"}</p>
                     <p>Email: {siswa.email ?? "-"}</p>
                     <p>Status: {siswa.status_keanggotaan ?? "-"}</p>
+                    <p>
+                      Password saat ini:{" "}
+                      {siswa.password_tersedia
+                        ? "Sudah diatur"
+                        : "Dikosongkan admin / belum diatur"}
+                    </p>
                   </div>
-                  <UpdateSiswaPasswordForm siswaId={siswa.id_siswa} />
+                  <ClearSiswaPasswordForm siswaId={siswa.id_siswa} />
                 </div>
               ))
             )}

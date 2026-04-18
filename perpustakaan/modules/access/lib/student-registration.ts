@@ -18,7 +18,9 @@ export type PendingSiswa = {
   status_keanggotaan: string | null;
 };
 
-export type SiswaAccount = PendingSiswa;
+export type SiswaAccount = PendingSiswa & {
+  password_tersedia: boolean;
+};
 
 function normalizeValue(value: string | null) {
   return value?.trim() ?? "";
@@ -174,14 +176,17 @@ export async function getAllSiswaAccounts() {
   const { data, error } = await supabase
     .from("siswa")
     .select(
-      "id_siswa, nama, nisn, username, email, kelas, tahun_masuk, nomor_whatsapp, status_keanggotaan"
+      "id_siswa, nama, nisn, username, email, kelas, tahun_masuk, nomor_whatsapp, status_keanggotaan, password"
     )
     .order("id_siswa", { ascending: false })
-    .returns<SiswaAccount[]>();
+    .returns<(PendingSiswa & { password: string | null })[]>();
 
   if (error) {
     throw new Error(`Failed to load siswa accounts: ${error.message}`);
   }
 
-  return data ?? [];
+  return (data ?? []).map(({ password, ...siswa }) => ({
+    ...siswa,
+    password_tersedia: Boolean(password),
+  }));
 }
