@@ -4,6 +4,24 @@ import type {
   TransaksiRecord,
 } from "../lib/data";
 
+function formatAttendanceTime(value: string | null) {
+  if (!value) {
+    return "-";
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat("id-ID", {
+    dateStyle: "medium",
+    timeStyle: "short",
+    timeZone: "Asia/Jakarta",
+  }).format(date);
+}
+
 export function MetricCard({
   label,
   value,
@@ -103,8 +121,10 @@ export function TransactionsTable({
 
 export function AttendanceTable({
   records,
+  scrollable = false,
 }: {
   records: AbsensiRecord[];
+  scrollable?: boolean;
 }) {
   if (records.length === 0) {
     return <EmptyState text="Belum ada data absensi." />;
@@ -118,17 +138,19 @@ export function AttendanceTable({
         <span>Jenis</span>
         <span>Waktu</span>
       </div>
-      {records.map((record) => (
-        <div
-          key={record.id_absensi}
-          className="grid grid-cols-[1.1fr_1fr_0.8fr_1fr] border-t border-zinc-200 px-4 py-3 text-sm text-zinc-600"
-        >
-          <span className="font-medium text-zinc-900">{record.nama}</span>
-          <span>{record.tujuan ?? "-"}</span>
-          <span>{record.jenis_pengunjung ?? "-"}</span>
-          <span>{record.waktu_kunjungan ?? "-"}</span>
-        </div>
-      ))}
+      <div className={scrollable ? "max-h-[360px] overflow-y-auto" : undefined}>
+        {records.map((record) => (
+          <div
+            key={record.id_absensi}
+            className="grid grid-cols-[1.1fr_1fr_0.8fr_1fr] border-t border-zinc-200 px-4 py-3 text-sm text-zinc-600"
+          >
+            <span className="font-medium text-zinc-900">{record.nama}</span>
+            <span>{record.tujuan ?? "-"}</span>
+            <span>{record.jenis_pengunjung ?? "-"}</span>
+            <span>{formatAttendanceTime(record.waktu_kunjungan)}</span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

@@ -25,6 +25,15 @@ body {
   font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
 }
 
+.scrollbar-hidden {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hidden::-webkit-scrollbar {
+  display: none;
+}
+
 .page-enter-start {
   opacity: 0;
   transform: translateY(42px);

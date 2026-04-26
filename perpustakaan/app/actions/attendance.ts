@@ -9,6 +9,21 @@ export type AttendanceState = {
   success: string;
 };
 
+function toTitleCase(value: string) {
+  return value
+    .toLowerCase()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+async function removeInsertedAttendance(idAbsensi: number) {
+  const supabase = getServerSupabaseClient();
+
+  await supabase.from("absensi").delete().eq("id_absensi", idAbsensi);
+}
+
 export async function submitPublicAttendance(
   _prevState: AttendanceState | undefined,
   formData: FormData
@@ -16,18 +31,68 @@ export async function submitPublicAttendance(
   const nama = String(formData.get("nama") ?? "").trim();
   const asal = String(formData.get("asal") ?? "").trim();
   const tujuan = String(formData.get("tujuan") ?? "").trim();
+  const jenisPengunjungRaw = String(formData.get("jenis_pengunjung") ?? "").trim();
+  const idSiswaRaw = String(formData.get("id_siswa") ?? "").trim();
 
-  if (!nama || !asal || !tujuan) {
+  if (jenisPengunjungRaw !== "siswa" && jenisPengunjungRaw !== "umum") {
+    return {
+      error: "Pilih jenis pengunjung terlebih dahulu.",
+      success: "",
+    };
+  }
+
+  const jenisPengunjung = jenisPengunjungRaw === "siswa" ? "siswa" : "umum";
+
+  if (!nama || !tujuan || (jenisPengunjung === "umum" && !asal)) {
     return { error: "Semua field absensi publik wajib diisi.", success: "" };
   }
 
   const supabase = getServerSupabaseClient();
+
+  let namaFinal = toTitleCase(nama);
+  let kelasFinal = asal;
+  let idSiswaFinal: number | null = null;
+
+  if (jenisPengunjung === "siswa") {
+    const idSiswa = Number(idSiswaRaw);
+
+    if (!Number.isInteger(idSiswa) || idSiswa <= 0) {
+      return {
+        error: "Nama siswa belum terdaftar. Daftar dulu lalu minta pustakawan menyetujui akun.",
+        success: "",
+      };
+    }
+
+    const selectedSiswa = await supabase
+      .from("siswa")
+      .select("id_siswa, nama, kelas, status_keanggotaan")
+      .eq("id_siswa", idSiswa)
+      .eq("status_keanggotaan", "aktif")
+      .single<{
+        id_siswa: number;
+        nama: string;
+        kelas: string | null;
+        status_keanggotaan: string | null;
+      }>();
+
+    if (selectedSiswa.error || !selectedSiswa.data) {
+      return {
+        error: "Nama siswa belum terdaftar atau masih menunggu verifikasi pustakawan.",
+        success: "",
+      };
+    }
+
+    namaFinal = toTitleCase(selectedSiswa.data.nama);
+    kelasFinal = selectedSiswa.data.kelas?.trim() || "-";
+    idSiswaFinal = selectedSiswa.data.id_siswa;
+  }
+
   const insertAbsensi = await supabase
     .from("absensi")
     .insert({
-      nama,
+      nama: namaFinal,
       tujuan,
-      jenis_pengunjung: "umum",
+      jenis_pengunjung: jenisPengunjung,
     } as never)
     .select("id_absensi")
     .single<{ id_absensi: number }>();
@@ -39,29 +104,58 @@ export async function submitPublicAttendance(
     };
   }
 
-  const insertUmum = await supabase.from("absensi_umum").insert({
-    id_absensi: insertAbsensi.data.id_absensi,
-    instansi_asal: asal,
-  } as never);
+  if (jenisPengunjung === "siswa") {
+    const insertSiswa = await supabase.from("absensi_siswa").insert({
+      id_absensi: insertAbsensi.data.id_absensi,
+      id_siswa: idSiswaFinal,
+      kelas_saat_absen: kelasFinal,
+    } as never);
 
-  if (insertUmum.error) {
-    return {
-      error: `Gagal menyimpan instansi asal: ${insertUmum.error.message}`,
-      success: "",
-    };
+    if (insertSiswa.error) {
+      await removeInsertedAttendance(insertAbsensi.data.id_absensi);
+
+      return {
+        error: `Gagal menyimpan kelas siswa: ${insertSiswa.error.message}`,
+        success: "",
+      };
+    }
+  } else {
+    const insertUmum = await supabase.from("absensi_umum").insert({
+      id_absensi: insertAbsensi.data.id_absensi,
+      instansi_asal: asal,
+    } as never);
+
+    if (insertUmum.error) {
+      await removeInsertedAttendance(insertAbsensi.data.id_absensi);
+
+      return {
+        error: `Gagal menyimpan instansi asal: ${insertUmum.error.message}`,
+        success: "",
+      };
+    }
   }
 
   revalidatePath("/public");
   revalidatePath("/public/absensi");
+  revalidatePath("/admin/absensi");
 
   return { error: "", success: "Absensi pengunjung berhasil disimpan." };
 }
 
-export async function submitSiswaAttendance() {
+export async function submitSiswaAttendance(
+  _prevState: AttendanceState | undefined,
+  formData: FormData
+) {
   const sessionUser = await getSessionUser();
+  const tujuan =
+    String(formData.get("tujuan") ?? "").trim() ||
+    "Kunjungan perpustakaan siswa";
 
   if (!sessionUser || sessionUser.role !== "siswa") {
-    throw new Error("Unauthorized");
+    return {
+      error: "Sesi siswa tidak valid. Silakan login ulang.",
+      success: "",
+    };
   }
 
   const supabase = getServerSupabaseClient();
@@ -69,16 +163,17 @@ export async function submitSiswaAttendance() {
     .from("absensi")
     .insert({
       nama: sessionUser.name,
-      tujuan: "Kunjungan perpustakaan siswa",
+      tujuan,
       jenis_pengunjung: "siswa",
     } as never)
     .select("id_absensi")
     .single<{ id_absensi: number }>();
 
   if (insertAbsensi.error) {
-    throw new Error(
-      `Gagal menyimpan absensi siswa: ${insertAbsensi.error.message}`
-    );
+    return {
+      error: `Gagal menyimpan absensi siswa: ${insertAbsensi.error.message}`,
+      success: "",
+    };
   }
 
   const insertSiswa = await supabase.from("absensi_siswa").insert({
@@ -88,11 +183,19 @@ export async function submitSiswaAttendance() {
   } as never);
 
   if (insertSiswa.error) {
-    throw new Error(
-      `Gagal menyimpan detail absensi siswa: ${insertSiswa.error.message}`
-    );
+    await removeInsertedAttendance(insertAbsensi.data.id_absensi);
+
+    return {
+      error: `Gagal menyimpan detail absensi siswa: ${insertSiswa.error.message}`,
+      success: "",
+    };
   }
 
   revalidatePath("/siswa");
   revalidatePath("/siswa/absensi");
+
+  return {
+    error: "",
+    success: "Absensi siswa berhasil disimpan.",
+  };
 }

@@ -40,6 +40,23 @@ export type AbsensiRecord = {
   waktu_kunjungan: string | null;
 };
 
+export type AttendanceRecordFilters = {
+  limit?: number;
+  page?: number;
+  search?: string;
+  visitorType?: "siswa" | "umum" | "";
+  startDate?: string;
+  endDate?: string;
+};
+
+export type AttendanceRecordPage = {
+  records: AbsensiRecord[];
+  total: number;
+  currentPage: number;
+  totalPages: number;
+  limit: number;
+};
+
 export async function getBooks() {
   const supabase = getServerSupabaseClient();
   const { data, error } = await supabase
@@ -107,15 +124,36 @@ export async function getTransactions() {
   return data ?? [];
 }
 
-export async function getAttendanceRecords(limit?: number) {
+export async function getAttendanceRecords(
+  options?: number | AttendanceRecordFilters
+) {
+  const filters = typeof options === "number" ? { limit: options } : options ?? {};
   const supabase = getServerSupabaseClient();
   let query = supabase
     .from("absensi")
     .select("id_absensi, nama, tujuan, jenis_pengunjung, waktu_kunjungan")
     .order("waktu_kunjungan", { ascending: false });
 
-  if (limit) {
-    query = query.limit(limit);
+  const search = filters.search?.trim();
+
+  if (search) {
+    query = query.ilike("nama", `%${search}%`);
+  }
+
+  if (filters.visitorType) {
+    query = query.eq("jenis_pengunjung", filters.visitorType);
+  }
+
+  if (filters.startDate) {
+    query = query.gte("waktu_kunjungan", `${filters.startDate}T00:00:00+07:00`);
+  }
+
+  if (filters.endDate) {
+    query = query.lte("waktu_kunjungan", `${filters.endDate}T23:59:59+07:00`);
+  }
+
+  if (filters.limit) {
+    query = query.limit(filters.limit);
   }
 
   const { data, error } = await query.returns<AbsensiRecord[]>();
@@ -125,6 +163,90 @@ export async function getAttendanceRecords(limit?: number) {
   }
 
   return data ?? [];
+}
+
+export async function getAttendanceRecordPage(
+  filters: AttendanceRecordFilters = {}
+): Promise<AttendanceRecordPage> {
+  const limit = Math.max(1, filters.limit ?? 25);
+  const requestedPage = Math.max(1, filters.page ?? 1);
+  const supabase = getServerSupabaseClient();
+
+  let countQuery = supabase
+    .from("absensi")
+    .select("id_absensi", { count: "exact", head: true });
+
+  const search = filters.search?.trim();
+
+  if (search) {
+    countQuery = countQuery.ilike("nama", `%${search}%`);
+  }
+
+  if (filters.visitorType) {
+    countQuery = countQuery.eq("jenis_pengunjung", filters.visitorType);
+  }
+
+  if (filters.startDate) {
+    countQuery = countQuery.gte(
+      "waktu_kunjungan",
+      `${filters.startDate}T00:00:00+07:00`
+    );
+  }
+
+  if (filters.endDate) {
+    countQuery = countQuery.lte(
+      "waktu_kunjungan",
+      `${filters.endDate}T23:59:59+07:00`
+    );
+  }
+
+  const { count, error: countError } = await countQuery;
+
+  if (countError) {
+    throw new Error(`Failed to count attendance: ${countError.message}`);
+  }
+
+  const total = count ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / limit));
+  const currentPage = Math.min(requestedPage, totalPages);
+  const from = (currentPage - 1) * limit;
+  const to = from + limit - 1;
+
+  let query = supabase
+    .from("absensi")
+    .select("id_absensi, nama, tujuan, jenis_pengunjung, waktu_kunjungan")
+    .order("waktu_kunjungan", { ascending: false })
+    .range(from, to);
+
+  if (search) {
+    query = query.ilike("nama", `%${search}%`);
+  }
+
+  if (filters.visitorType) {
+    query = query.eq("jenis_pengunjung", filters.visitorType);
+  }
+
+  if (filters.startDate) {
+    query = query.gte("waktu_kunjungan", `${filters.startDate}T00:00:00+07:00`);
+  }
+
+  if (filters.endDate) {
+    query = query.lte("waktu_kunjungan", `${filters.endDate}T23:59:59+07:00`);
+  }
+
+  const { data, error } = await query.returns<AbsensiRecord[]>();
+
+  if (error) {
+    throw new Error(`Failed to load attendance page: ${error.message}`);
+  }
+
+  return {
+    records: data ?? [],
+    total,
+    currentPage,
+    totalPages,
+    limit,
+  };
 }
 
 export async function getSiswaTransactions(idSiswa: number) {
@@ -143,4 +265,28 @@ export async function getSiswaTransactions(idSiswa: number) {
   }
 
   return data ?? [];
+}
+
+export type StudentSuggestion = {
+  id_siswa: number;
+  nama: string;
+  kelas: string | null;
+};
+
+export async function getStudentNameSuggestions(limit = 250) {
+  const supabase = getServerSupabaseClient();
+  const { data, error } = await supabase
+    .from("siswa")
+    .select("id_siswa, nama, kelas")
+    .eq("status_keanggotaan", "aktif")
+    .not("nama", "is", null)
+    .order("nama", { ascending: true })
+    .limit(limit)
+    .returns<StudentSuggestion[]>();
+
+  if (error) {
+    throw new Error(`Failed to load student name suggestions: ${error.message}`);
+  }
+
+  return (data ?? []).filter((item) => item.nama?.trim().length > 0);
 }
