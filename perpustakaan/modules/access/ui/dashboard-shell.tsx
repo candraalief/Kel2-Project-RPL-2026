@@ -181,21 +181,26 @@ export function DashboardShell({
             })}
           </div>
 
-          <div className="mt-auto shrink-0 rounded-2xl border border-white/15 bg-white/10 p-[clamp(0.6rem,1.5vh,1rem)] backdrop-blur-sm">
-            <p className="text-[11px] font-semibold text-[#dbeaff]">
-              Butuh bantuan?
-            </p>
-            <div className="mt-1.5 space-y-1 text-[11px] text-[#b8d7ff]">
-              <p>Hubungi pustakawan</p>
+          <div className="mt-auto shrink-0 space-y-3">
+            <div className="rounded-2xl border border-white/15 bg-white/10 p-[clamp(0.6rem,1.5vh,1rem)] backdrop-blur-sm">
+              <LogoutForm />
             </div>
+            <div className="rounded-2xl border border-white/15 bg-white/10 p-[clamp(0.6rem,1.5vh,1rem)] backdrop-blur-sm">
+              <p className="text-[11px] font-semibold text-[#dbeaff]">
+                Butuh bantuan?
+              </p>
+              <div className="mt-1.5 space-y-1 text-[11px] text-[#b8d7ff]">
+                <p>Hubungi pustakawan</p>
+              </div>
 
-            <div className="mt-[clamp(0.5rem,1.5vh,1rem)] space-y-1 text-[11px] leading-4 text-[#dbeaff]">
-              <p>
-                Active Session : <span className="font-semibold text-white">{user.name}</span>
-              </p>
-              <p>
-                Roles : <span className="font-semibold text-white">{getSessionRoleLabel(role)}</span>
-              </p>
+              <div className="mt-[clamp(0.5rem,1.5vh,1rem)] space-y-1 text-[11px] leading-4 text-[#dbeaff]">
+                <p>
+                  Active Session : <span className="font-semibold text-white">{user.name}</span>
+                </p>
+                <p>
+                  Roles : <span className="font-semibold text-white">{getSessionRoleLabel(role)}</span>
+                </p>
+              </div>
             </div>
           </div>
         </aside>
@@ -214,9 +219,7 @@ export function DashboardShell({
               </p>
             </div>
 
-            <div className="flex flex-wrap items-center gap-3">
-              <LogoutForm />
-            </div>
+            <div className="flex flex-wrap items-center gap-3" />
           </header>
 
           <div className="scrollbar-hidden min-h-0 flex-1 overflow-y-auto px-5 py-5 sm:px-6">
