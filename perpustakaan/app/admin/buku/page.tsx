@@ -1,23 +1,21 @@
 import { requireRole } from "@/modules/access/lib/guards";
 import { DashboardShell } from "@/modules/access/ui/dashboard-shell";
-import { getBooks } from "@/modules/library/lib/data";
-import { BooksTable, SectionCard } from "@/modules/library/ui/library-cards";
+import { getAdminCatalogData } from "@/modules/library/lib/catalog";
+import { AdminCatalog } from "@/modules/library/ui/admin-catalog";
 
 export default async function AdminBooksPage() {
   const user = await requireRole("admin");
-  const books = await getBooks();
+  const catalogData = await getAdminCatalogData();
 
   return (
     <DashboardShell
       role="admin"
       user={user}
-      title="Modul Buku"
-      description="Daftar koleksi buku, stok, penulis, penerbit, dan lokasi rak."
+      title="Katalog"
+      description="Kelola koleksi buku, genre, copy, dan detail rak perpustakaan."
       activeNav="Buku"
     >
-      <SectionCard title="Data buku" subtitle="Koleksi perpustakaan">
-        <BooksTable books={books} />
-      </SectionCard>
+      <AdminCatalog books={catalogData.books} genres={catalogData.genres} />
     </DashboardShell>
   );
 }

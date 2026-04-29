@@ -108,7 +108,7 @@ const navByRole: Record<UserRole, NavItem[]> = {
 
 function getRoleBadge(role: UserRole) {
   if (role === "admin") {
-    return "Administrator";
+    return "Admin";
   }
 
   if (role === "siswa") {

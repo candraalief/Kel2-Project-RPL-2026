@@ -8,19 +8,34 @@ export function CollapsibleSectionCard({
   subtitle,
   children,
   defaultOpen = false,
+  open,
+  onOpenChange,
 }: {
   title: string;
   subtitle?: string;
   children: ReactNode;
   defaultOpen?: boolean;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }) {
-  const [isOpen, setIsOpen] = useState(defaultOpen);
+  const [internalOpen, setInternalOpen] = useState(defaultOpen);
+  const isOpen = open ?? internalOpen;
+
+  function toggleOpen() {
+    const nextOpen = !isOpen;
+
+    if (open === undefined) {
+      setInternalOpen(nextOpen);
+    }
+
+    onOpenChange?.(nextOpen);
+  }
 
   return (
     <article className="overflow-hidden rounded-[1.5rem] border border-zinc-200 bg-white shadow-sm">
       <button
         type="button"
-        onClick={() => setIsOpen((open) => !open)}
+        onClick={toggleOpen}
         aria-expanded={isOpen}
         className="flex w-full items-center justify-between gap-4 p-5 text-left transition hover:bg-zinc-50"
       >
