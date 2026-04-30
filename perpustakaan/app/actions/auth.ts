@@ -37,6 +37,10 @@ export type AdminProfileState = {
   error: string;
   success: string;
 };
+export type SiswaAdminActionState = {
+  error: string;
+  success: string;
+};
 
 function redirectByRole(role: UserRole) {
   if (role === "admin") {
@@ -140,6 +144,320 @@ export async function approveSiswaRegistration(siswaId: number) {
   }
 
   revalidatePath("/admin");
+  revalidatePath("/admin/anggota");
+}
+
+function normalizeSiswaStatus(value: string) {
+  const allowedStatuses = ["aktif", "nonaktif", "menunggu_verifikasi"];
+
+  return allowedStatuses.includes(value) ? value : "menunggu_verifikasi";
+}
+
+async function validateUniqueSiswaFields({
+  nisn,
+  username,
+  email,
+  currentSiswaId,
+}: {
+  nisn: string;
+  username: string;
+  email: string;
+  currentSiswaId?: number;
+}) {
+  const supabase = getServerSupabaseClient();
+
+  const [nisnCheck, usernameCheck, emailCheck] = await Promise.all([
+    supabase
+      .from("siswa")
+      .select("id_siswa")
+      .eq("nisn", nisn)
+      .limit(1)
+      .maybeSingle<{ id_siswa: number }>(),
+    supabase
+      .from("siswa")
+      .select("id_siswa")
+      .eq("username", username)
+      .limit(1)
+      .maybeSingle<{ id_siswa: number }>(),
+    supabase
+      .from("siswa")
+      .select("id_siswa")
+      .eq("email", email)
+      .limit(1)
+      .maybeSingle<{ id_siswa: number }>(),
+  ]);
+
+  if (nisnCheck.error) {
+    throw new Error(`Gagal memvalidasi NISN: ${nisnCheck.error.message}`);
+  }
+
+  if (usernameCheck.error) {
+    throw new Error(`Gagal memvalidasi username: ${usernameCheck.error.message}`);
+  }
+
+  if (emailCheck.error) {
+    throw new Error(`Gagal memvalidasi email: ${emailCheck.error.message}`);
+  }
+
+  if (nisnCheck.data && nisnCheck.data.id_siswa !== currentSiswaId) {
+    return "NISN sudah terdaftar.";
+  }
+
+  if (usernameCheck.data && usernameCheck.data.id_siswa !== currentSiswaId) {
+    return "Username sudah digunakan.";
+  }
+
+  if (emailCheck.data && emailCheck.data.id_siswa !== currentSiswaId) {
+    return "Email sudah digunakan.";
+  }
+
+  return null;
+}
+
+export async function createSiswaByAdmin(
+  _prevState: SiswaAdminActionState | undefined,
+  formData: FormData
+) {
+  const sessionUser = await getSessionUser();
+
+  if (!sessionUser || sessionUser.role !== "admin") {
+    return {
+      error: "Sesi admin tidak ditemukan.",
+      success: "",
+    };
+  }
+
+  const nama = String(formData.get("nama") ?? "").trim();
+  const nisn = String(formData.get("nisn") ?? "").trim();
+  const username = String(formData.get("username") ?? "").trim().toLowerCase();
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  const kelas = String(formData.get("kelas") ?? "").trim();
+  const tahunMasuk = String(formData.get("tahun_masuk") ?? "").trim();
+  const nomorWhatsapp = String(formData.get("nomor_whatsapp") ?? "").trim();
+  const statusKeanggotaan = normalizeSiswaStatus(
+    String(formData.get("status_keanggotaan") ?? "")
+  );
+
+  if (
+    !nama ||
+    !nisn ||
+    !username ||
+    !email ||
+    !kelas ||
+    !tahunMasuk ||
+    !nomorWhatsapp
+  ) {
+    return {
+      error: "Semua data siswa wajib diisi.",
+      success: "",
+    };
+  }
+
+  const parsedTahunMasuk = Number(tahunMasuk);
+
+  if (!Number.isInteger(parsedTahunMasuk) || parsedTahunMasuk < 1900) {
+    return {
+      error: "Tahun masuk tidak valid.",
+      success: "",
+    };
+  }
+
+  try {
+    const duplicateMessage = await validateUniqueSiswaFields({
+      nisn,
+      username,
+      email,
+    });
+
+    if (duplicateMessage) {
+      return {
+        error: duplicateMessage,
+        success: "",
+      };
+    }
+
+    const supabase = getServerSupabaseClient();
+    const { error } = await supabase.from("siswa").insert({
+      nama,
+      nisn,
+      username,
+      email,
+      kelas,
+      tahun_masuk: parsedTahunMasuk,
+      nomor_whatsapp: nomorWhatsapp,
+      status_keanggotaan: statusKeanggotaan,
+      password: null,
+    } as never);
+
+    if (error) {
+      return {
+        error: `Gagal menambah siswa: ${error.message}`,
+        success: "",
+      };
+    }
+
+    revalidatePath("/admin/anggota");
+
+    return {
+      error: "",
+      success: "Data siswa berhasil ditambahkan.",
+    };
+  } catch (error) {
+    return {
+      error:
+        error instanceof Error
+          ? error.message
+          : "Terjadi kesalahan saat menambah siswa.",
+      success: "",
+    };
+  }
+}
+
+export async function updateSiswaByAdmin(
+  _prevState: SiswaAdminActionState | undefined,
+  formData: FormData
+) {
+  const sessionUser = await getSessionUser();
+
+  if (!sessionUser || sessionUser.role !== "admin") {
+    return {
+      error: "Sesi admin tidak ditemukan.",
+      success: "",
+    };
+  }
+
+  const siswaId = Number(formData.get("id_siswa"));
+  const nama = String(formData.get("nama") ?? "").trim();
+  const nisn = String(formData.get("nisn") ?? "").trim();
+  const username = String(formData.get("username") ?? "").trim().toLowerCase();
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  const kelas = String(formData.get("kelas") ?? "").trim();
+  const tahunMasuk = String(formData.get("tahun_masuk") ?? "").trim();
+  const nomorWhatsapp = String(formData.get("nomor_whatsapp") ?? "").trim();
+  const statusKeanggotaan = normalizeSiswaStatus(
+    String(formData.get("status_keanggotaan") ?? "")
+  );
+
+  if (!Number.isInteger(siswaId) || siswaId < 1) {
+    return {
+      error: "Siswa yang dipilih tidak valid.",
+      success: "",
+    };
+  }
+
+  if (
+    !nama ||
+    !nisn ||
+    !username ||
+    !email ||
+    !kelas ||
+    !tahunMasuk ||
+    !nomorWhatsapp
+  ) {
+    return {
+      error: "Semua data siswa wajib diisi.",
+      success: "",
+    };
+  }
+
+  const parsedTahunMasuk = Number(tahunMasuk);
+
+  if (!Number.isInteger(parsedTahunMasuk) || parsedTahunMasuk < 1900) {
+    return {
+      error: "Tahun masuk tidak valid.",
+      success: "",
+    };
+  }
+
+  try {
+    const duplicateMessage = await validateUniqueSiswaFields({
+      nisn,
+      username,
+      email,
+      currentSiswaId: siswaId,
+    });
+
+    if (duplicateMessage) {
+      return {
+        error: duplicateMessage,
+        success: "",
+      };
+    }
+
+    const supabase = getServerSupabaseClient();
+    const { error } = await supabase
+      .from("siswa")
+      .update({
+        nama,
+        nisn,
+        username,
+        email,
+        kelas,
+        tahun_masuk: parsedTahunMasuk,
+        nomor_whatsapp: nomorWhatsapp,
+        status_keanggotaan: statusKeanggotaan,
+      } as never)
+      .eq("id_siswa", siswaId);
+
+    if (error) {
+      return {
+        error: `Gagal memperbarui siswa: ${error.message}`,
+        success: "",
+      };
+    }
+
+    revalidatePath("/admin/anggota");
+
+    return {
+      error: "",
+      success: "Data siswa berhasil diperbarui.",
+    };
+  } catch (error) {
+    return {
+      error:
+        error instanceof Error
+          ? error.message
+          : "Terjadi kesalahan saat memperbarui siswa.",
+      success: "",
+    };
+  }
+}
+
+export async function rejectSiswaRegistration(siswaId: number) {
+  const sessionUser = await getSessionUser();
+
+  if (!sessionUser || sessionUser.role !== "admin") {
+    throw new Error("Unauthorized");
+  }
+
+  const supabase = getServerSupabaseClient();
+  const { error } = await supabase
+    .from("siswa")
+    .update({ status_keanggotaan: "nonaktif" } as never)
+    .eq("id_siswa", siswaId);
+
+  if (error) {
+    throw new Error(`Failed to reject siswa: ${error.message}`);
+  }
+
+  revalidatePath("/admin/anggota");
+}
+
+export async function deleteSiswaByAdmin(siswaId: number) {
+  const sessionUser = await getSessionUser();
+
+  if (!sessionUser || sessionUser.role !== "admin") {
+    throw new Error("Unauthorized");
+  }
+
+  const supabase = getServerSupabaseClient();
+  const { error } = await supabase.from("siswa").delete().eq("id_siswa", siswaId);
+
+  if (error) {
+    throw new Error(`Failed to delete siswa: ${error.message}`);
+  }
+
+  revalidatePath("/admin/anggota");
 }
 
 export async function updateSiswaPassword(siswaId: number, formData: FormData) {

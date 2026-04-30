@@ -1,0 +1,893 @@
+"use client";
+
+import { useActionState, useDeferredValue, useEffect, useMemo, useRef, useState, useTransition } from "react";
+import {
+  approveSiswaRegistration,
+  clearSiswaPassword,
+  createSiswaByAdmin,
+  deleteSiswaByAdmin,
+  rejectSiswaRegistration,
+  updateSiswaByAdmin,
+  type SiswaAdminActionState,
+} from "@/app/actions/auth";
+import type { SiswaAccount } from "@/modules/access/lib/student-registration";
+
+type ActiveTab = "registered" | "pending";
+type ModalMode = "add" | "detail" | "edit";
+type SortKey = "nisn" | "nama" | "kelas";
+type SortDirection = "asc" | "desc";
+type StatusFilter = "aktif" | "nonaktif" | null;
+type MemberModal =
+  | { mode: "add"; siswa?: never }
+  | { mode: "detail" | "edit"; siswa: SiswaAccount };
+
+const initialActionState: SiswaAdminActionState = {
+  error: "",
+  success: "",
+};
+
+function normalize(value: string | null | number | boolean) {
+  return String(value ?? "").trim().toLowerCase();
+}
+
+function isPending(siswa: SiswaAccount) {
+  return siswa.status_keanggotaan === "menunggu_verifikasi";
+}
+
+function statusLabel(status: string | null) {
+  if (status === "aktif") {
+    return "Aktif";
+  }
+
+  if (status === "nonaktif") {
+    return "Non-Aktif";
+  }
+
+  if (status === "menunggu_verifikasi") {
+    return "Menunggu";
+  }
+
+  return status || "-";
+}
+
+function StatusBadge({ status }: { status: string | null }) {
+  const tone =
+    status === "aktif"
+      ? "bg-[#020016] text-white"
+      : "bg-[#eef0f4] text-[#020016]";
+
+  return (
+    <span className={`inline-flex rounded-lg px-3 py-1 text-xs font-semibold ${tone}`}>
+      {statusLabel(status)}
+    </span>
+  );
+}
+
+function compareText(first: string | null, second: string | null) {
+  return (first ?? "").localeCompare(second ?? "", "id-ID", {
+    numeric: true,
+    sensitivity: "base",
+  });
+}
+
+function compareNis(first: string | null, second: string | null) {
+  const firstNumber = Number(first);
+  const secondNumber = Number(second);
+
+  if (Number.isFinite(firstNumber) && Number.isFinite(secondNumber)) {
+    return firstNumber - secondNumber;
+  }
+
+  return compareText(first, second);
+}
+
+function Icon({
+  name,
+  className = "h-5 w-5",
+}: {
+  name: "search" | "plus" | "eye" | "edit" | "trash" | "check" | "x" | "chevron";
+  className?: string;
+}) {
+  if (name === "search") {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
+        <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="2" />
+        <path d="M16.5 16.5L21 21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      </svg>
+    );
+  }
+
+  if (name === "plus") {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
+        <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      </svg>
+    );
+  }
+
+  if (name === "eye") {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
+        <path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+        <circle cx="12" cy="12" r="2.5" stroke="currentColor" strokeWidth="2" />
+      </svg>
+    );
+  }
+
+  if (name === "edit") {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
+        <path d="M4 20h16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+        <path d="M6 15.5V18h2.5L18.8 7.7a1.8 1.8 0 000-2.5 1.8 1.8 0 00-2.5 0L6 15.5z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+      </svg>
+    );
+  }
+
+  if (name === "trash") {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
+        <path d="M5 7h14M10 11v6M14 11v6M8 7l1-2h6l1 2M7 7l1 13h8l1-13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    );
+  }
+
+  if (name === "check") {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
+        <path d="M5 12.5l4 4L19 6.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    );
+  }
+
+  if (name === "chevron") {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
+        <path d="M7 10l5 5 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    );
+  }
+
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
+      <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function AdminMembers({ siswa }: { siswa: SiswaAccount[] }) {
+  const [activeTab, setActiveTab] = useState<ActiveTab>("registered");
+  const [search, setSearch] = useState("");
+  const [modal, setModal] = useState<MemberModal | null>(null);
+  const [resetSiswa, setResetSiswa] = useState<SiswaAccount | null>(null);
+  const [resetNotice, setResetNotice] = useState(false);
+  const [sortConfig, setSortConfig] = useState<{
+    key: SortKey;
+    direction: SortDirection;
+  } | null>(null);
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>(null);
+  const deferredSearch = useDeferredValue(search);
+
+  useEffect(() => {
+    if (!resetNotice) {
+      return;
+    }
+
+    const timeout = window.setTimeout(() => {
+      setResetNotice(false);
+    }, 10000);
+
+    return () => window.clearTimeout(timeout);
+  }, [resetNotice]);
+
+  const registeredSiswa = useMemo(
+    () => siswa.filter((item) => !isPending(item)),
+    [siswa]
+  );
+  const pendingSiswa = useMemo(() => siswa.filter(isPending), [siswa]);
+  const visibleSource = activeTab === "registered" ? registeredSiswa : pendingSiswa;
+
+  const filteredSiswa = useMemo(() => {
+    const query = normalize(deferredSearch);
+    const filtered = visibleSource.filter((item) => {
+      const matchesSearch =
+        !query ||
+        [
+          item.nisn,
+          item.nama,
+          item.kelas,
+          item.email,
+          item.username,
+          item.nomor_whatsapp,
+          item.tahun_masuk,
+          statusLabel(item.status_keanggotaan),
+        ].some((value) => normalize(value).includes(query));
+      const matchesStatus =
+        !statusFilter || item.status_keanggotaan === statusFilter;
+
+      return matchesSearch && matchesStatus;
+    });
+
+    if (!sortConfig) {
+      return filtered;
+    }
+
+    return [...filtered].sort((first, second) => {
+      const result =
+        sortConfig.key === "nisn"
+          ? compareNis(first.nisn, second.nisn)
+          : compareText(first[sortConfig.key], second[sortConfig.key]);
+
+      return sortConfig.direction === "asc" ? result : -result;
+    });
+  }, [deferredSearch, sortConfig, statusFilter, visibleSource]);
+
+  function toggleSort(key: SortKey) {
+    setSortConfig((current) => {
+      if (!current || current.key !== key) {
+        return { key, direction: "asc" };
+      }
+
+      if (current.direction === "asc") {
+        return { key, direction: "desc" };
+      }
+
+      return null;
+    });
+  }
+
+  function toggleStatusFilter() {
+    setStatusFilter((current) => {
+      if (current === null) {
+        return "aktif";
+      }
+
+      if (current === "aktif") {
+        return "nonaktif";
+      }
+
+      return null;
+    });
+  }
+
+  function resetFilters() {
+    setSearch("");
+    setSortConfig(null);
+    setStatusFilter(null);
+  }
+
+  return (
+    <div className="overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm">
+      <div className="shrink-0 space-y-4 border-b border-zinc-200 px-7 py-5">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
+          <div className="grid h-12 w-full grid-cols-2 rounded-2xl bg-[#e8e8ed] p-1 lg:flex-1">
+            <button
+              type="button"
+              onClick={() => setActiveTab("registered")}
+              className={`rounded-2xl text-sm font-semibold transition ${
+                activeTab === "registered" ? "bg-white text-black shadow-sm" : "text-black"
+              }`}
+            >
+              Siswa Terdaftar ({registeredSiswa.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("pending")}
+              className={`rounded-2xl text-sm font-semibold transition ${
+                activeTab === "pending" ? "bg-white text-black shadow-sm" : "text-black"
+              }`}
+            >
+              Menunggu Verifikasi ({pendingSiswa.length})
+            </button>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setModal({ mode: "add" })}
+            className="inline-flex h-12 shrink-0 items-center justify-center gap-3 rounded-lg bg-[#020016] px-5 text-sm font-semibold text-white transition hover:bg-[#10102a]"
+          >
+            <Icon name="plus" className="h-5 w-5" />
+            Tambah Siswa
+          </button>
+        </div>
+
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
+          <label className="relative block w-full lg:flex-1">
+            <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
+              <Icon name="search" className="h-6 w-6" />
+            </span>
+            <input
+              value={search}
+              onChange={(event) => setSearch(event.currentTarget.value)}
+              placeholder="Cari berdasarkan nama, NIS, atau nomor telepon..."
+              className="h-12 w-full rounded-lg border border-transparent bg-[#f1f1f4] pl-12 pr-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-500 focus:border-[#020016]"
+            />
+          </label>
+
+          <button
+            type="button"
+            onClick={resetFilters}
+            className="inline-flex h-12 shrink-0 items-center justify-center rounded-lg border border-zinc-200 bg-white px-6 text-sm font-semibold text-black transition hover:bg-zinc-50"
+          >
+            Reset Filter
+          </button>
+        </div>
+      </div>
+
+      <div className="px-7 py-5">
+        <div className="min-w-0">
+          <div className="min-w-0">
+          <table className="w-full table-fixed border-collapse text-center">
+            <thead>
+              <tr className="border-b border-zinc-200 text-sm font-semibold text-black">
+                <th className="w-[12%] px-2 py-2.5">
+                  <SortHeader
+                    label="NIS"
+                    numeric
+                    active={sortConfig?.key === "nisn" ? sortConfig.direction : null}
+                    onClick={() => toggleSort("nisn")}
+                  />
+                </th>
+                <th className="w-[20%] px-2 py-2.5">
+                  <SortHeader
+                    label="Nama"
+                    active={sortConfig?.key === "nama" ? sortConfig.direction : null}
+                    onClick={() => toggleSort("nama")}
+                  />
+                </th>
+                <th className="w-[18%] px-2 py-2.5">
+                  <PlainHeader label="Nomor Telepon" />
+                </th>
+                <th className="w-[19%] px-2 py-2.5">
+                  <StatusHeader
+                    label={activeTab === "registered" ? "Status Keanggotaan" : "Status"}
+                    active={statusFilter}
+                    onClick={toggleStatusFilter}
+                  />
+                </th>
+                <th className="w-[16%] px-2 py-2.5">
+                  <PlainHeader label="Reset Password" />
+                </th>
+                <th className="w-[15%] px-2 py-2.5">
+                  <PlainHeader label="Aksi" />
+                </th>
+              </tr>
+            </thead>
+          </table>
+
+          <div className="max-h-[310px] overflow-y-auto">
+          <table className="w-full table-fixed border-collapse text-center">
+            <tbody>
+              {filteredSiswa.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-3 py-10 text-center text-sm text-zinc-500">
+                    Tidak ada data siswa yang cocok.
+                  </td>
+                </tr>
+              ) : (
+                filteredSiswa.map((item) => (
+                  <tr key={item.id_siswa} className="border-b border-zinc-200 text-sm text-black last:border-b-0">
+                    <td className="w-[12%] px-2 py-4">{item.nisn ?? "-"}</td>
+                    <td className="w-[20%] truncate px-2 py-4" title={item.nama}>
+                      {item.nama}
+                    </td>
+                    <td className="w-[18%] px-2 py-4">{item.nomor_whatsapp ?? "-"}</td>
+                    <td className="w-[19%] px-2 py-4">
+                      <StatusBadge status={item.status_keanggotaan} />
+                    </td>
+                    <td className="w-[16%] px-2 py-4">
+                      <button
+                        type="button"
+                        onClick={() => setResetSiswa(item)}
+                        className="rounded-lg border border-zinc-200 px-3 py-1.5 text-xs font-semibold text-black transition hover:bg-zinc-50"
+                      >
+                        Reset
+                      </button>
+                    </td>
+                    <td className="w-[15%] px-2 py-4">
+                      <div className="flex items-center justify-center gap-3">
+                        <button
+                          type="button"
+                          onClick={() => setModal({ mode: "detail", siswa: item })}
+                          className="text-black transition hover:text-[#0f5fc4]"
+                          title="Lihat detail"
+                        >
+                          <span className="sr-only">Lihat detail {item.nama}</span>
+                          <Icon name="eye" className="h-5 w-5" />
+                        </button>
+
+                        {activeTab === "registered" ? (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => setModal({ mode: "edit", siswa: item })}
+                              className="text-black transition hover:text-[#0f5fc4]"
+                              title="Edit siswa"
+                            >
+                              <span className="sr-only">Edit {item.nama}</span>
+                              <Icon name="edit" className="h-5 w-5" />
+                            </button>
+                            <DeleteSiswaButton siswa={item} />
+                          </>
+                        ) : (
+                          <>
+                            <ApproveSiswaButton siswa={item} />
+                            <RejectSiswaButton siswa={item} />
+                          </>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+          </div>
+          </div>
+        </div>
+      </div>
+
+      {modal ? <SiswaModal modal={modal} onClose={() => setModal(null)} /> : null}
+      {resetSiswa ? (
+        <ResetPasswordModal
+          siswa={resetSiswa}
+          onClose={() => setResetSiswa(null)}
+          onSuccess={() => {
+            setResetSiswa(null);
+            setResetNotice(true);
+          }}
+        />
+      ) : null}
+      {resetNotice ? (
+        <div className="fixed right-6 top-6 z-[60] flex items-center gap-4 rounded-lg border border-emerald-200 bg-emerald-50 px-5 py-3 text-sm font-semibold text-emerald-700 shadow-lg">
+          <span>Reset password berhasil</span>
+          <button
+            type="button"
+            onClick={() => setResetNotice(false)}
+            className="inline-flex h-6 w-6 items-center justify-center rounded-md text-emerald-700 transition hover:bg-emerald-100"
+            title="Tutup notifikasi"
+          >
+            <span className="sr-only">Tutup notifikasi</span>
+            <Icon name="x" className="h-4 w-4" />
+          </button>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function SortHeader({
+  label,
+  numeric = false,
+  active,
+  onClick,
+}: {
+  label: string;
+  numeric?: boolean;
+  active: SortDirection | null;
+  onClick: () => void;
+}) {
+  const marker =
+    active === "asc"
+      ? numeric
+        ? "0-9"
+        : "A-Z"
+      : active === "desc"
+        ? numeric
+          ? "9-0"
+          : "Z-A"
+        : "";
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex min-h-12 w-full flex-col items-center justify-end rounded-lg px-2 py-1 transition hover:bg-zinc-100"
+      title={`Urutkan ${label}`}
+    >
+      <span className="mb-1 min-h-3 text-[10px] font-semibold leading-3 text-slate-500">
+        {marker}
+      </span>
+      <span>{label}</span>
+    </button>
+  );
+}
+
+function StatusHeader({
+  label,
+  active,
+  onClick,
+}: {
+  label: string;
+  active: StatusFilter;
+  onClick: () => void;
+}) {
+  const marker =
+    active === "aktif" ? "Aktif" : active === "nonaktif" ? "Tidak" : "";
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex min-h-12 w-full flex-col items-center justify-end rounded-lg px-2 py-1 transition hover:bg-zinc-100"
+      title="Filter status keanggotaan"
+    >
+      <span className="mb-1 min-h-3 text-[10px] font-semibold leading-3 text-slate-500">
+        {marker}
+      </span>
+      <span>{label}</span>
+    </button>
+  );
+}
+
+function PlainHeader({ label }: { label: string }) {
+  return (
+    <div className="flex min-h-12 w-full flex-col items-center justify-end px-2 py-1">
+      <span className="mb-1 min-h-3 text-[10px] font-semibold leading-3 text-transparent">
+        -
+      </span>
+      <span>{label}</span>
+    </div>
+  );
+}
+
+function ResetPasswordModal({
+  siswa,
+  onClose,
+  onSuccess,
+}: {
+  siswa: SiswaAccount;
+  onClose: () => void;
+  onSuccess: () => void;
+}) {
+  const [isPending, startTransition] = useTransition();
+  const [error, setError] = useState("");
+
+  function handleReset() {
+    setError("");
+    startTransition(async () => {
+      try {
+        await clearSiswaPassword(siswa.id_siswa);
+        onSuccess();
+      } catch (resetError) {
+        setError(
+          resetError instanceof Error
+            ? resetError.message
+            : "Gagal mereset password."
+        );
+      }
+    });
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"
+      onClick={onClose}
+    >
+      <section
+        className="w-full max-w-md rounded-lg bg-white p-6 shadow-2xl"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h2 className="text-xl font-semibold text-black">Reset Password</h2>
+            <p className="mt-2 text-sm text-slate-500">
+              Password akan dikosongkan agar siswa bisa membuat password baru.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-slate-600 transition hover:bg-slate-100"
+            title="Tutup"
+          >
+            <span className="sr-only">Tutup</span>
+            <Icon name="x" className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="mt-5 rounded-lg border border-zinc-200 bg-zinc-50 p-4 text-sm text-black">
+          <p>
+            Nama: <span className="font-semibold">{siswa.nama}</span>
+          </p>
+          <p className="mt-2">
+            Username:{" "}
+            <span className="font-semibold">{siswa.username ?? "-"}</span>
+          </p>
+        </div>
+
+        {error ? (
+          <p className="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {error}
+          </p>
+        ) : null}
+
+        <div className="mt-6 flex justify-end gap-3">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={isPending}
+            className="inline-flex h-11 min-w-20 items-center justify-center rounded-lg border border-zinc-200 bg-white px-5 text-sm font-semibold text-black transition hover:bg-zinc-50"
+          >
+            Tidak
+          </button>
+          <button
+            type="button"
+            onClick={handleReset}
+            disabled={isPending}
+            className="inline-flex h-11 min-w-20 items-center justify-center rounded-lg bg-[#020016] px-5 text-sm font-semibold text-white transition hover:bg-[#10102a] disabled:cursor-not-allowed disabled:bg-zinc-400"
+          >
+            {isPending ? "Memproses..." : "Ya"}
+          </button>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function ApproveSiswaButton({ siswa }: { siswa: SiswaAccount }) {
+  const action = approveSiswaRegistration.bind(null, siswa.id_siswa);
+
+  return (
+    <form action={action}>
+      <button
+        type="submit"
+        className="text-emerald-600 transition hover:text-emerald-700"
+        title="Setujui siswa"
+      >
+        <span className="sr-only">Setujui {siswa.nama}</span>
+        <Icon name="check" className="h-5 w-5" />
+      </button>
+    </form>
+  );
+}
+
+function RejectSiswaButton({ siswa }: { siswa: SiswaAccount }) {
+  const action = rejectSiswaRegistration.bind(null, siswa.id_siswa);
+
+  return (
+    <form action={action}>
+      <button
+        type="submit"
+        className="text-red-500 transition hover:text-red-600"
+        title="Tolak siswa"
+      >
+        <span className="sr-only">Tolak {siswa.nama}</span>
+        <Icon name="x" className="h-5 w-5" />
+      </button>
+    </form>
+  );
+}
+
+function DeleteSiswaButton({ siswa }: { siswa: SiswaAccount }) {
+  const action = deleteSiswaByAdmin.bind(null, siswa.id_siswa);
+
+  return (
+    <form
+      action={action}
+      onSubmit={(event) => {
+        if (!window.confirm(`Hapus data siswa "${siswa.nama}"?`)) {
+          event.preventDefault();
+        }
+      }}
+    >
+      <button
+        type="submit"
+        className="text-red-500 transition hover:text-red-600"
+        title="Hapus siswa"
+      >
+        <span className="sr-only">Hapus {siswa.nama}</span>
+        <Icon name="trash" className="h-5 w-5" />
+      </button>
+    </form>
+  );
+}
+
+function SiswaModal({
+  modal,
+  onClose,
+}: {
+  modal: MemberModal;
+  onClose: () => void;
+}) {
+  const title =
+    modal.mode === "add"
+      ? "Tambah Siswa Baru"
+      : modal.mode === "edit"
+        ? "Edit Data Siswa"
+        : "Detail Siswa";
+  const subtitle =
+    modal.mode === "detail"
+      ? "Informasi lengkap dari tabel data siswa"
+      : "Tambahkan siswa baru ke sistem perpustakaan";
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/50 px-4 py-9"
+      onClick={onClose}
+    >
+      <section
+        className="w-full max-w-2xl rounded-lg bg-white shadow-2xl"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="flex items-start justify-between gap-4 px-7 pt-7">
+          <div>
+            <h2 className="text-2xl font-semibold text-black">{title}</h2>
+            <p className="mt-2 text-sm text-slate-500">{subtitle}</p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-slate-600 transition hover:bg-slate-100"
+            title="Tutup"
+          >
+            <span className="sr-only">Tutup</span>
+            <Icon name="x" className="h-5 w-5" />
+          </button>
+        </div>
+
+        {modal.mode === "detail" ? (
+          <SiswaDetail siswa={modal.siswa} />
+        ) : (
+          <SiswaForm mode={modal.mode} siswa={modal.siswa} onClose={onClose} />
+        )}
+      </section>
+    </div>
+  );
+}
+
+function SiswaDetail({ siswa }: { siswa: SiswaAccount }) {
+  return (
+    <div className="grid gap-3 px-7 py-7 sm:grid-cols-2">
+      <DetailItem label="NIS" value={siswa.nisn} />
+      <DetailItem label="Nama Lengkap" value={siswa.nama} />
+      <DetailItem label="Username" value={siswa.username} />
+      <DetailItem label="Email" value={siswa.email} />
+      <DetailItem label="Kelas" value={siswa.kelas} />
+      <DetailItem label="Tahun Masuk" value={siswa.tahun_masuk?.toString() ?? null} />
+      <DetailItem label="No. Telepon" value={siswa.nomor_whatsapp} />
+      <DetailItem label="Status Keanggotaan" value={statusLabel(siswa.status_keanggotaan)} />
+      <DetailItem
+        label="Password"
+        value={siswa.password_tersedia ? "Sudah diatur" : "Belum diatur / dikosongkan"}
+      />
+    </div>
+  );
+}
+
+function SiswaForm({
+  mode,
+  siswa,
+  onClose,
+}: {
+  mode: Exclude<ModalMode, "detail">;
+  siswa?: SiswaAccount;
+  onClose: () => void;
+}) {
+  const formRef = useRef<HTMLFormElement>(null);
+  const action = mode === "add" ? createSiswaByAdmin : updateSiswaByAdmin;
+  const [state, formAction, pending] = useActionState(action, initialActionState);
+
+  useEffect(() => {
+    if (state.success && mode === "add") {
+      formRef.current?.reset();
+    }
+  }, [mode, state.success]);
+
+  return (
+    <form ref={formRef} action={formAction} className="px-7 py-7">
+      {siswa ? <input type="hidden" name="id_siswa" value={siswa.id_siswa} /> : null}
+
+      <div className="grid gap-x-5 gap-y-4 sm:grid-cols-2">
+        <Field label="NIS" name="nisn" placeholder="Masukkan NIS" defaultValue={siswa?.nisn ?? ""} required />
+        <Field label="Kelas" name="kelas" placeholder="Contoh: XII IPA 1" defaultValue={siswa?.kelas ?? ""} required />
+        <Field label="Nama Lengkap" name="nama" placeholder="Masukkan nama lengkap" defaultValue={siswa?.nama ?? ""} className="sm:col-span-2" required />
+        <Field label="Username" name="username" placeholder="Masukkan username" defaultValue={siswa?.username ?? ""} className="sm:col-span-2" required />
+        <Field label="Email" name="email" type="email" placeholder="contoh@sekolah.id" defaultValue={siswa?.email ?? ""} className="sm:col-span-2" required />
+        <Field label="Tahun Masuk" name="tahun_masuk" type="number" placeholder="Contoh: 2024" defaultValue={siswa?.tahun_masuk?.toString() ?? ""} required />
+        <Field label="No. Telepon" name="nomor_whatsapp" placeholder="08xxxxxxxxxx" defaultValue={siswa?.nomor_whatsapp ?? ""} required />
+        <label className="block space-y-2 sm:col-span-2">
+          <span className="text-sm font-semibold text-black">Status Keanggotaan</span>
+          <span className="relative block">
+            <select
+              name="status_keanggotaan"
+              defaultValue={siswa?.status_keanggotaan ?? "aktif"}
+              className="h-11 w-full appearance-none rounded-lg border border-transparent bg-[#f1f1f4] px-4 pr-10 text-sm text-slate-900 outline-none transition focus:border-[#020016]"
+              required
+            >
+              <option value="aktif">Aktif</option>
+              <option value="nonaktif">Non-Aktif</option>
+              <option value="menunggu_verifikasi">Menunggu Verifikasi</option>
+            </select>
+            <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-slate-400">
+              <Icon name="chevron" className="h-4 w-4" />
+            </span>
+          </span>
+        </label>
+      </div>
+
+      <ActionNotice state={state} />
+
+      <div className="mt-8 flex justify-end gap-3">
+        <button
+          type="button"
+          onClick={onClose}
+          className="inline-flex h-11 min-w-20 items-center justify-center rounded-lg border border-zinc-200 bg-white px-5 text-sm font-semibold text-black transition hover:bg-zinc-50"
+        >
+          Batal
+        </button>
+        <button
+          type="submit"
+          disabled={pending}
+          className="inline-flex h-11 min-w-36 items-center justify-center rounded-lg bg-[#020016] px-5 text-sm font-semibold text-white transition hover:bg-[#10102a] disabled:cursor-not-allowed disabled:bg-zinc-400"
+        >
+          {pending
+            ? "Menyimpan..."
+            : mode === "add"
+              ? "Tambah Siswa"
+              : "Simpan Data"}
+        </button>
+      </div>
+    </form>
+  );
+}
+
+function Field({
+  label,
+  name,
+  type = "text",
+  placeholder,
+  defaultValue,
+  className = "",
+  required,
+}: {
+  label: string;
+  name: string;
+  type?: string;
+  placeholder?: string;
+  defaultValue?: string;
+  className?: string;
+  required?: boolean;
+}) {
+  return (
+    <label className={`block space-y-2 ${className}`}>
+      <span className="text-sm font-semibold text-black">{label}</span>
+      <input
+        name={name}
+        type={type}
+        placeholder={placeholder}
+        defaultValue={defaultValue}
+        required={required}
+        className="h-11 w-full rounded-lg border border-transparent bg-[#f1f1f4] px-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-500 focus:border-[#020016]"
+      />
+    </label>
+  );
+}
+
+function DetailItem({ label, value }: { label: string; value: string | null }) {
+  return (
+    <div className="rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3">
+      <p className="text-xs font-semibold uppercase text-slate-500">{label}</p>
+      <p className="mt-1 text-sm font-semibold text-black">{value || "-"}</p>
+    </div>
+  );
+}
+
+function ActionNotice({ state }: { state: SiswaAdminActionState }) {
+  if (state.error) {
+    return (
+      <p className="mt-5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+        {state.error}
+      </p>
+    );
+  }
+
+  if (state.success) {
+    return (
+      <p className="mt-5 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+        {state.success}
+      </p>
+    );
+  }
+
+  return null;
+}
