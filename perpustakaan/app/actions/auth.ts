@@ -16,6 +16,7 @@ import {
   clearSession,
   createSession,
   getSessionUser,
+  type SessionUser,
   type UserRole,
 } from "@/modules/access/lib/session";
 
@@ -29,6 +30,10 @@ export type PasswordResetState = {
   success: string;
 };
 export type UpdateSiswaProfileState = {
+  error: string;
+  success: string;
+};
+export type AdminProfileState = {
   error: string;
   success: string;
 };
@@ -389,6 +394,407 @@ export async function updateOwnSiswaProfile(
   return {
     error: "",
     success: "Profil siswa berhasil diperbarui.",
+  };
+}
+
+function normalizeUsername(value: FormDataEntryValue | null) {
+  return String(value ?? "").trim().toLowerCase();
+}
+
+function isSuperAdmin(sessionUser: SessionUser | null): sessionUser is SessionUser {
+  return Boolean(sessionUser && sessionUser.role === "admin" && sessionUser.id === 0);
+}
+
+async function getAdminSchemaSupport(adminId: number) {
+  const supabase = getServerSupabaseClient();
+  const { data, error } = await supabase
+    .from("admin")
+    .select("*")
+    .eq("id_admin", adminId)
+    .limit(1)
+    .maybeSingle<Record<string, unknown>>();
+
+  if (error) {
+    throw new Error(`Gagal membaca schema admin: ${error.message}`);
+  }
+
+  return {
+    supportsEmail: Boolean(
+      data && Object.prototype.hasOwnProperty.call(data, "email")
+    ),
+    telephoneColumn:
+      data && Object.prototype.hasOwnProperty.call(data, "nomor_telephone")
+        ? "nomor_telephone"
+        : data && Object.prototype.hasOwnProperty.call(data, "nomor_telepon")
+          ? "nomor_telepon"
+          : null,
+  };
+}
+
+export async function updateOwnAdminProfile(
+  _prevState: AdminProfileState | undefined,
+  formData: FormData
+) {
+  const sessionUser = await getSessionUser();
+
+  if (!isSuperAdmin(sessionUser)) {
+    return {
+      error: "Hanya superadmin yang boleh mengedit data admin.",
+      success: "",
+    };
+  }
+
+  const nama = String(formData.get("nama") ?? "").trim();
+  const username = normalizeUsername(formData.get("username"));
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  const nomorTelephone = String(formData.get("nomor_telephone") ?? "").trim();
+
+  if (!nama || !username) {
+    return {
+      error: "Nama lengkap dan username wajib diisi.",
+      success: "",
+    };
+  }
+
+  const supabase = getServerSupabaseClient();
+
+  try {
+    const usernameCheck = await supabase
+      .from("admin")
+      .select("id_admin")
+      .eq("username", username)
+      .neq("id_admin", sessionUser.id)
+      .limit(1)
+      .maybeSingle();
+
+    if (usernameCheck.error) {
+      return {
+        error: `Gagal memvalidasi username: ${usernameCheck.error.message}`,
+        success: "",
+      };
+    }
+
+    if (usernameCheck.data) {
+      return {
+        error: "Username sudah digunakan oleh admin lain.",
+        success: "",
+      };
+    }
+
+    const schema = await getAdminSchemaSupport(sessionUser.id);
+    const payload: Record<string, string> = { nama, username };
+
+    if (schema.supportsEmail) {
+      payload.email = email;
+    }
+
+    if (schema.telephoneColumn) {
+      payload[schema.telephoneColumn] = nomorTelephone;
+    }
+
+    const { error } = await supabase
+      .from("admin")
+      .update(payload as never)
+      .eq("id_admin", sessionUser.id);
+
+    if (error) {
+      return {
+        error: `Gagal memperbarui profil admin: ${error.message}`,
+        success: "",
+      };
+    }
+
+    await createSession({
+      ...sessionUser,
+      name: nama,
+      identifier: username || nama,
+    });
+
+    revalidatePath("/admin");
+    revalidatePath("/admin/profil");
+
+    return {
+      error: "",
+      success: "Profil admin berhasil diperbarui.",
+    };
+  } catch (error) {
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Terjadi kesalahan saat memperbarui profil admin.";
+
+    return {
+      error: message,
+      success: "",
+    };
+  }
+}
+
+export async function updateAdminAccount(
+  _prevState: AdminProfileState | undefined,
+  formData: FormData
+) {
+  const sessionUser = await getSessionUser();
+
+  if (!isSuperAdmin(sessionUser)) {
+    return {
+      error: "Hanya superadmin yang boleh mengedit data admin.",
+      success: "",
+    };
+  }
+
+  const adminId = Number(formData.get("admin_id"));
+  const nama = String(formData.get("nama") ?? "").trim();
+  const username = normalizeUsername(formData.get("username"));
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  const nomorTelephone = String(formData.get("nomor_telephone") ?? "").trim();
+  const password = String(formData.get("password") ?? "");
+
+  if (!Number.isInteger(adminId) || adminId < 0) {
+    return {
+      error: "Admin yang dipilih tidak valid.",
+      success: "",
+    };
+  }
+
+  if (!nama || !username) {
+    return {
+      error: "Nama lengkap dan username wajib diisi.",
+      success: "",
+    };
+  }
+
+  if (password && password.length < 8) {
+    return {
+      error: "Password baru minimal 8 karakter.",
+      success: "",
+    };
+  }
+
+  const supabase = getServerSupabaseClient();
+
+  try {
+    const usernameCheck = await supabase
+      .from("admin")
+      .select("id_admin")
+      .eq("username", username)
+      .neq("id_admin", adminId)
+      .limit(1)
+      .maybeSingle();
+
+    if (usernameCheck.error) {
+      return {
+        error: `Gagal memvalidasi username: ${usernameCheck.error.message}`,
+        success: "",
+      };
+    }
+
+    if (usernameCheck.data) {
+      return {
+        error: "Username sudah digunakan oleh admin lain.",
+        success: "",
+      };
+    }
+
+    const schema = await getAdminSchemaSupport(sessionUser.id);
+    const payload: Record<string, string> = { nama, username };
+
+    if (schema.supportsEmail) {
+      payload.email = email;
+    }
+
+    if (schema.telephoneColumn) {
+      payload[schema.telephoneColumn] = nomorTelephone;
+    }
+
+    if (password) {
+      payload.password = await bcrypt.hash(password, 10);
+    }
+
+    const { error } = await supabase
+      .from("admin")
+      .update(payload as never)
+      .eq("id_admin", adminId);
+
+    if (error) {
+      return {
+        error: `Gagal memperbarui data admin: ${error.message}`,
+        success: "",
+      };
+    }
+
+    if (adminId === sessionUser.id) {
+      await createSession({
+        ...sessionUser,
+        name: nama,
+        identifier: username || nama,
+      });
+    }
+
+    revalidatePath("/admin/profil");
+
+    return {
+      error: "",
+      success: "Data admin berhasil diperbarui.",
+    };
+  } catch (error) {
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Terjadi kesalahan saat memperbarui data admin.";
+
+    return {
+      error: message,
+      success: "",
+    };
+  }
+}
+
+export async function createAdminAccount(
+  _prevState: AdminProfileState | undefined,
+  formData: FormData
+) {
+  const sessionUser = await getSessionUser();
+
+  if (!isSuperAdmin(sessionUser)) {
+    return {
+      error: "Hanya superadmin yang boleh menambah admin.",
+      success: "",
+    };
+  }
+
+  const nama = String(formData.get("nama") ?? "").trim();
+  const username = normalizeUsername(formData.get("username"));
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  const nomorTelephone = String(formData.get("nomor_telephone") ?? "").trim();
+  const password = String(formData.get("password") ?? "");
+
+  if (!nama || !username || !password) {
+    return {
+      error: "Nama lengkap, username, dan password wajib diisi.",
+      success: "",
+    };
+  }
+
+  if (password.length < 8) {
+    return {
+      error: "Password admin baru minimal 8 karakter.",
+      success: "",
+    };
+  }
+
+  const supabase = getServerSupabaseClient();
+
+  try {
+    const usernameCheck = await supabase
+      .from("admin")
+      .select("id_admin")
+      .eq("username", username)
+      .limit(1)
+      .maybeSingle();
+
+    if (usernameCheck.error) {
+      return {
+        error: `Gagal memvalidasi username: ${usernameCheck.error.message}`,
+        success: "",
+      };
+    }
+
+    if (usernameCheck.data) {
+      return {
+        error: "Username sudah digunakan oleh admin lain.",
+        success: "",
+      };
+    }
+
+    const schema = await getAdminSchemaSupport(sessionUser.id);
+    const passwordHash = await bcrypt.hash(password, 10);
+    const payload: Record<string, string> = {
+      nama,
+      username,
+      password: passwordHash,
+    };
+
+    if (schema.supportsEmail) {
+      payload.email = email;
+    }
+
+    if (schema.telephoneColumn) {
+      payload[schema.telephoneColumn] = nomorTelephone;
+    }
+
+    const { error } = await supabase.from("admin").insert(payload as never);
+
+    if (error) {
+      return {
+        error: `Gagal membuat akun admin: ${error.message}`,
+        success: "",
+      };
+    }
+
+    revalidatePath("/admin/profil");
+
+    return {
+      error: "",
+      success: "Akun admin baru berhasil dibuat.",
+    };
+  } catch (error) {
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Terjadi kesalahan saat membuat akun admin.";
+
+    return {
+      error: message,
+      success: "",
+    };
+  }
+}
+
+export async function deleteAdminAccount(
+  _prevState: AdminProfileState | undefined,
+  formData: FormData
+) {
+  const sessionUser = await getSessionUser();
+
+  if (!isSuperAdmin(sessionUser)) {
+    return {
+      error: "Hanya superadmin yang boleh menghapus admin.",
+      success: "",
+    };
+  }
+
+  const adminId = Number(formData.get("admin_id"));
+
+  if (!Number.isInteger(adminId) || adminId < 0) {
+    return {
+      error: "Admin yang dipilih tidak valid.",
+      success: "",
+    };
+  }
+
+  if (adminId === 0) {
+    return {
+      error: "Akun superadmin tidak boleh dihapus.",
+      success: "",
+    };
+  }
+
+  const supabase = getServerSupabaseClient();
+  const { error } = await supabase.from("admin").delete().eq("id_admin", adminId);
+
+  if (error) {
+    return {
+      error: `Gagal menghapus admin: ${error.message}`,
+      success: "",
+    };
+  }
+
+  revalidatePath("/admin/profil");
+
+  return {
+    error: "",
+    success: "Akun admin berhasil dihapus.",
   };
 }
 

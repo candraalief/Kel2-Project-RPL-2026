@@ -40,7 +40,12 @@ function NavIcon({ label }: { label: string }) {
     );
   }
 
-  if (label === "Riwayat" || label === "Peminjaman" || label === "Pengembalian") {
+  if (
+    label === "Riwayat" ||
+    label === "Peminjaman" ||
+    label === "Pengembalian" ||
+    label === "Peminjaman & Pengembalian"
+  ) {
     return (
       <svg viewBox="0 0 24 24" fill="none" className={iconClassName} aria-hidden>
         <rect x="5" y="4" width="14" height="16" rx="2" stroke="currentColor" strokeWidth="1.8" />
@@ -85,11 +90,11 @@ function NavIcon({ label }: { label: string }) {
 const navByRole: Record<UserRole, NavItem[]> = {
   admin: [
     { label: "Beranda", href: "/admin" },
-    { label: "Buku", href: "/admin/buku" },
+    { label: "Profil", href: "/admin/profil" },
     { label: "Anggota", href: "/admin/anggota" },
-    { label: "Peminjaman", href: "/admin/peminjaman" },
-    { label: "Pengembalian", href: "/admin/pengembalian" },
     { label: "Absensi", href: "/admin/absensi" },
+    { label: "Katalog", href: "/admin/buku" },
+    { label: "Peminjaman & Pengembalian", href: "/admin/peminjaman" },
     { label: "Laporan", href: "/admin/laporan" },
   ],
   siswa: [
@@ -160,7 +165,11 @@ export function DashboardShell({
 
           <div className="mt-[clamp(0.75rem,2.5vh,1.5rem)] shrink-0 space-y-1">
             {navItems.map((item) => {
-              const isActive = item.label === activeNav;
+              const isActive =
+                item.label === activeNav ||
+                (item.label === "Katalog" && activeNav === "Buku") ||
+                (item.label === "Peminjaman & Pengembalian" &&
+                  (activeNav === "Peminjaman" || activeNav === "Pengembalian"));
 
               return (
                 <Link
@@ -175,7 +184,11 @@ export function DashboardShell({
                   <span className={`${isActive ? "text-[#0e53b7]" : "text-[#dbeaff] group-hover:text-white"}`}>
                     <NavIcon label={item.label} />
                   </span>
-                  <span>{item.label === "Beranda" && role === "siswa" ? "Dashboard Siswa" : item.label}</span>
+                  <span className="min-w-0 leading-tight">
+                    {item.label === "Beranda" && role === "siswa"
+                      ? "Dashboard Siswa"
+                      : item.label}
+                  </span>
                 </Link>
               );
             })}
