@@ -1,10 +1,11 @@
 "use client";
 
-import { useActionState, useDeferredValue, useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { useActionState, useDeferredValue, useEffect, useMemo, useRef, useState, useTransition, type ReactNode } from "react";
 import {
   approveSiswaRegistration,
   clearSiswaPassword,
   createSiswaByAdmin,
+  deactivateSiswaByAdmin,
   deleteSiswaByAdmin,
   rejectSiswaRegistration,
   updateSiswaByAdmin,
@@ -159,7 +160,13 @@ export function AdminMembers({ siswa }: { siswa: SiswaAccount[] }) {
   const [search, setSearch] = useState("");
   const [modal, setModal] = useState<MemberModal | null>(null);
   const [resetSiswa, setResetSiswa] = useState<SiswaAccount | null>(null);
+  const [deleteSiswa, setDeleteSiswa] = useState<SiswaAccount | null>(null);
+  const [approveSiswa, setApproveSiswa] = useState<SiswaAccount | null>(null);
+  const [rejectSiswa, setRejectSiswa] = useState<SiswaAccount | null>(null);
   const [resetNotice, setResetNotice] = useState(false);
+  const [deleteNotice, setDeleteNotice] = useState("");
+  const [approveNotice, setApproveNotice] = useState(false);
+  const [rejectNotice, setRejectNotice] = useState(false);
   const [sortConfig, setSortConfig] = useState<{
     key: SortKey;
     direction: SortDirection;
@@ -178,6 +185,42 @@ export function AdminMembers({ siswa }: { siswa: SiswaAccount[] }) {
 
     return () => window.clearTimeout(timeout);
   }, [resetNotice]);
+
+  useEffect(() => {
+    if (!deleteNotice) {
+      return;
+    }
+
+    const timeout = window.setTimeout(() => {
+      setDeleteNotice("");
+    }, 5000);
+
+    return () => window.clearTimeout(timeout);
+  }, [deleteNotice]);
+
+  useEffect(() => {
+    if (!approveNotice) {
+      return;
+    }
+
+    const timeout = window.setTimeout(() => {
+      setApproveNotice(false);
+    }, 5000);
+
+    return () => window.clearTimeout(timeout);
+  }, [approveNotice]);
+
+  useEffect(() => {
+    if (!rejectNotice) {
+      return;
+    }
+
+    const timeout = window.setTimeout(() => {
+      setRejectNotice(false);
+    }, 5000);
+
+    return () => window.clearTimeout(timeout);
+  }, [rejectNotice]);
 
   const registeredSiswa = useMemo(
     () => siswa.filter((item) => !isPending(item)),
@@ -406,12 +449,21 @@ export function AdminMembers({ siswa }: { siswa: SiswaAccount[] }) {
                               <span className="sr-only">Edit {item.nama}</span>
                               <Icon name="edit" className="h-5 w-5" />
                             </button>
-                            <DeleteSiswaButton siswa={item} />
+                            <DeleteSiswaButton
+                              siswa={item}
+                              onClick={() => setDeleteSiswa(item)}
+                            />
                           </>
                         ) : (
                           <>
-                            <ApproveSiswaButton siswa={item} />
-                            <RejectSiswaButton siswa={item} />
+                            <ApproveSiswaButton
+                              siswa={item}
+                              onClick={() => setApproveSiswa(item)}
+                            />
+                            <RejectSiswaButton
+                              siswa={item}
+                              onClick={() => setRejectSiswa(item)}
+                            />
                           </>
                         )}
                       </div>
@@ -437,19 +489,59 @@ export function AdminMembers({ siswa }: { siswa: SiswaAccount[] }) {
           }}
         />
       ) : null}
+      {deleteSiswa ? (
+        <DeleteSiswaModal
+          siswa={deleteSiswa}
+          onClose={() => setDeleteSiswa(null)}
+          onSuccess={(message) => {
+            setDeleteSiswa(null);
+            setDeleteNotice(message);
+          }}
+        />
+      ) : null}
+      {approveSiswa ? (
+        <ApproveSiswaModal
+          siswa={approveSiswa}
+          onClose={() => setApproveSiswa(null)}
+          onSuccess={() => {
+            setApproveSiswa(null);
+            setApproveNotice(true);
+          }}
+        />
+      ) : null}
+      {rejectSiswa ? (
+        <RejectSiswaModal
+          siswa={rejectSiswa}
+          onClose={() => setRejectSiswa(null)}
+          onSuccess={() => {
+            setRejectSiswa(null);
+            setRejectNotice(true);
+          }}
+        />
+      ) : null}
       {resetNotice ? (
-        <div className="fixed right-6 top-6 z-[60] flex items-center gap-4 rounded-lg border border-emerald-200 bg-emerald-50 px-5 py-3 text-sm font-semibold text-emerald-700 shadow-lg">
-          <span>Reset password berhasil</span>
-          <button
-            type="button"
-            onClick={() => setResetNotice(false)}
-            className="inline-flex h-6 w-6 items-center justify-center rounded-md text-emerald-700 transition hover:bg-emerald-100"
-            title="Tutup notifikasi"
-          >
-            <span className="sr-only">Tutup notifikasi</span>
-            <Icon name="x" className="h-4 w-4" />
-          </button>
-        </div>
+        <ActionToast
+          message="Reset password berhasil"
+          onClose={() => setResetNotice(false)}
+        />
+      ) : null}
+      {deleteNotice ? (
+        <ActionToast
+          message={deleteNotice}
+          onClose={() => setDeleteNotice("")}
+        />
+      ) : null}
+      {approveNotice ? (
+        <ActionToast
+          message="Pendaftaran siswa berhasil disetujui"
+          onClose={() => setApproveNotice(false)}
+        />
+      ) : null}
+      {rejectNotice ? (
+        <ActionToast
+          message="Pendaftaran siswa berhasil ditolak"
+          onClose={() => setRejectNotice(false)}
+        />
       ) : null}
     </div>
   );
@@ -526,6 +618,118 @@ function PlainHeader({ label }: { label: string }) {
         -
       </span>
       <span>{label}</span>
+    </div>
+  );
+}
+
+function ActionToast({
+  message,
+  onClose,
+}: {
+  message: string;
+  onClose: () => void;
+}) {
+  return (
+    <div className="fixed right-6 top-6 z-[60] flex items-center gap-4 rounded-lg border border-emerald-200 bg-emerald-50 px-5 py-3 text-sm font-semibold text-emerald-700 shadow-lg">
+      <span>{message}</span>
+      <button
+        type="button"
+        onClick={onClose}
+        className="inline-flex h-6 w-6 items-center justify-center rounded-md text-emerald-700 transition hover:bg-emerald-100"
+        title="Tutup notifikasi"
+      >
+        <span className="sr-only">Tutup notifikasi</span>
+        <Icon name="x" className="h-4 w-4" />
+      </button>
+    </div>
+  );
+}
+
+function DangerConfirmModal({
+  title,
+  description,
+  children,
+  confirmLabel,
+  pendingLabel,
+  tone = "danger",
+  error,
+  isPending,
+  onClose,
+  onConfirm,
+}: {
+  title: string;
+  description: string;
+  children: ReactNode;
+  confirmLabel: string;
+  pendingLabel: string;
+  tone?: "danger" | "success";
+  error: string;
+  isPending: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+}) {
+  const confirmClassName =
+    tone === "success"
+      ? "bg-emerald-600 hover:bg-emerald-700"
+      : "bg-red-600 hover:bg-red-700";
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"
+      onClick={() => {
+        if (!isPending) {
+          onClose();
+        }
+      }}
+    >
+      <section
+        className="w-full max-w-md rounded-lg bg-white p-6 shadow-2xl"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h2 className="text-xl font-semibold text-black">{title}</h2>
+            <p className="mt-2 text-sm text-slate-500">{description}</p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={isPending}
+            className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-slate-600 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
+            title="Tutup"
+          >
+            <span className="sr-only">Tutup</span>
+            <Icon name="x" className="h-5 w-5" />
+          </button>
+        </div>
+
+        {children}
+
+        {error ? (
+          <p className="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {error}
+          </p>
+        ) : null}
+
+        <div className="mt-6 flex justify-end gap-3">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={isPending}
+            className="inline-flex h-11 min-w-24 items-center justify-center rounded-lg border border-zinc-200 bg-white px-5 text-sm font-semibold text-black transition hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            Kembali
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            disabled={isPending}
+            className={`inline-flex h-11 min-w-24 items-center justify-center rounded-lg px-5 text-sm font-semibold text-white transition disabled:cursor-not-allowed disabled:bg-zinc-400 ${confirmClassName}`}
+          >
+            {isPending ? pendingLabel : confirmLabel}
+          </button>
+        </div>
+      </section>
     </div>
   );
 }
@@ -624,61 +828,265 @@ function ResetPasswordModal({
   );
 }
 
-function ApproveSiswaButton({ siswa }: { siswa: SiswaAccount }) {
-  const action = approveSiswaRegistration.bind(null, siswa.id_siswa);
+function DeleteSiswaModal({
+  siswa,
+  onClose,
+  onSuccess,
+}: {
+  siswa: SiswaAccount;
+  onClose: () => void;
+  onSuccess: (message: string) => void;
+}) {
+  const [isPending, startTransition] = useTransition();
+  const [error, setError] = useState("");
+  const [blockedByTransactions, setBlockedByTransactions] = useState(false);
 
-  return (
-    <form action={action}>
-      <button
-        type="submit"
-        className="text-emerald-600 transition hover:text-emerald-700"
-        title="Setujui siswa"
-      >
-        <span className="sr-only">Setujui {siswa.nama}</span>
-        <Icon name="check" className="h-5 w-5" />
-      </button>
-    </form>
-  );
-}
+  function handleDelete() {
+    setError("");
+    startTransition(async () => {
+      try {
+        const result = await deleteSiswaByAdmin(siswa.id_siswa);
 
-function RejectSiswaButton({ siswa }: { siswa: SiswaAccount }) {
-  const action = rejectSiswaRegistration.bind(null, siswa.id_siswa);
-
-  return (
-    <form action={action}>
-      <button
-        type="submit"
-        className="text-red-500 transition hover:text-red-600"
-        title="Tolak siswa"
-      >
-        <span className="sr-only">Tolak {siswa.nama}</span>
-        <Icon name="x" className="h-5 w-5" />
-      </button>
-    </form>
-  );
-}
-
-function DeleteSiswaButton({ siswa }: { siswa: SiswaAccount }) {
-  const action = deleteSiswaByAdmin.bind(null, siswa.id_siswa);
-
-  return (
-    <form
-      action={action}
-      onSubmit={(event) => {
-        if (!window.confirm(`Hapus data siswa "${siswa.nama}"?`)) {
-          event.preventDefault();
+        if (result.blockedByTransactions) {
+          setBlockedByTransactions(true);
+          setError("");
+          return;
         }
-      }}
+
+        if (result.error) {
+          setError(result.error);
+          return;
+        }
+
+        onSuccess("Anggota berhasil dihapus");
+      } catch (deleteError) {
+        setError(
+          deleteError instanceof Error
+            ? deleteError.message
+            : "Gagal menghapus anggota."
+        );
+      }
+    });
+  }
+
+  function handleDeactivate() {
+    setError("");
+    startTransition(async () => {
+      try {
+        await deactivateSiswaByAdmin(siswa.id_siswa);
+        onSuccess("Siswa berhasil dinonaktifkan");
+      } catch (deactivateError) {
+        setError(
+          deactivateError instanceof Error
+            ? deactivateError.message
+            : "Gagal menonaktifkan siswa."
+        );
+      }
+    });
+  }
+
+  return (
+    <DangerConfirmModal
+      title={blockedByTransactions ? "Nonaktifkan Anggota" : "Hapus Anggota"}
+      description={
+        blockedByTransactions
+          ? "Siswa terikat dengan transaksi dan tidak dapat dihapus. Ubah siswa menjadi nonaktif?"
+          : "Data anggota akan dihapus dari sistem perpustakaan."
+      }
+      confirmLabel={blockedByTransactions ? "Nonaktifkan" : "Hapus"}
+      pendingLabel={blockedByTransactions ? "Menonaktifkan..." : "Menghapus..."}
+      error={error}
+      isPending={isPending}
+      onClose={onClose}
+      onConfirm={blockedByTransactions ? handleDeactivate : handleDelete}
     >
-      <button
-        type="submit"
-        className="text-red-500 transition hover:text-red-600"
-        title="Hapus siswa"
+      <div
+        className={`mt-5 rounded-lg border p-4 text-sm text-black ${
+          blockedByTransactions
+            ? "border-amber-200 bg-amber-50"
+            : "border-red-100 bg-red-50"
+        }`}
       >
-        <span className="sr-only">Hapus {siswa.nama}</span>
-        <Icon name="trash" className="h-5 w-5" />
-      </button>
-    </form>
+        <p>
+          Nama: <span className="font-semibold">{siswa.nama}</span>
+        </p>
+        <p className="mt-2">
+          Username:{" "}
+          <span className="font-semibold">{siswa.username ?? "-"}</span>
+        </p>
+        {blockedByTransactions ? (
+          <p className="mt-3 text-amber-800">
+            Riwayat transaksi tetap tersimpan, tetapi akun siswa akan berpindah
+            ke status Non-Aktif.
+          </p>
+        ) : null}
+      </div>
+    </DangerConfirmModal>
+  );
+}
+
+function ApproveSiswaModal({
+  siswa,
+  onClose,
+  onSuccess,
+}: {
+  siswa: SiswaAccount;
+  onClose: () => void;
+  onSuccess: () => void;
+}) {
+  const [isPending, startTransition] = useTransition();
+  const [error, setError] = useState("");
+
+  function handleApprove() {
+    setError("");
+    startTransition(async () => {
+      try {
+        await approveSiswaRegistration(siswa.id_siswa);
+        onSuccess();
+      } catch (approveError) {
+        setError(
+          approveError instanceof Error
+            ? approveError.message
+            : "Gagal menyetujui pendaftaran siswa."
+        );
+      }
+    });
+  }
+
+  return (
+    <DangerConfirmModal
+      title="Setujui Pendaftaran"
+      description="Akun siswa akan diaktifkan dan bisa digunakan untuk masuk."
+      confirmLabel="Setujui"
+      pendingLabel="Menyetujui..."
+      tone="success"
+      error={error}
+      isPending={isPending}
+      onClose={onClose}
+      onConfirm={handleApprove}
+    >
+      <div className="mt-5 rounded-lg border border-emerald-100 bg-emerald-50 p-4 text-sm text-black">
+        <p>
+          Nama: <span className="font-semibold">{siswa.nama}</span>
+        </p>
+        <p className="mt-2">
+          Username:{" "}
+          <span className="font-semibold">{siswa.username ?? "-"}</span>
+        </p>
+      </div>
+    </DangerConfirmModal>
+  );
+}
+
+function RejectSiswaModal({
+  siswa,
+  onClose,
+  onSuccess,
+}: {
+  siswa: SiswaAccount;
+  onClose: () => void;
+  onSuccess: () => void;
+}) {
+  const [isPending, startTransition] = useTransition();
+  const [error, setError] = useState("");
+
+  function handleReject() {
+    setError("");
+    startTransition(async () => {
+      try {
+        await rejectSiswaRegistration(siswa.id_siswa);
+        onSuccess();
+      } catch (rejectError) {
+        setError(
+          rejectError instanceof Error
+            ? rejectError.message
+            : "Gagal menolak pendaftaran siswa."
+        );
+      }
+    });
+  }
+
+  return (
+    <DangerConfirmModal
+      title="Tolak Pendaftaran"
+      description="Data pendaftaran siswa akan dihapus dari database."
+      confirmLabel="Tolak"
+      pendingLabel="Menolak..."
+      error={error}
+      isPending={isPending}
+      onClose={onClose}
+      onConfirm={handleReject}
+    >
+      <div className="mt-5 rounded-lg border border-red-100 bg-red-50 p-4 text-sm text-black">
+        <p>
+          Nama: <span className="font-semibold">{siswa.nama}</span>
+        </p>
+        <p className="mt-2">
+          Username:{" "}
+          <span className="font-semibold">{siswa.username ?? "-"}</span>
+        </p>
+      </div>
+    </DangerConfirmModal>
+  );
+}
+
+function ApproveSiswaButton({
+  siswa,
+  onClick,
+}: {
+  siswa: SiswaAccount;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="text-emerald-600 transition hover:text-emerald-700"
+      title="Setujui siswa"
+    >
+      <span className="sr-only">Setujui {siswa.nama}</span>
+      <Icon name="check" className="h-5 w-5" />
+    </button>
+  );
+}
+
+function RejectSiswaButton({
+  siswa,
+  onClick,
+}: {
+  siswa: SiswaAccount;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="text-red-500 transition hover:text-red-600"
+      title="Tolak siswa"
+    >
+      <span className="sr-only">Tolak {siswa.nama}</span>
+      <Icon name="x" className="h-5 w-5" />
+    </button>
+  );
+}
+
+function DeleteSiswaButton({
+  siswa,
+  onClick,
+}: {
+  siswa: SiswaAccount;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="text-red-500 transition hover:text-red-600"
+      title="Hapus siswa"
+    >
+      <span className="sr-only">Hapus {siswa.nama}</span>
+      <Icon name="trash" className="h-5 w-5" />
+    </button>
   );
 }
 

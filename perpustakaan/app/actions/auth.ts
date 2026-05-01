@@ -41,6 +41,11 @@ export type SiswaAdminActionState = {
   error: string;
   success: string;
 };
+export type DeleteSiswaActionState = {
+  error: string;
+  deleted: boolean;
+  blockedByTransactions: boolean;
+};
 
 function redirectByRole(role: UserRole) {
   if (role === "admin") {
@@ -151,6 +156,13 @@ function normalizeSiswaStatus(value: string) {
   const allowedStatuses = ["aktif", "nonaktif", "menunggu_verifikasi"];
 
   return allowedStatuses.includes(value) ? value : "menunggu_verifikasi";
+}
+
+function isForeignKeyConstraintError(error: { code?: string; message?: string }) {
+  return (
+    error.code === "23503" ||
+    Boolean(error.message?.includes("violates foreign key constraint"))
+  );
 }
 
 async function validateUniqueSiswaFields({
@@ -433,7 +445,7 @@ export async function rejectSiswaRegistration(siswaId: number) {
   const supabase = getServerSupabaseClient();
   const { error } = await supabase
     .from("siswa")
-    .update({ status_keanggotaan: "nonaktif" } as never)
+    .delete()
     .eq("id_siswa", siswaId);
 
   if (error) {
@@ -443,7 +455,9 @@ export async function rejectSiswaRegistration(siswaId: number) {
   revalidatePath("/admin/anggota");
 }
 
-export async function deleteSiswaByAdmin(siswaId: number) {
+export async function deleteSiswaByAdmin(
+  siswaId: number
+): Promise<DeleteSiswaActionState> {
   const sessionUser = await getSessionUser();
 
   if (!sessionUser || sessionUser.role !== "admin") {
@@ -454,7 +468,46 @@ export async function deleteSiswaByAdmin(siswaId: number) {
   const { error } = await supabase.from("siswa").delete().eq("id_siswa", siswaId);
 
   if (error) {
-    throw new Error(`Failed to delete siswa: ${error.message}`);
+    if (isForeignKeyConstraintError(error)) {
+      return {
+        error:
+          "Siswa terikat dengan transaksi dan tidak dapat dihapus dari database.",
+        deleted: false,
+        blockedByTransactions: true,
+      };
+    }
+
+    return {
+      error: `Failed to delete siswa: ${error.message}`,
+      deleted: false,
+      blockedByTransactions: false,
+    };
+  }
+
+  revalidatePath("/admin/anggota");
+
+  return {
+    error: "",
+    deleted: true,
+    blockedByTransactions: false,
+  };
+}
+
+export async function deactivateSiswaByAdmin(siswaId: number) {
+  const sessionUser = await getSessionUser();
+
+  if (!sessionUser || sessionUser.role !== "admin") {
+    throw new Error("Unauthorized");
+  }
+
+  const supabase = getServerSupabaseClient();
+  const { error } = await supabase
+    .from("siswa")
+    .update({ status_keanggotaan: "nonaktif" } as never)
+    .eq("id_siswa", siswaId);
+
+  if (error) {
+    throw new Error(`Failed to deactivate siswa: ${error.message}`);
   }
 
   revalidatePath("/admin/anggota");

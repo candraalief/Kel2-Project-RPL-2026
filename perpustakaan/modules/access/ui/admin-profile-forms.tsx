@@ -1,6 +1,14 @@
 "use client";
 
-import { useActionState, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useActionState,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+  type ReactNode,
+} from "react";
 import {
   createAdminAccount,
   deleteAdminAccount,
@@ -31,10 +39,24 @@ export function AdminProfileForms({
 }) {
   const [modalMode, setModalMode] = useState<ModalMode | null>(null);
   const [selectedAdmin, setSelectedAdmin] = useState<AdminProfile | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<AdminProfile | null>(null);
+  const [deleteNotice, setDeleteNotice] = useState(false);
   const sortedAdmins = useMemo(
     () => [...admins].sort((a, b) => a.id - b.id),
     [admins]
   );
+
+  useEffect(() => {
+    if (!deleteNotice) {
+      return;
+    }
+
+    const timeout = window.setTimeout(() => {
+      setDeleteNotice(false);
+    }, 5000);
+
+    return () => window.clearTimeout(timeout);
+  }, [deleteNotice]);
 
   function openDetail(target: AdminProfile) {
     setSelectedAdmin(target);
@@ -131,6 +153,7 @@ export function AdminProfileForms({
           currentAdminId={admin.id}
           canManageAdmins={canManageAdmins}
           onClose={closeModal}
+          onDelete={() => setDeleteTarget(selectedAdmin)}
         />
       ) : null}
 
@@ -139,6 +162,25 @@ export function AdminProfileForms({
           supportsEmail={admin.supportsEmail}
           supportsNomorTelephone={admin.supportsNomorTelephone}
           onClose={closeModal}
+        />
+      ) : null}
+
+      {deleteTarget ? (
+        <DeleteAdminModal
+          admin={deleteTarget}
+          onClose={() => setDeleteTarget(null)}
+          onSuccess={() => {
+            setDeleteTarget(null);
+            closeModal();
+            setDeleteNotice(true);
+          }}
+        />
+      ) : null}
+
+      {deleteNotice ? (
+        <ActionToast
+          message="Admin berhasil dihapus"
+          onClose={() => setDeleteNotice(false)}
         />
       ) : null}
     </div>
@@ -159,18 +201,16 @@ function AdminDetailModal({
   currentAdminId,
   canManageAdmins,
   onClose,
+  onDelete,
 }: {
   admin: AdminProfile;
   currentAdminId: number;
   canManageAdmins: boolean;
   onClose: () => void;
+  onDelete: () => void;
 }) {
   const [updateState, updateAction, updatePending] = useActionState(
     updateAdminAccount,
-    initialState
-  );
-  const [deleteState, deleteAction, deletePending] = useActionState(
-    deleteAdminAccount,
     initialState
   );
   const canDelete = canManageAdmins && admin.id !== 0 && admin.id !== currentAdminId;
@@ -246,30 +286,21 @@ function AdminDetailModal({
         </div>
       </form>
 
-      <form
-        action={deleteAction}
-        className="mt-4 border-t border-zinc-200 pt-4"
-        onSubmit={(event) => {
-          if (!window.confirm(`Hapus akun admin "${admin.nama}"?`)) {
-            event.preventDefault();
-          }
-        }}
-      >
-        <input type="hidden" name="admin_id" value={admin.id} />
-        <FormStatus state={deleteState} />
+      <div className="mt-4 border-t border-zinc-200 pt-4">
         <button
-          type="submit"
-          disabled={!canDelete || deletePending}
+          type="button"
+          onClick={onDelete}
+          disabled={!canDelete}
           className="inline-flex min-w-36 items-center justify-center rounded-xl bg-red-500 px-5 py-3 text-sm font-semibold text-white transition hover:bg-red-600 disabled:cursor-not-allowed disabled:bg-zinc-400"
         >
-          {deletePending ? "Menghapus..." : "Hapus Admin"}
+          Hapus Admin
         </button>
         {!canDelete ? (
           <p className="mt-2 text-sm text-zinc-500">
             Superadmin dan akun session saat ini tidak bisa dihapus.
           </p>
         ) : null}
-      </form>
+      </div>
     </Modal>
   );
 }
@@ -348,6 +379,199 @@ function AddAdminModal({
         </button>
       </form>
     </Modal>
+  );
+}
+
+function ActionToast({
+  message,
+  onClose,
+}: {
+  message: string;
+  onClose: () => void;
+}) {
+  return (
+    <div className="fixed right-6 top-6 z-[60] flex items-center gap-4 rounded-lg border border-emerald-200 bg-emerald-50 px-5 py-3 text-sm font-semibold text-emerald-700 shadow-lg">
+      <span>{message}</span>
+      <button
+        type="button"
+        onClick={onClose}
+        className="inline-flex h-6 w-6 items-center justify-center rounded-md text-emerald-700 transition hover:bg-emerald-100"
+        title="Tutup notifikasi"
+      >
+        <span className="sr-only">Tutup notifikasi</span>
+        x
+      </button>
+    </div>
+  );
+}
+
+function DangerConfirmModal({
+  title,
+  description,
+  children,
+  error,
+  isPending,
+  confirmDisabled,
+  confirmLabel,
+  pendingLabel,
+  onClose,
+  onConfirm,
+}: {
+  title: string;
+  description: string;
+  children: ReactNode;
+  error: string;
+  isPending: boolean;
+  confirmDisabled?: boolean;
+  confirmLabel: string;
+  pendingLabel: string;
+  onClose: () => void;
+  onConfirm: () => void;
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/50 px-4"
+      onClick={() => {
+        if (!isPending) {
+          onClose();
+        }
+      }}
+    >
+      <section
+        className="w-full max-w-md rounded-xl bg-white p-6 shadow-2xl"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h2 className="text-xl font-semibold text-zinc-950">{title}</h2>
+            <p className="mt-2 text-sm leading-6 text-zinc-500">
+              {description}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={isPending}
+            className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-zinc-500 transition hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-60"
+            aria-label="Tutup"
+          >
+            x
+          </button>
+        </div>
+
+        {children}
+
+        {error ? (
+          <p className="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {error}
+          </p>
+        ) : null}
+
+        <div className="mt-6 flex justify-end gap-3">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={isPending}
+            className="inline-flex h-11 min-w-24 items-center justify-center rounded-lg border border-zinc-200 bg-white px-5 text-sm font-semibold text-zinc-950 transition hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            Kembali
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            disabled={isPending || confirmDisabled}
+            className="inline-flex h-11 min-w-24 items-center justify-center rounded-lg bg-red-600 px-5 text-sm font-semibold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-zinc-400"
+          >
+            {isPending ? pendingLabel : confirmLabel}
+          </button>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function DeleteAdminModal({
+  admin,
+  onClose,
+  onSuccess,
+}: {
+  admin: AdminProfile;
+  onClose: () => void;
+  onSuccess: () => void;
+}) {
+  const [confirmationText, setConfirmationText] = useState("");
+  const [error, setError] = useState("");
+  const [isPending, startTransition] = useTransition();
+  const canConfirm = confirmationText.trim().toLowerCase() === "hapus admin";
+
+  function handleDelete() {
+    if (!canConfirm) {
+      setError('Ketik "hapus admin" untuk mengonfirmasi penghapusan.');
+      return;
+    }
+
+    setError("");
+    startTransition(async () => {
+      const formData = new FormData();
+      formData.set("admin_id", String(admin.id));
+
+      try {
+        const state = await deleteAdminAccount(undefined, formData);
+
+        if (state.error) {
+          setError(state.error);
+          return;
+        }
+
+        onSuccess();
+      } catch (deleteError) {
+        setError(
+          deleteError instanceof Error
+            ? deleteError.message
+            : "Gagal menghapus admin."
+        );
+      }
+    });
+  }
+
+  return (
+    <DangerConfirmModal
+      title="Hapus Admin"
+      description='Ketik "hapus admin" untuk menghapus akun admin ini dari sistem.'
+      error={error}
+      isPending={isPending}
+      confirmDisabled={!canConfirm}
+      confirmLabel="Hapus"
+      pendingLabel="Menghapus..."
+      onClose={onClose}
+      onConfirm={handleDelete}
+    >
+      <div className="mt-5 rounded-lg border border-red-100 bg-red-50 p-4 text-sm text-zinc-950">
+        <p>
+          Nama: <span className="font-semibold">{admin.nama || "-"}</span>
+        </p>
+        <p className="mt-2">
+          Username:{" "}
+          <span className="font-semibold">{admin.username || "-"}</span>
+        </p>
+      </div>
+
+      <label className="mt-4 block space-y-2">
+        <span className="text-sm font-semibold text-zinc-800">
+          Konfirmasi
+        </span>
+        <input
+          value={confirmationText}
+          onChange={(event) => {
+            setConfirmationText(event.currentTarget.value);
+            setError("");
+          }}
+          disabled={isPending}
+          placeholder="ketik : hapus admin"
+          className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-3 text-sm text-zinc-950 outline-none transition placeholder:text-zinc-400 focus:border-red-500 disabled:cursor-not-allowed disabled:bg-zinc-100"
+        />
+      </label>
+    </DangerConfirmModal>
   );
 }
 
