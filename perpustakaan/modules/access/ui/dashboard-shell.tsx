@@ -146,9 +146,9 @@ export function DashboardShell({
   const navItems = navByRole[role];
 
   return (
-    <main className="h-screen overflow-hidden bg-[radial-gradient(circle_at_top,#d8e7f8_0%,#e7f1fb_28%,#f3f8fd_100%)] p-4 text-zinc-900 sm:p-6">
+    <main className="h-screen overflow-hidden bg-[radial-gradient(circle_at_top,#d8e7f8_0%,#e7f1fb_28%,#f3f8fd_100%)] px-4 pb-0 pt-4 text-zinc-900 sm:px-6 sm:pb-0 sm:pt-6">
       <PageTransition>
-        <div className="mx-auto grid h-[calc(100vh-2rem)] w-full max-w-7xl grid-rows-[auto_1fr] overflow-hidden rounded-[2rem] border border-white/70 bg-white shadow-[0_30px_100px_rgba(33,86,145,0.18)] sm:h-[calc(100vh-3rem)] lg:grid-cols-[250px_1fr] lg:grid-rows-none">
+        <div className="mx-auto grid h-[calc(100vh-1rem)] w-full max-w-7xl grid-rows-[auto_1fr] overflow-hidden rounded-t-[2rem] rounded-b-none border border-white/70 bg-white shadow-[0_30px_100px_rgba(33,86,145,0.18)] sm:h-[calc(100vh-1.5rem)] lg:grid-cols-[250px_1fr] lg:grid-rows-none">
         <aside className="relative flex min-h-0 flex-col overflow-hidden border-b border-[#1a5fc5] bg-[linear-gradient(180deg,#0f5fc4_0%,#0a4ead_100%)] px-4 py-[clamp(0.75rem,2vh,1.25rem)] text-white lg:h-full lg:border-b-0 lg:border-r lg:border-[#2a6ecf]">
           <div className="flex shrink-0 items-center gap-2.5">
             <div className="flex h-[clamp(2rem,5vh,2.5rem)] w-[clamp(2rem,5vh,2.5rem)] shrink-0 items-center justify-center rounded-xl border border-white/30 bg-white/10 text-sm font-semibold text-white">
