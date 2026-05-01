@@ -41,7 +41,7 @@ export function AdminCatalog({
   genres: CatalogGenre[];
 }) {
   const [search, setSearch] = useState("");
-  const [selectedGenre, setSelectedGenre] = useState("");
+  const [selectedGenreIds, setSelectedGenreIds] = useState<string[]>([]);
   const [availability, setAvailability] = useState<AvailabilityFilter>("all");
   const [yearFrom, setYearFrom] = useState("");
   const [yearTo, setYearTo] = useState("");
@@ -61,10 +61,13 @@ export function AdminCatalog({
         normalize(book.title).includes(query) ||
         normalize(book.author).includes(query) ||
         normalize(book.publisher).includes(query) ||
+        normalize(book.isbn).includes(query) ||
         normalize(category).includes(query);
       const matchesGenre =
-        !selectedGenre ||
-        book.genres.some((genre) => genre.id === selectedGenre);
+        selectedGenreIds.length === 0 ||
+        selectedGenreIds.every((genreId) =>
+          book.genres.some((genre) => genre.id === genreId)
+        );
       const matchesAvailability =
         availability === "all" ||
         (availability === "available" && book.availableCount > 0) ||
@@ -84,66 +87,97 @@ export function AdminCatalog({
         matchesTo
       );
     });
-  }, [availability, books, deferredSearch, selectedGenre, yearFrom, yearTo]);
+  }, [availability, books, deferredSearch, selectedGenreIds, yearFrom, yearTo]);
 
   const totalAvailable = books.reduce((total, book) => total + book.availableCount, 0);
   const totalUnavailable = books.reduce((total, book) => total + book.unavailableCount, 0);
+  const activeFilterCount =
+    selectedGenreIds.length +
+    (availability !== "all" ? 1 : 0) +
+    (yearFrom ? 1 : 0) +
+    (yearTo ? 1 : 0);
+  const selectedGenres = genres.filter((genre) =>
+    selectedGenreIds.includes(genre.id)
+  );
 
   function resetFilters() {
     setSearch("");
-    setSelectedGenre("");
+    setSelectedGenreIds([]);
     setAvailability("all");
     setYearFrom("");
     setYearTo("");
   }
 
+  function toggleGenre(genreId: string) {
+    setSelectedGenreIds((current) =>
+      current.includes(genreId)
+        ? current.filter((id) => id !== genreId)
+        : [...current, genreId]
+    );
+  }
+
+  function removeGenre(genreId: string) {
+    setSelectedGenreIds((current) => current.filter((id) => id !== genreId));
+  }
+
   return (
     <div className="space-y-5">
-      <Link
-        href="/admin/buku/tambah"
-        className="group flex min-h-44 w-full flex-col items-center justify-center rounded-[1.5rem] border border-[#cfe0ff] bg-[#eef5ff] text-center shadow-sm transition hover:border-[#1d66d6] hover:bg-[#e3efff]"
-      >
-        <span className="text-6xl font-semibold leading-none text-[#0f5fc4] transition group-hover:scale-105">
-          +
-        </span>
-        <span className="mt-3 text-2xl font-semibold text-zinc-950">
-          Tambah
-          <br />
-          Buku Baru
-        </span>
-      </Link>
-
-      <section className="grid gap-4 md:grid-cols-3">
-        <MetricPill label="Total Koleksi Buku" value={books.length} tone="blue" />
-        <MetricPill label="Jumlah Buku Tersedia" value={totalAvailable} tone="green" />
-        <MetricPill label="Jumlah Buku Dipinjam" value={totalUnavailable} tone="orange" />
+      <section className="grid gap-3 md:grid-cols-3">
+        <MetricCard label="Total Koleksi Buku" value={books.length} tone="blue" />
+        <MetricCard label="Buku Tersedia" value={totalAvailable} tone="green" />
+        <MetricCard label="Buku Dipinjam" value={totalUnavailable} tone="red" />
       </section>
 
       <section className="space-y-5">
-        <div className="rounded-[1.5rem] border border-zinc-200 bg-white p-4 shadow-sm">
-          <label className="block">
-            <span className="sr-only">Cari buku</span>
-            <input
-              value={search}
-              onChange={(event) => setSearch(event.currentTarget.value)}
-              placeholder="Cari judul buku, penulis, penerbit, atau kategori..."
-              className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-sm font-medium text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-[#1d66d6]"
-            />
-          </label>
-        </div>
+        <section className="rounded-xl border border-zinc-200 bg-white p-3 shadow-sm">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+            <label className="relative block w-full lg:flex-1">
+              <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-500">
+                <SearchIcon />
+              </span>
+              <input
+                value={search}
+                onChange={(event) => setSearch(event.currentTarget.value)}
+                placeholder="Cari berdasarkan judul, penulis, penerbit, ISBN, atau genre..."
+                className="h-10 w-full rounded-lg border border-transparent bg-[#f1f1f4] pl-11 pr-4 text-sm font-medium text-zinc-900 outline-none transition placeholder:text-slate-500 focus:border-[#1d66d6]"
+              />
+            </label>
 
-        <FilterPanel
-          genres={genres}
-          selectedGenre={selectedGenre}
-          onSelectedGenreChange={setSelectedGenre}
-          availability={availability}
-          onAvailabilityChange={setAvailability}
-          yearFrom={yearFrom}
-          onYearFromChange={setYearFrom}
-          yearTo={yearTo}
-          onYearToChange={setYearTo}
-          onReset={resetFilters}
-        />
+            <Link
+              href="/admin/buku/tambah"
+              className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-lg bg-[#1768d8] px-4 text-sm font-semibold text-white transition hover:bg-[#1258ba]"
+            >
+              <PlusIcon />
+              Tambah Buku
+            </Link>
+          </div>
+
+          <div className="my-3 border-t border-zinc-200" />
+
+          {selectedGenres.length > 0 ? (
+            <>
+              <ActiveFilters
+                selectedGenres={selectedGenres}
+                onRemoveGenre={removeGenre}
+                onReset={resetFilters}
+              />
+              <div className="my-3 border-t border-zinc-200" />
+            </>
+          ) : null}
+
+          <FilterPanel
+            genres={genres}
+            selectedGenreIds={selectedGenreIds}
+            onToggleGenre={toggleGenre}
+            availability={availability}
+            onAvailabilityChange={setAvailability}
+            yearFrom={yearFrom}
+            onYearFromChange={setYearFrom}
+            yearTo={yearTo}
+            onYearToChange={setYearTo}
+            activeFilterCount={activeFilterCount}
+          />
+        </section>
 
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
@@ -189,132 +223,251 @@ export function AdminCatalog({
   );
 }
 
-function MetricPill({
+function MetricCard({
   label,
   value,
   tone,
 }: {
   label: string;
   value: number;
-  tone: "blue" | "green" | "orange";
+  tone: "blue" | "green" | "red";
 }) {
   const toneClass = {
-    blue: "bg-[#eaf3ff] text-[#0f5fc4]",
+    blue: "bg-[#edf5ff] text-[#1768d8]",
     green: "bg-emerald-50 text-emerald-600",
-    orange: "bg-orange-50 text-orange-500",
+    red: "bg-red-50 text-red-500",
   }[tone];
 
   return (
-    <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
-      <p className="text-sm font-medium text-zinc-500">{label}</p>
-      <p className={`mt-3 inline-flex rounded-xl px-3 py-1 text-2xl font-semibold ${toneClass}`}>
-        {value}
-      </p>
+    <div className="flex min-h-16 items-center gap-3 rounded-xl border border-zinc-200 bg-white px-4 py-3 shadow-sm">
+      <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${toneClass}`}>
+        <MetricIcon tone={tone} />
+      </div>
+      <div className="flex min-w-0 flex-1 items-center justify-between gap-3">
+        <p className="truncate text-sm font-medium text-slate-600">{label}</p>
+        <p className="shrink-0 text-2xl font-semibold leading-none text-black">{value}</p>
+      </div>
+    </div>
+  );
+}
+
+function MetricIcon({ tone }: { tone: "blue" | "green" | "red" }) {
+  if (tone === "green") {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5" aria-hidden>
+        <rect x="5" y="3" width="14" height="18" rx="2" stroke="currentColor" strokeWidth="1.8" />
+        <path d="M9 12l2 2 4-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M8 18h8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      </svg>
+    );
+  }
+
+  if (tone === "red") {
+    return (
+      <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5" aria-hidden>
+        <rect x="5" y="3" width="14" height="18" rx="2" stroke="currentColor" strokeWidth="1.8" />
+        <path d="M9.5 9.5l5 5m0-5l-5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+        <path d="M8 18h8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      </svg>
+    );
+  }
+
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5" aria-hidden>
+      <path d="M4 5.5A2.5 2.5 0 016.5 3H20v15H6.5A2.5 2.5 0 004 20.5V5.5z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+      <path d="M4 5.5A2.5 2.5 0 016.5 3H20" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      <path d="M8 7h7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function SearchIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5" aria-hidden>
+      <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="2" />
+      <path d="M16.5 16.5L21 21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function PlusIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5" aria-hidden>
+      <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function ResetIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4" aria-hidden>
+      <path d="M4 12a8 8 0 0113.6-5.7L20 8.7M20 5v3.7h-3.7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M20 12a8 8 0 01-13.6 5.7L4 15.3M4 19v-3.7h3.7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function FilterIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className="h-6 w-6" aria-hidden>
+      <path d="M4 5h16l-6.5 7.5V19l-3 1.5v-8L4 5z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function ActiveFilters({
+  selectedGenres,
+  onRemoveGenre,
+  onReset,
+}: {
+  selectedGenres: CatalogGenre[];
+  onRemoveGenre: (genreId: string) => void;
+  onReset: () => void;
+}) {
+  if (selectedGenres.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="flex flex-wrap items-center gap-3">
+      {selectedGenres.map((genre) => (
+        <button
+          key={genre.id}
+          type="button"
+          onClick={() => onRemoveGenre(genre.id)}
+          className="inline-flex h-8 items-center gap-2 rounded-full bg-[#edf5ff] px-3 text-sm font-medium text-[#0b55ff] transition hover:bg-[#e0edff]"
+        >
+          Genre: {genre.name}
+          <span className="text-xl leading-none" aria-hidden>
+            x
+          </span>
+        </button>
+      ))}
+      <button
+        type="button"
+        onClick={onReset}
+        className="inline-flex h-8 items-center gap-2 rounded-full px-3 text-sm font-semibold text-slate-600 transition hover:bg-zinc-50"
+      >
+        <ResetIcon />
+        Bersihkan Semua
+      </button>
     </div>
   );
 }
 
 function FilterPanel({
   genres,
-  selectedGenre,
-  onSelectedGenreChange,
+  selectedGenreIds,
+  onToggleGenre,
   availability,
   onAvailabilityChange,
   yearFrom,
   onYearFromChange,
   yearTo,
   onYearToChange,
-  onReset,
+  activeFilterCount,
 }: {
   genres: CatalogGenre[];
-  selectedGenre: string;
-  onSelectedGenreChange: (genreId: string) => void;
+  selectedGenreIds: string[];
+  onToggleGenre: (genreId: string) => void;
   availability: AvailabilityFilter;
   onAvailabilityChange: (status: AvailabilityFilter) => void;
   yearFrom: string;
   onYearFromChange: (value: string) => void;
   yearTo: string;
   onYearToChange: (value: string) => void;
-  onReset: () => void;
+  activeFilterCount: number;
 }) {
   return (
-    <section className="rounded-[1.5rem] border border-zinc-200 bg-white p-5 shadow-sm">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-lg font-semibold text-zinc-950">Filter Pencarian</h2>
-        <p className="text-sm text-zinc-500">Saring hasil dari kolom pencarian di atas.</p>
+    <section>
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center gap-3 text-zinc-950">
+          <FilterIcon />
+          <h2 className="text-base font-semibold">Filter</h2>
+          <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-[#dfeeff] px-2 text-xs font-semibold text-[#1768d8]">
+            {activeFilterCount}
+          </span>
+        </div>
+        <button
+          type="button"
+          className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 transition hover:bg-zinc-50"
+          title="Filter terbuka"
+        >
+          <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5" aria-hidden>
+            <path d="M7 14l5-5 5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
       </div>
 
-      <div className="mt-5 grid gap-4 lg:grid-cols-[minmax(180px,1fr)_minmax(260px,1.3fr)_minmax(240px,1fr)_auto] lg:items-end">
-        <label className="block space-y-2">
-          <span className="text-sm font-semibold text-zinc-800">Genre</span>
-          <select
-            value={selectedGenre}
-            onChange={(event) => onSelectedGenreChange(event.currentTarget.value)}
-            className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-3 text-sm text-zinc-900 outline-none transition focus:border-[#1d66d6]"
-          >
-            <option value="">Semua Genre</option>
-            {genres.map((genre) => (
-              <option key={genre.id} value={genre.id}>
-                {genre.name}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <div className="space-y-3">
-          <p className="text-sm font-semibold text-zinc-800">Status Buku</p>
-          <div className="grid gap-2 sm:grid-cols-3">
-            <StatusOption
-              label="Semua"
-              checked={availability === "all"}
-              onClick={() => onAvailabilityChange("all")}
-            />
-            <StatusOption
-              label="Tersedia"
-              checked={availability === "available"}
-              onClick={() => onAvailabilityChange("available")}
-            />
-            <StatusOption
-              label="Tidak tersedia"
-              checked={availability === "unavailable"}
-              onClick={() => onAvailabilityChange("unavailable")}
-            />
+      <div className="mt-3 space-y-4">
+        <div className="space-y-2">
+          <p className="text-sm font-semibold text-slate-600">Genre</p>
+          <div className="flex flex-wrap gap-2">
+            {genres.length === 0 ? (
+              <p className="text-sm text-zinc-500">Belum ada genre.</p>
+            ) : (
+              genres.map((genre) => (
+                <GenreOption
+                  key={genre.id}
+                  label={genre.name}
+                  checked={selectedGenreIds.includes(genre.id)}
+                  onClick={() => onToggleGenre(genre.id)}
+                />
+              ))
+            )}
           </div>
         </div>
 
-        <div className="space-y-3">
-          <p className="text-sm font-semibold text-zinc-800">Tahun Terbit</p>
-          <div className="grid gap-2 sm:grid-cols-2">
+        <div className="grid gap-3 lg:grid-cols-3">
+          <label className="block space-y-2">
+            <span className="text-sm font-semibold text-slate-600">
+              Status Ketersediaan
+            </span>
+            <select
+              value={availability}
+              onChange={(event) =>
+                onAvailabilityChange(event.currentTarget.value as AvailabilityFilter)
+              }
+              className="h-10 w-full rounded-lg border border-zinc-300 bg-white px-3 text-sm text-zinc-900 outline-none transition focus:border-[#1d66d6]"
+            >
+              <option value="all">Semua Status</option>
+              <option value="available">Tersedia</option>
+              <option value="unavailable">Tidak tersedia</option>
+            </select>
+          </label>
+
+          <label className="block space-y-2">
+            <span className="text-sm font-semibold text-slate-600">
+              Tahun Dari
+            </span>
             <input
               type="number"
               value={yearFrom}
               onChange={(event) => onYearFromChange(event.currentTarget.value)}
-              placeholder="Dari tahun"
-              className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-3 text-sm text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-[#1d66d6]"
+              placeholder="2000"
+              className="h-10 w-full rounded-lg border border-transparent bg-[#f1f1f4] px-3 text-sm text-zinc-900 outline-none transition placeholder:text-slate-500 focus:border-[#1d66d6]"
             />
+          </label>
+
+          <label className="block space-y-2">
+            <span className="text-sm font-semibold text-slate-600">
+              Tahun Sampai
+            </span>
             <input
               type="number"
               value={yearTo}
               onChange={(event) => onYearToChange(event.currentTarget.value)}
-              placeholder="Sampai tahun"
-              className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-3 text-sm text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-[#1d66d6]"
+              placeholder="2024"
+              className="h-10 w-full rounded-lg border border-transparent bg-[#f1f1f4] px-3 text-sm text-zinc-900 outline-none transition placeholder:text-slate-500 focus:border-[#1d66d6]"
             />
-          </div>
+          </label>
         </div>
-
-        <button
-          type="button"
-          onClick={onReset}
-          className="inline-flex w-full items-center justify-center rounded-xl border border-[#b9d3ff] bg-white px-4 py-3 text-sm font-semibold text-[#0f5fc4] transition hover:bg-[#eef5ff] lg:w-auto"
-        >
-          Reset Filter
-        </button>
       </div>
     </section>
   );
 }
 
-function StatusOption({
+function GenreOption({
   label,
   checked,
   onClick,
@@ -327,14 +480,13 @@ function StatusOption({
     <button
       type="button"
       onClick={onClick}
-      className="flex w-full items-center justify-between rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50"
+      className={`inline-flex h-9 items-center justify-center rounded-full border px-3.5 text-sm font-semibold transition ${
+        checked
+          ? "border-[#2f7cff] bg-[#2f7cff] text-white"
+          : "border-zinc-200 bg-white text-black hover:bg-zinc-50"
+      }`}
     >
       <span>{label}</span>
-      <span
-        className={`h-4 w-4 rounded border ${
-          checked ? "border-[#1d66d6] bg-[#1d66d6]" : "border-zinc-300"
-        }`}
-      />
     </button>
   );
 }
