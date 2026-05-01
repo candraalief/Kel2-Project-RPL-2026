@@ -622,42 +622,53 @@ function BookCard({
         <p>Tersedia: <span className="font-semibold text-zinc-900">{book.availableCount} copy</span></p>
       </div>
 
-      <div className="mt-auto flex flex-col gap-1.5 pt-2">
+      <div className="mt-auto space-y-1.5 pt-2">
         <button
           type="button"
           onClick={(event) => {
             event.stopPropagation();
-            onEdit();
           }}
-          className="inline-flex h-7 w-full items-center justify-center rounded-md bg-[#2f7eea] px-2 text-[10px] font-semibold text-white transition hover:bg-[#1d66d6]"
+          className="inline-flex h-7 w-full items-center justify-center rounded-md border border-blue-200 bg-blue-50 px-2 text-[10px] font-semibold text-blue-600 transition hover:bg-blue-100"
         >
-          Edit
+          Tambah Eksemplar
         </button>
         <button
           type="button"
           onClick={(event) => {
             event.stopPropagation();
           }}
-          className="inline-flex h-7 w-full items-center justify-center rounded-md bg-[#F16060] px-2 text-[10px] font-semibold text-white transition hover:bg-[#E95A5A]"
+          className="inline-flex h-7 w-full items-center justify-center rounded-md border border-red-200 bg-red-50 px-2 text-[10px] font-semibold text-red-600 transition hover:bg-red-100"
         >
           Catat Kehilangan
         </button>
-        <form
-          action={deleteAction}
-          onClick={(event) => event.stopPropagation()}
-          onSubmit={(event) => {
-            if (!window.confirm(`Hapus buku "${book.title}"?`)) {
-              event.preventDefault();
-            }
-          }}
-        >
+        <div className="grid grid-cols-2 gap-1.5">
           <button
-            type="submit"
-            className="inline-flex h-7 w-full items-center justify-center rounded-md bg-[#E42121] px-2 text-[10px] font-semibold text-white transition hover:bg-[#E42121]"
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation();
+              onEdit();
+            }}
+            className="inline-flex h-7 w-full items-center justify-center rounded-md border border-blue-200 bg-blue-50 px-2 text-[10px] font-semibold text-blue-600 transition hover:bg-blue-100"
           >
-            Hapus
+            Edit
           </button>
-        </form>
+          <form
+            action={deleteAction}
+            onClick={(event) => event.stopPropagation()}
+            onSubmit={(event) => {
+              if (!window.confirm(`Hapus buku "${book.title}"?`)) {
+                event.preventDefault();
+              }
+            }}
+          >
+            <button
+              type="submit"
+              className="inline-flex h-7 w-full items-center justify-center rounded-md border border-red-200 bg-red-50 px-2 text-[10px] font-semibold text-red-600 transition hover:bg-red-100"
+            >
+              Hapus
+            </button>
+          </form>
+        </div>
       </div>
     </article>
   );

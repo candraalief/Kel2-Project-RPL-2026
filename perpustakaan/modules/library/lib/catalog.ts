@@ -28,6 +28,25 @@ const bookGenreTableConfigs: BookGenreTableConfig[] = [
   { table: "book_genres", bookIdColumn: "book_id", genreIdColumn: "genre_id" },
 ];
 
+const removedCopyStatusKeywords = [
+  "dikeluarkan",
+  "dihapus",
+  "hapus",
+  "keluar",
+  "musnah",
+  "dibuang",
+  "hilang",
+];
+const borrowedCopyStatusKeywords = ["dipinjam"];
+const availableCopyStatusValues = ["tersedia", "available"];
+
+type CopyCounts = {
+  active: number;
+  available: number;
+  borrowed: number;
+  removed: number;
+};
+
 export type CatalogGenre = {
   id: string;
   name: string;
@@ -48,6 +67,8 @@ export type AdminCatalogBook = {
   genres: CatalogGenre[];
   totalCopies: number;
   availableCount: number;
+  borrowedCount: number;
+  removedCount: number;
   unavailableCount: number;
 };
 
@@ -82,6 +103,38 @@ function readNumber(row: Row, keys: string[]) {
   }
 
   return null;
+}
+
+function normalizeStatus(status: string | null) {
+  return (status ?? "").trim().toLowerCase();
+}
+
+function isRemovedCopyStatus(normalizedStatus: string) {
+  if (!normalizedStatus) {
+    return false;
+  }
+
+  return removedCopyStatusKeywords.some((keyword) =>
+    normalizedStatus.includes(keyword)
+  );
+}
+
+function isBorrowedCopyStatus(normalizedStatus: string) {
+  if (!normalizedStatus) {
+    return false;
+  }
+
+  return borrowedCopyStatusKeywords.some((keyword) =>
+    normalizedStatus.includes(keyword)
+  );
+}
+
+function isAvailableCopyStatus(normalizedStatus: string) {
+  if (!normalizedStatus) {
+    return false;
+  }
+
+  return availableCopyStatusValues.includes(normalizedStatus);
 }
 
 function parseInlineGenres(row: Row) {
@@ -180,7 +233,7 @@ async function loadBookGenreMap(bookIds: number[], genres: CatalogGenre[]) {
 
 async function loadCopyCounts(bookIds: number[]) {
   if (bookIds.length === 0) {
-    return new Map<number, { total: number; available: number }>();
+    return new Map<number, CopyCounts>();
   }
 
   const supabase = getServerSupabaseClient();
@@ -192,7 +245,7 @@ async function loadCopyCounts(bookIds: number[]) {
       .in(config.bookIdColumn, bookIds);
 
     if (!error && data) {
-      const counts = new Map<number, { total: number; available: number }>();
+      const counts = new Map<number, CopyCounts>();
 
       (data as Row[]).forEach((row) => {
         const bookId = readNumber(row, [config.bookIdColumn]);
@@ -201,13 +254,27 @@ async function loadCopyCounts(bookIds: number[]) {
           return;
         }
 
-        const current = counts.get(bookId) ?? { total: 0, available: 0 };
-        const status = readString(row, [config.statusColumn])?.toLowerCase();
+        const current = counts.get(bookId) ?? {
+          active: 0,
+          available: 0,
+          borrowed: 0,
+          removed: 0,
+        };
+        const status = readString(row, [config.statusColumn]);
+        const normalizedStatus = normalizeStatus(status);
 
-        current.total += 1;
+        if (isRemovedCopyStatus(normalizedStatus)) {
+          current.removed += 1;
+        } else {
+          current.active += 1;
 
-        if (status === "tersedia") {
-          current.available += 1;
+          if (isAvailableCopyStatus(normalizedStatus)) {
+            current.available += 1;
+          }
+
+          if (isBorrowedCopyStatus(normalizedStatus)) {
+            current.borrowed += 1;
+          }
         }
 
         counts.set(bookId, current);
@@ -217,7 +284,7 @@ async function loadCopyCounts(bookIds: number[]) {
     }
   }
 
-  return new Map<number, { total: number; available: number }>();
+  return new Map<number, CopyCounts>();
 }
 
 export async function getAdminCatalogData(): Promise<AdminCatalogData> {
@@ -268,9 +335,11 @@ export async function getAdminCatalogData(): Promise<AdminCatalogData> {
       coverUrl: readString(row, ["foto_buku", "foto_url", "cover_url", "gambar"]),
       description: readString(row, ["deskripsi", "description", "sinopsis"]),
       genres: relatedGenres,
-      totalCopies: counts.total,
+      totalCopies: counts.active,
       availableCount: counts.available,
-      unavailableCount: Math.max(counts.total - counts.available, 0),
+      borrowedCount: counts.borrowed,
+      removedCount: counts.removed,
+      unavailableCount: Math.max(counts.active - counts.available, 0),
     } satisfies AdminCatalogBook;
   });
 
