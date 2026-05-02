@@ -1,21 +1,25 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
+import { useActionState, useDeferredValue, useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   createCatalogBook,
   createCatalogGenre,
+  deleteCatalogGenre,
+  updateCatalogGenre,
   type CatalogActionState,
 } from "@/app/actions/catalog";
 import type { CatalogGenre } from "@/modules/library/lib/catalog";
-
 const initialActionState: CatalogActionState = {
   error: "",
   success: "",
 };
 
 type ActiveTab = "book" | "genre";
+const SHELF_LETTERS = Array.from({ length: 10 }, (_, index) =>
+  String.fromCharCode(65 + index)
+);
 
 export function AdminCatalogCreatePage({ genres }: { genres: CatalogGenre[] }) {
   const [activeTab, setActiveTab] = useState<ActiveTab>("book");
@@ -80,24 +84,14 @@ function AddBookForm({ genres }: { genres: CatalogGenre[] }) {
     createCatalogBook,
     initialActionState
   );
-  const [genreQuery, setGenreQuery] = useState("");
   const [selectedGenreIds, setSelectedGenreIds] = useState<string[]>([]);
-  const [showAllSelected, setShowAllSelected] = useState(false);
-  const deferredGenreQuery = useDeferredValue(genreQuery);
+  const [showAllGenres, setShowAllGenres] = useState(false);
   const sortedGenres = useMemo(
     () => [...genres].sort((first, second) => first.name.localeCompare(second.name, "id-ID")),
     [genres]
   );
-  const selectedGenres = sortedGenres.filter((genre) =>
-    selectedGenreIds.includes(genre.id)
-  );
-  const visibleSelectedGenres = showAllSelected
-    ? selectedGenres
-    : selectedGenres.slice(0, 4);
-  const hiddenSelectedCount = selectedGenres.length - visibleSelectedGenres.length;
-  const filteredGenres = sortedGenres.filter((genre) =>
-    genre.name.toLowerCase().includes(deferredGenreQuery.trim().toLowerCase())
-  );
+  const visibleGenres = showAllGenres ? sortedGenres : sortedGenres.slice(0, 3);
+  const hiddenGenreCount = Math.max(sortedGenres.length - visibleGenres.length, 0);
 
   function toggleGenre(genreId: string) {
     setSelectedGenreIds((current) =>
@@ -130,7 +124,6 @@ function AddBookForm({ genres }: { genres: CatalogGenre[] }) {
         <Field label="Penerbit" name="penerbit" />
         <Field label="ISBN" name="isbn" />
         <Field label="Tahun Terbit" name="tahun_terbit" type="number" />
-        <Field label="Lokasi Rak" name="lokasi_rak" />
         <Field
           label="Jumlah Copy Awal"
           name="jumlah_copy"
@@ -146,69 +139,46 @@ function AddBookForm({ genres }: { genres: CatalogGenre[] }) {
             <input key={genreId} type="hidden" name="genre_ids" value={genreId} />
           ))}
 
-          {selectedGenres.length > 0 ? (
-            <div className="flex flex-wrap gap-2 rounded-xl border border-zinc-200 bg-zinc-50 p-3">
-              {visibleSelectedGenres.map((genre) => (
-                <button
-                  key={genre.id}
-                  type="button"
-                  onClick={() => toggleGenre(genre.id)}
-                  className="inline-flex items-center gap-2 rounded-lg bg-[#eaf3ff] px-3 py-1.5 text-sm font-semibold text-[#0f5fc4]"
-                >
-                  {genre.name}
-                  <span aria-hidden>x</span>
-                </button>
-              ))}
-              {hiddenSelectedCount > 0 ? (
-                <button
-                  type="button"
-                  onClick={() => setShowAllSelected(true)}
-                  className="inline-flex rounded-lg bg-white px-3 py-1.5 text-sm font-semibold text-zinc-600"
-                >
-                  +{hiddenSelectedCount} lainnya
-                </button>
-              ) : null}
-              {showAllSelected && selectedGenres.length > 4 ? (
-                <button
-                  type="button"
-                  onClick={() => setShowAllSelected(false)}
-                  className="inline-flex rounded-lg bg-white px-3 py-1.5 text-sm font-semibold text-zinc-600"
-                >
-                  Ringkas
-                </button>
-              ) : null}
-            </div>
-          ) : null}
-
-          <input
-            value={genreQuery}
-            onChange={(event) => setGenreQuery(event.currentTarget.value)}
-            placeholder="Cari genre"
-            className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2.5 text-sm text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-[#1d66d6]"
-          />
-
-          <div className="max-h-44 overflow-y-auto rounded-xl border border-zinc-200 bg-white p-2">
-            {filteredGenres.length === 0 ? (
-              <p className="px-3 py-2 text-sm text-zinc-500">
-                Genre tidak ditemukan.
-              </p>
+          <div className="flex flex-wrap items-center gap-2">
+            {sortedGenres.length === 0 ? (
+              <p className="text-sm text-zinc-500">Belum ada genre.</p>
             ) : (
-              filteredGenres.map((genre) => (
+              visibleGenres.map((genre) => (
                 <button
                   key={genre.id}
                   type="button"
                   onClick={() => toggleGenre(genre.id)}
-                  className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm font-medium transition ${
+                  className={`inline-flex h-8 items-center gap-2 rounded-full border px-3 text-xs font-semibold transition ${
                     selectedGenreIds.includes(genre.id)
-                      ? "bg-[#eaf3ff] text-[#0f5fc4]"
-                      : "text-zinc-700 hover:bg-zinc-50"
+                      ? "border-[#2f7cff] bg-[#2f7cff] text-white"
+                      : "border-zinc-200 bg-white text-black hover:bg-zinc-50"
                   }`}
                 >
-                  <span>{genre.name}</span>
-                  <span>{selectedGenreIds.includes(genre.id) ? "Dipilih" : "+"}</span>
+                  <span
+                    className={`inline-flex h-4 w-4 items-center justify-center rounded-full border text-[10px] ${
+                      selectedGenreIds.includes(genre.id)
+                        ? "border-white text-white"
+                        : "border-zinc-300 text-transparent"
+                    }`}
+                    aria-hidden
+                  >
+                    ✓
+                  </span>
+                  {genre.name}
                 </button>
               ))
             )}
+            {sortedGenres.length > 3 ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setShowAllGenres(!showAllGenres)}
+                  className="inline-flex h-8 items-center justify-center rounded-full border border-zinc-200 bg-white px-3 text-xs font-semibold text-[#1768d8] transition hover:bg-zinc-50"
+                >
+                  {showAllGenres ? "Less" : `More +${hiddenGenreCount}`}
+                </button>
+              </>
+            ) : null}
           </div>
         </div>
 
@@ -223,9 +193,7 @@ function AddBookForm({ genres }: { genres: CatalogGenre[] }) {
           />
         </label>
 
-        <div className="flex min-h-28 items-center justify-center rounded-xl border border-zinc-300 bg-zinc-100 px-4 text-center text-sm font-semibold text-zinc-500 md:col-span-2">
-          Denah rak otomatis mengikuti lokasi rak yang dipilih jika data denah tersedia.
-        </div>
+        <ShelfLocationPicker />
       </div>
 
       <ActionNotice state={state} />
@@ -243,70 +211,478 @@ function AddBookForm({ genres }: { genres: CatalogGenre[] }) {
 
 function AddGenreForm({ genres }: { genres: CatalogGenre[] }) {
   const router = useRouter();
-  const formRef = useRef<HTMLFormElement>(null);
-  const [state, formAction, pending] = useActionState(
-    createCatalogGenre,
-    initialActionState
-  );
+  const [genreQuery, setGenreQuery] = useState("");
+  const [addingGenre, setAddingGenre] = useState(false);
+  const [editingGenre, setEditingGenre] = useState<CatalogGenre | null>(null);
+  const [deletingGenre, setDeletingGenre] = useState<CatalogGenre | null>(null);
+  const [actionState, setActionState] =
+    useState<CatalogActionState>(initialActionState);
+  const [isPending, startTransition] = useTransition();
+  const deferredGenreQuery = useDeferredValue(genreQuery);
   const sortedGenres = useMemo(
     () => [...genres].sort((first, second) => first.name.localeCompare(second.name, "id-ID")),
     [genres]
   );
+  const filteredGenres = sortedGenres.filter((genre) =>
+    genre.name.toLowerCase().includes(deferredGenreQuery.trim().toLowerCase())
+  );
 
   useEffect(() => {
-    if (state.success) {
-      formRef.current?.reset();
+    if (actionState.success) {
       router.refresh();
     }
-  }, [router, state.success]);
+  }, [actionState.success, router]);
+
+  function openAddModal() {
+    setActionState(initialActionState);
+    setAddingGenre(true);
+  }
+
+  function openEditModal(genre: CatalogGenre) {
+    setActionState(initialActionState);
+    setEditingGenre(genre);
+  }
+
+  function openDeleteModal(genre: CatalogGenre) {
+    setActionState(initialActionState);
+    setDeletingGenre(genre);
+  }
+
+  function closeModal() {
+    if (isPending) {
+      return;
+    }
+
+    setAddingGenre(false);
+    setEditingGenre(null);
+    setDeletingGenre(null);
+    setActionState(initialActionState);
+  }
+
+  function submitAddGenre(formData: FormData) {
+    if (isPending) {
+      return;
+    }
+
+    setActionState(initialActionState);
+    startTransition(async () => {
+      const result = await createCatalogGenre(undefined, formData);
+      setActionState(result);
+
+      if (!result.error) {
+        setAddingGenre(false);
+      }
+    });
+  }
+
+  function submitEditGenre(genreId: string, name: string, description: string) {
+    if (isPending) {
+      return;
+    }
+
+    setActionState(initialActionState);
+    startTransition(async () => {
+      const result = await updateCatalogGenre(genreId, name, description);
+      setActionState(result);
+
+      if (!result.error) {
+        setEditingGenre(null);
+      }
+    });
+  }
+
+  function confirmDeleteGenre() {
+    if (!deletingGenre || isPending) {
+      return;
+    }
+
+    setActionState(initialActionState);
+    startTransition(async () => {
+      const result = await deleteCatalogGenre(deletingGenre.id);
+      setActionState(result);
+
+      if (!result.error) {
+        setDeletingGenre(null);
+      }
+    });
+  }
 
   return (
-    <div className="grid gap-5 xl:grid-cols-[1fr_0.8fr]">
-      <form ref={formRef} action={formAction} className="space-y-4">
-        <Field label="Nama Genre" name="nama_genre" required />
-        <label className="block space-y-2">
-          <span className="text-sm font-semibold text-zinc-900">
-            Deskripsi Genre
-          </span>
-          <textarea
-            name="deskripsi_genre"
-            rows={4}
-            className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2.5 text-sm text-zinc-900 outline-none transition focus:border-[#1d66d6]"
-          />
-        </label>
+    <div className="space-y-4">
+      <section className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h3 className="text-lg font-semibold text-zinc-950">Kelola Genre</h3>
+            <p className="mt-1 text-sm text-zinc-500">
+              Cari, tambah, edit, dan hapus genre katalog.
+            </p>
+          </div>
+          <div className="flex min-w-[min(100%,28rem)] flex-1 items-center gap-2 md:flex-none">
+            <label className="relative block flex-1">
+              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">
+                <SearchIcon />
+              </span>
+              <input
+                value={genreQuery}
+                onChange={(event) => setGenreQuery(event.currentTarget.value)}
+                placeholder="Cari genre berdasarkan nama..."
+                className="h-10 w-full rounded-xl border border-transparent bg-[#f1f1f4] pl-9 pr-3 text-sm font-semibold text-zinc-900 outline-none transition placeholder:text-slate-500 focus:border-[#1d66d6]"
+              />
+            </label>
+            <button
+              type="button"
+              onClick={openAddModal}
+              className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#2f7eea] text-xl font-semibold text-white transition hover:bg-[#1d66d6]"
+              aria-label="Tambah genre"
+            >
+              +
+            </button>
+          </div>
+        </div>
 
-        <ActionNotice state={state} />
-
-        <button
-          type="submit"
-          disabled={pending}
-          className="inline-flex min-w-44 items-center justify-center rounded-xl bg-[#2f7eea] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#1d66d6] disabled:cursor-not-allowed disabled:bg-zinc-400"
-        >
-          {pending ? "Menambahkan..." : "Tambahkan"}
-        </button>
-      </form>
-
-      <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
-        <h3 className="text-sm font-semibold text-zinc-900">Daftar Genre</h3>
-        <div className="mt-3 max-h-64 space-y-2 overflow-y-auto">
-          {sortedGenres.length === 0 ? (
-            <p className="text-sm text-zinc-500">Belum ada genre.</p>
+        <div className="mt-4 max-h-[28rem] space-y-2 overflow-y-auto pr-1">
+          {filteredGenres.length === 0 ? (
+            <p className="rounded-xl border border-dashed border-zinc-300 px-4 py-6 text-center text-sm text-zinc-500">
+              Genre tidak ditemukan.
+            </p>
           ) : (
-            sortedGenres.map((genre) => (
-              <div
+            filteredGenres.map((genre) => (
+              <article
                 key={genre.id}
-                className="rounded-xl border border-zinc-200 bg-white px-3 py-2"
+                className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-zinc-200 bg-white px-4 py-3"
               >
-                <p className="text-sm font-semibold text-zinc-900">{genre.name}</p>
-                <p className="mt-1 text-xs text-zinc-500">
-                  {genre.description ?? "Tanpa deskripsi"}
-                </p>
-              </div>
+                <div className="min-w-0">
+                  <h4 className="text-sm font-semibold text-zinc-950">
+                    {genre.name}
+                  </h4>
+                  <p className="mt-1 text-sm text-zinc-500">
+                    {genre.description ?? "Tanpa deskripsi"}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => openEditModal(genre)}
+                    className="inline-flex h-8 items-center justify-center rounded-lg border border-blue-200 bg-blue-50 px-3 text-xs font-semibold text-blue-600 transition hover:bg-blue-100"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => openDeleteModal(genre)}
+                    className="inline-flex h-8 items-center justify-center rounded-lg border border-red-200 bg-red-50 px-3 text-xs font-semibold text-red-600 transition hover:bg-red-100"
+                  >
+                    Hapus
+                  </button>
+                </div>
+              </article>
             ))
           )}
         </div>
-      </div>
+      </section>
+
+      {actionState.success && !addingGenre && !editingGenre && !deletingGenre ? (
+        <ActionNotice state={actionState} />
+      ) : null}
+
+      {addingGenre ? (
+        <GenreFormModal
+          title="Tambah Genre"
+          submitLabel={isPending ? "Menambahkan..." : "Tambahkan"}
+          pending={isPending}
+          state={actionState}
+          onClose={closeModal}
+          onSubmit={submitAddGenre}
+        />
+      ) : null}
+
+      {editingGenre ? (
+        <GenreFormModal
+          title="Edit Genre"
+          submitLabel={isPending ? "Menyimpan..." : "Simpan"}
+          pending={isPending}
+          state={actionState}
+          genre={editingGenre}
+          onClose={closeModal}
+          onSubmit={(formData) =>
+            submitEditGenre(
+              editingGenre.id,
+              String(formData.get("nama_genre") ?? ""),
+              String(formData.get("deskripsi_genre") ?? "")
+            )
+          }
+        />
+      ) : null}
+
+      {deletingGenre ? (
+        <DangerGenreModal
+          genre={deletingGenre}
+          pending={isPending}
+          state={actionState}
+          onClose={closeModal}
+          onConfirm={confirmDeleteGenre}
+        />
+      ) : null}
     </div>
+  );
+}
+
+function GenreFormModal({
+  title,
+  submitLabel,
+  pending,
+  state,
+  genre,
+  onClose,
+  onSubmit,
+}: {
+  title: string;
+  submitLabel: string;
+  pending: boolean;
+  state: CatalogActionState;
+  genre?: CatalogGenre;
+  onClose: () => void;
+  onSubmit: (formData: FormData) => void;
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/50 p-4"
+      onClick={onClose}
+    >
+      <form
+        action={onSubmit}
+        className="w-full max-w-xl rounded-2xl bg-white p-5 shadow-xl"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#1d66d6]">
+              Genre
+            </p>
+            <h3 className="mt-1 text-2xl font-semibold text-zinc-950">
+              {title}
+            </h3>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={pending}
+            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-zinc-200 text-lg font-semibold text-zinc-500 transition hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            x
+          </button>
+        </div>
+
+        <div className="mt-5 space-y-4">
+          <Field
+            label="Nama Genre"
+            name="nama_genre"
+            defaultValue={genre?.name ?? ""}
+            required
+          />
+          <label className="block space-y-2">
+            <span className="text-sm font-semibold text-zinc-900">
+              Deskripsi Genre
+            </span>
+            <textarea
+              name="deskripsi_genre"
+              rows={4}
+              defaultValue={genre?.description ?? ""}
+              className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2.5 text-sm text-zinc-900 outline-none transition focus:border-[#1d66d6]"
+            />
+          </label>
+        </div>
+
+        <div className="mt-4">
+          <ActionNotice state={state} />
+        </div>
+
+        <div className="mt-5 flex justify-end gap-3">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={pending}
+            className="inline-flex min-w-24 items-center justify-center rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-700 transition hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            Kembali
+          </button>
+          <button
+            type="submit"
+            disabled={pending}
+            className="inline-flex min-w-36 items-center justify-center rounded-xl bg-[#2f7eea] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#1d66d6] disabled:cursor-not-allowed disabled:bg-zinc-400"
+          >
+            {submitLabel}
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+function DangerGenreModal({
+  genre,
+  pending,
+  state,
+  onClose,
+  onConfirm,
+}: {
+  genre: CatalogGenre;
+  pending: boolean;
+  state: CatalogActionState;
+  onClose: () => void;
+  onConfirm: () => void;
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/50 p-4"
+      onClick={onClose}
+    >
+      <article
+        className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-red-500">
+              Hapus Genre
+            </p>
+            <h3 className="mt-1 text-2xl font-semibold text-zinc-950">
+              {genre.name}
+            </h3>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={pending}
+            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-zinc-200 text-lg font-semibold text-zinc-500 transition hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            x
+          </button>
+        </div>
+
+        <p className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
+          Genre akan dihapus dari daftar dan relasi buku yang memakai genre ini
+          akan dilepas.
+        </p>
+
+        <div className="mt-4">
+          <ActionNotice state={state} />
+        </div>
+
+        <div className="mt-5 flex justify-end gap-3">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={pending}
+            className="inline-flex min-w-24 items-center justify-center rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-700 transition hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            Kembali
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            disabled={pending}
+            className="inline-flex min-w-28 items-center justify-center rounded-xl bg-red-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-red-600 disabled:cursor-not-allowed disabled:bg-zinc-400"
+          >
+            {pending ? "Menghapus..." : "Hapus"}
+          </button>
+        </div>
+      </article>
+    </div>
+  );
+}
+
+function SearchIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className="h-4 w-4" aria-hidden>
+      <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="2" />
+      <path d="M16.5 16.5L21 21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function ShelfLocationPicker() {
+  const [letter, setLetter] = useState("A");
+  const [number, setNumber] = useState(1);
+  const shelfValue = `Rak ${letter}${number}`;
+
+  function previousNumber() {
+    setNumber((current) => (current === 1 ? 6 : current - 1));
+  }
+
+  function nextNumber() {
+    setNumber((current) => (current === 6 ? 1 : current + 1));
+  }
+
+  return (
+    <section className="space-y-3 md:col-span-2">
+      <input type="hidden" name="lokasi_rak" value={shelfValue} />
+
+      <div className="rounded-2xl border border-zinc-200 bg-white p-4">
+        <div className="grid gap-3 md:grid-cols-[1fr_auto] md:items-end">
+          <label className="block space-y-2">
+            <span className="text-sm font-semibold text-zinc-900">
+              Kode Rak
+            </span>
+            <select
+              value={letter}
+              onChange={(event) => setLetter(event.currentTarget.value)}
+              className="h-11 w-full rounded-xl border border-zinc-300 bg-white px-3 text-sm font-semibold text-zinc-900 outline-none transition focus:border-[#1d66d6]"
+            >
+              {SHELF_LETTERS.map((item) => (
+                <option key={item} value={item}>
+                  Rak {item}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <div className="space-y-2">
+            <span className="block text-sm font-semibold text-zinc-900">
+              Nomor Rak
+            </span>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={previousNumber}
+                className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-zinc-200 bg-white text-lg font-semibold text-[#1768d8] transition hover:bg-blue-50"
+                aria-label="Nomor rak sebelumnya"
+              >
+                &lt;
+              </button>
+              <div className="inline-flex h-11 min-w-20 items-center justify-center rounded-xl bg-[#2f7eea] px-4 text-lg font-semibold text-white">
+                {number}
+              </div>
+              <button
+                type="button"
+                onClick={nextNumber}
+                className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-zinc-200 bg-white text-lg font-semibold text-[#1768d8] transition hover:bg-blue-50"
+                aria-label="Nomor rak berikutnya"
+              >
+                &gt;
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-4 overflow-hidden rounded-2xl border border-zinc-200 bg-zinc-100">
+          <div className="grid gap-0 md:grid-cols-[1fr_minmax(180px,0.42fr)]">
+            <div className="flex min-h-80 items-center justify-center bg-zinc-200 p-5">
+              <div className="flex h-full min-h-72 w-full items-center justify-center rounded-2xl border border-dashed border-zinc-400 bg-zinc-100 px-4 text-center text-sm font-semibold text-zinc-500">
+                Placeholder gambar denah utama {shelfValue}
+              </div>
+            </div>
+
+            <div className="flex min-h-80 items-center justify-center bg-zinc-200 p-4">
+              <div className="flex aspect-square h-full max-h-72 w-auto max-w-full items-center justify-center rounded-2xl border border-dashed border-zinc-400 bg-zinc-100 px-4 text-center text-sm font-semibold text-zinc-500">
+                Placeholder gambar undak {letter}
+                {number}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
   );
 }
 

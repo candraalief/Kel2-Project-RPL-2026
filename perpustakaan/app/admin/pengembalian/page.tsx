@@ -1,11 +1,15 @@
 import { requireRole } from "@/modules/access/lib/guards";
 import { DashboardShell } from "@/modules/access/ui/dashboard-shell";
-import { getTransactions } from "@/modules/library/lib/data";
+import { getDetailedTransactions } from "@/modules/library/lib/data";
+import { AdminReturns } from "@/modules/library/ui/admin-returns";
 import { SectionCard, TransactionsTable } from "@/modules/library/ui/library-cards";
 
 export default async function AdminReturnPage() {
   const user = await requireRole("admin");
-  const transactions = await getTransactions();
+  const transactions = await getDetailedTransactions();
+  const activeTransactions = transactions.filter(
+    (item) => item.tanggal_kembali === null
+  );
   const completedTransactions = transactions.filter(
     (item) => item.tanggal_kembali !== null
   );
@@ -18,6 +22,13 @@ export default async function AdminReturnPage() {
       description="Lihat transaksi yang sudah dikembalikan dan status akhir pengembalian."
       activeNav="Pengembalian"
     >
+      <SectionCard
+        title="Proses Pengembalian"
+        subtitle="Pilih transaksi aktif, lalu catat kondisi tiap buku"
+      >
+        <AdminReturns transactions={activeTransactions} />
+      </SectionCard>
+
       <SectionCard
         title="Pengembalian"
         subtitle="Transaksi yang telah selesai"

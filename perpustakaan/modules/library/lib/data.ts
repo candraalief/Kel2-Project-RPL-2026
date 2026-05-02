@@ -32,6 +32,70 @@ export type TransaksiRecord = {
   status: string | null;
 };
 
+type Row = Record<string, unknown>;
+
+type DetailTableConfig = {
+  table: string;
+  transactionIdColumn: string;
+  bookIdColumn: string;
+  copyIdColumn: string;
+  quantityColumn: string;
+};
+
+const detailTableConfigs: DetailTableConfig[] = [
+  {
+    table: "detail_transaksi",
+    transactionIdColumn: "id_transaksi",
+    bookIdColumn: "id_buku",
+    copyIdColumn: "id_copy",
+    quantityColumn: "jumlah",
+  },
+  {
+    table: "transaksi_detail",
+    transactionIdColumn: "id_transaksi",
+    bookIdColumn: "id_buku",
+    copyIdColumn: "id_copy",
+    quantityColumn: "jumlah",
+  },
+  {
+    table: "detail_peminjaman",
+    transactionIdColumn: "id_transaksi",
+    bookIdColumn: "id_buku",
+    copyIdColumn: "id_copy",
+    quantityColumn: "jumlah",
+  },
+  {
+    table: "peminjaman_detail",
+    transactionIdColumn: "id_transaksi",
+    bookIdColumn: "id_buku",
+    copyIdColumn: "id_copy",
+    quantityColumn: "jumlah",
+  },
+];
+
+export type TransactionBookItem = {
+  key: string;
+  transactionId: number;
+  bookId: number | null;
+  copyIds: number[];
+  title: string;
+  author: string | null;
+  code: string | null;
+  category: string | null;
+  quantity: number;
+};
+
+export type DetailedTransactionRecord = TransaksiRecord & {
+  siswa: {
+    id_siswa: number;
+    nama: string;
+    nisn: string | null;
+    kelas: string | null;
+    nomor_whatsapp: string | null;
+  } | null;
+  items: TransactionBookItem[];
+};
+
 export type AbsensiRecord = {
   id_absensi: number;
   nama: string;
@@ -56,6 +120,34 @@ export type AttendanceRecordPage = {
   totalPages: number;
   limit: number;
 };
+
+function readString(row: Row, keys: string[]) {
+  for (const key of keys) {
+    const value = row[key];
+
+    if (typeof value === "string" && value.trim()) {
+      return value.trim();
+    }
+  }
+
+  return null;
+}
+
+function readNumber(row: Row, keys: string[]) {
+  for (const key of keys) {
+    const value = row[key];
+
+    if (typeof value === "number" && Number.isFinite(value)) {
+      return value;
+    }
+
+    if (typeof value === "string" && value.trim() && !Number.isNaN(Number(value))) {
+      return Number(value);
+    }
+  }
+
+  return null;
+}
 
 export async function getBooks() {
   const supabase = getServerSupabaseClient();
@@ -122,6 +214,142 @@ export async function getTransactions() {
   }
 
   return data ?? [];
+}
+
+async function loadTransactionDetailRows(transactionIds: number[]) {
+  if (transactionIds.length === 0) {
+    return { rows: [] as Row[], config: null as DetailTableConfig | null };
+  }
+
+  const supabase = getServerSupabaseClient();
+
+  for (const config of detailTableConfigs) {
+    const { data, error } = await supabase
+      .from(config.table)
+      .select("*")
+      .in(config.transactionIdColumn, transactionIds);
+
+    if (!error && data) {
+      return { rows: data as Row[], config };
+    }
+  }
+
+  return { rows: [] as Row[], config: null };
+}
+
+async function loadBookMap(bookIds: number[]) {
+  if (bookIds.length === 0) {
+    return new Map<number, BukuRecord>();
+  }
+
+  const supabase = getServerSupabaseClient();
+  const { data, error } = await supabase
+    .from("buku")
+    .select("id_buku, judul, penulis, penerbit, tahun_terbit, lokasi_rak, stok_buku")
+    .in("id_buku", bookIds)
+    .returns<BukuRecord[]>();
+
+  if (error) {
+    return new Map<number, BukuRecord>();
+  }
+
+  return new Map((data ?? []).map((book) => [book.id_buku, book]));
+}
+
+export async function getDetailedTransactions(): Promise<DetailedTransactionRecord[]> {
+  const [transactions, students] = await Promise.all([
+    getTransactions(),
+    getStudents(),
+  ]);
+  const transactionIds = transactions.map((item) => item.id_transaksi);
+  const { rows, config } = await loadTransactionDetailRows(transactionIds);
+  const bookIds = rows
+    .map((row) =>
+      config
+        ? readNumber(row, [config.bookIdColumn, "id_buku", "book_id"])
+        : null
+    )
+    .filter((id): id is number => typeof id === "number");
+  const bookMap = await loadBookMap([...new Set(bookIds)]);
+  const studentMap = new Map(students.map((student) => [student.id_siswa, student]));
+  const itemMap = new Map<number, Map<string, TransactionBookItem>>();
+
+  if (config) {
+    rows.forEach((row, rowIndex) => {
+      const transactionId = readNumber(row, [
+        config.transactionIdColumn,
+        "id_transaksi",
+        "transaction_id",
+      ]);
+
+      if (!transactionId) {
+        return;
+      }
+
+      const bookId = readNumber(row, [config.bookIdColumn, "id_buku", "book_id"]);
+      const copyId = readNumber(row, [
+        config.copyIdColumn,
+        "id_copy",
+        "id_copy_buku",
+        "copy_id",
+        "id_eksemplar",
+      ]);
+      const quantity = readNumber(row, [
+        config.quantityColumn,
+        "jumlah",
+        "jumlah_buku",
+        "qty",
+        "quantity",
+      ]);
+      const book = bookId ? bookMap.get(bookId) : null;
+      const key = bookId
+        ? `book:${bookId}`
+        : copyId
+          ? `copy:${copyId}`
+          : `row:${rowIndex}`;
+      const transactionItems = itemMap.get(transactionId) ?? new Map<string, TransactionBookItem>();
+      const current = transactionItems.get(key) ?? {
+        key,
+        transactionId,
+        bookId,
+        copyIds: [],
+        title:
+          readString(row, ["judul", "judul_buku", "title"]) ??
+          book?.judul ??
+          "Buku tidak diketahui",
+        author: readString(row, ["penulis", "author"]) ?? book?.penulis ?? null,
+        code: readString(row, ["kode", "kode_buku", "isbn"]) ?? null,
+        category: readString(row, ["kategori", "genre", "nama_genre"]) ?? null,
+        quantity: 0,
+      };
+
+      if (copyId && !current.copyIds.includes(copyId)) {
+        current.copyIds.push(copyId);
+      }
+
+      current.quantity += quantity && quantity > 0 ? quantity : 1;
+      transactionItems.set(key, current);
+      itemMap.set(transactionId, transactionItems);
+    });
+  }
+
+  return transactions.map((transaction) => {
+    const siswa = studentMap.get(transaction.id_siswa) ?? null;
+
+    return {
+      ...transaction,
+      siswa: siswa
+        ? {
+            id_siswa: siswa.id_siswa,
+            nama: siswa.nama,
+            nisn: siswa.nisn,
+            kelas: siswa.kelas,
+            nomor_whatsapp: siswa.nomor_whatsapp,
+          }
+        : null,
+      items: Array.from(itemMap.get(transaction.id_transaksi)?.values() ?? []),
+    };
+  });
 }
 
 export async function getAttendanceRecords(

@@ -39,12 +39,23 @@ const removedCopyStatusKeywords = [
 ];
 const borrowedCopyStatusKeywords = ["dipinjam"];
 const availableCopyStatusValues = ["tersedia", "available"];
+const damagedCopyConditionKeywords = ["rusak", "damaged"];
 
 type CopyCounts = {
   active: number;
   available: number;
   borrowed: number;
+  damaged: number;
   removed: number;
+};
+
+export type CatalogCopySummary = {
+  totalCopies: number;
+  availableCount: number;
+  borrowedCount: number;
+  damagedCount: number;
+  removedCount: number;
+  unavailableCount: number;
 };
 
 export type CatalogGenre = {
@@ -68,6 +79,7 @@ export type AdminCatalogBook = {
   totalCopies: number;
   availableCount: number;
   borrowedCount: number;
+  damagedCount: number;
   removedCount: number;
   unavailableCount: number;
 };
@@ -135,6 +147,20 @@ function isAvailableCopyStatus(normalizedStatus: string) {
   }
 
   return availableCopyStatusValues.includes(normalizedStatus);
+}
+
+function isDamagedCopyCondition(normalizedCondition: string) {
+  if (!normalizedCondition) {
+    return false;
+  }
+
+  return damagedCopyConditionKeywords.some((keyword) =>
+    normalizedCondition.includes(keyword)
+  );
+}
+
+function isDamagedCopyStatus(normalizedStatus: string) {
+  return normalizedStatus === "rusak";
 }
 
 function parseInlineGenres(row: Row) {
@@ -241,10 +267,17 @@ async function loadCopyCounts(bookIds: number[]) {
   for (const config of copyTableConfigs) {
     const { data, error } = await supabase
       .from(config.table)
-      .select(`${config.bookIdColumn}, ${config.statusColumn}`)
+      .select("*")
       .in(config.bookIdColumn, bookIds);
 
     if (!error && data) {
+      if (
+        data.length > 0 &&
+        !Object.prototype.hasOwnProperty.call(data[0], config.statusColumn)
+      ) {
+        continue;
+      }
+
       const counts = new Map<number, CopyCounts>();
 
       (data as Row[]).forEach((row) => {
@@ -258,15 +291,30 @@ async function loadCopyCounts(bookIds: number[]) {
           active: 0,
           available: 0,
           borrowed: 0,
+          damaged: 0,
           removed: 0,
         };
         const status = readString(row, [config.statusColumn]);
         const normalizedStatus = normalizeStatus(status);
+        const condition = readString(row, [
+          "kondisi",
+          "condition",
+          "kondisi_fisik",
+          "status_kondisi",
+        ]);
+        const normalizedCondition = normalizeStatus(condition);
 
         if (isRemovedCopyStatus(normalizedStatus)) {
           current.removed += 1;
         } else {
           current.active += 1;
+
+          if (
+            isDamagedCopyStatus(normalizedStatus) ||
+            isDamagedCopyCondition(normalizedCondition)
+          ) {
+            current.damaged += 1;
+          }
 
           if (isAvailableCopyStatus(normalizedStatus)) {
             current.available += 1;
@@ -285,6 +333,31 @@ async function loadCopyCounts(bookIds: number[]) {
   }
 
   return new Map<number, CopyCounts>();
+}
+
+function toCopySummary(counts: CopyCounts): CatalogCopySummary {
+  return {
+    totalCopies: counts.active,
+    availableCount: counts.available,
+    borrowedCount: counts.borrowed,
+    damagedCount: counts.damaged,
+    removedCount: counts.removed,
+    unavailableCount: Math.max(counts.active - counts.available, 0),
+  };
+}
+
+export async function getCatalogBookCopySummary(
+  bookId: number
+): Promise<CatalogCopySummary> {
+  const counts = (await loadCopyCounts([bookId])).get(bookId) ?? {
+    active: 0,
+    available: 0,
+    borrowed: 0,
+    damaged: 0,
+    removed: 0,
+  };
+
+  return toCopySummary(counts);
 }
 
 export async function getAdminCatalogData(): Promise<AdminCatalogData> {
@@ -313,8 +386,11 @@ export async function getAdminCatalogData(): Promise<AdminCatalogData> {
     const id = readNumber(row, ["id_buku", "book_id", "id"]) ?? 0;
     const fallbackStock = readNumber(row, ["stok_buku", "stock", "jumlah_copy"]) ?? 0;
     const counts = copyCounts.get(id) ?? {
-      total: fallbackStock,
+      active: fallbackStock,
       available: fallbackStock,
+      borrowed: 0,
+      damaged: 0,
+      removed: 0,
     };
     const inlineGenres = parseInlineGenres(row).map((name) => ({
       id: name,
@@ -335,11 +411,7 @@ export async function getAdminCatalogData(): Promise<AdminCatalogData> {
       coverUrl: readString(row, ["foto_buku", "foto_url", "cover_url", "gambar"]),
       description: readString(row, ["deskripsi", "description", "sinopsis"]),
       genres: relatedGenres,
-      totalCopies: counts.active,
-      availableCount: counts.available,
-      borrowedCount: counts.borrowed,
-      removedCount: counts.removed,
-      unavailableCount: Math.max(counts.active - counts.available, 0),
+      ...toCopySummary(counts),
     } satisfies AdminCatalogBook;
   });
 

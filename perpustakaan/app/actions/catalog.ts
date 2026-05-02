@@ -3,15 +3,24 @@
 import { revalidatePath } from "next/cache";
 import { getServerSupabaseClient } from "@/lib/supabase-server";
 import { getSessionUser } from "@/modules/access/lib/session";
+import { isCatalogShelfLocation } from "@/modules/library/lib/shelf-locations";
 import {
   getBookGenreTableConfigs,
+  getCatalogBookCopySummary,
   getCatalogGenres,
   getCopyTableConfigs,
+  type CatalogCopySummary,
 } from "@/modules/library/lib/catalog";
 
 export type CatalogActionState = {
   error: string;
   success: string;
+  blockedByTransactions?: boolean;
+};
+
+export type CatalogCopySummaryState = {
+  error: string;
+  summary: CatalogCopySummary | null;
 };
 
 const emptyState: CatalogActionState = {
@@ -56,6 +65,16 @@ function parseInitialCopies(value: string) {
   return count;
 }
 
+function parsePositiveInteger(value: string) {
+  const count = Number(value);
+
+  if (!Number.isInteger(count) || count < 1) {
+    return null;
+  }
+
+  return count;
+}
+
 async function ensureUniqueIsbn(isbn: string) {
   if (!isbn) {
     return true;
@@ -91,6 +110,29 @@ async function insertInitialCopies(bookId: number, copyCount: number) {
   }
 
   return false;
+}
+
+async function updateBookStock(bookId: number, delta: number) {
+  const supabase = getServerSupabaseClient();
+  const { data, error } = await supabase
+    .from("buku")
+    .select("stok_buku")
+    .eq("id_buku", bookId)
+    .single<{ stok_buku: number | null }>();
+
+  if (error) {
+    return;
+  }
+
+  const currentStock =
+    typeof data?.stok_buku === "number" && Number.isFinite(data.stok_buku)
+      ? data.stok_buku
+      : 0;
+
+  await supabase
+    .from("buku")
+    .update({ stok_buku: Math.max(currentStock + delta, 0) } as never)
+    .eq("id_buku", bookId);
 }
 
 async function insertBookGenres(bookId: number, genreIds: string[]) {
@@ -155,6 +197,228 @@ async function removeBookGenres(bookId: number) {
   }
 }
 
+async function removeGenreRelations(genreId: string) {
+  const supabase = getServerSupabaseClient();
+
+  for (const config of getBookGenreTableConfigs()) {
+    await supabase.from(config.table).delete().eq(config.genreIdColumn, genreId);
+  }
+}
+
+function genrePayloads(name: string, description: string) {
+  return [
+    {
+      nama: name,
+      deskripsi: description || null,
+    },
+    {
+      nama_genre: name,
+      deskripsi_genre: description || null,
+    },
+    {
+      name,
+      description: description || null,
+    },
+  ];
+}
+
+async function hasRowsByColumn(table: string, column: string, value: number | string) {
+  const supabase = getServerSupabaseClient();
+  const { count, error } = await supabase
+    .from(table)
+    .select("*", { count: "exact", head: true })
+    .eq(column, value);
+
+  if (error) {
+    return false;
+  }
+
+  return (count ?? 0) > 0;
+}
+
+async function getBookCopyIds(bookId: number) {
+  const supabase = getServerSupabaseClient();
+  const copyIdColumns = ["id_copy", "id_copy_buku", "copy_id", "id_eksemplar", "id"];
+
+  for (const config of getCopyTableConfigs()) {
+    const { data, error } = await supabase
+      .from(config.table)
+      .select("*")
+      .eq(config.bookIdColumn, bookId);
+
+    if (!error && data) {
+      return (data as Record<string, unknown>[])
+        .map((row) => {
+          for (const column of copyIdColumns) {
+            const value = row[column];
+
+            if (typeof value === "number" && Number.isFinite(value)) {
+              return value;
+            }
+
+            if (typeof value === "string" && value.trim() && !Number.isNaN(Number(value))) {
+              return Number(value);
+            }
+          }
+
+          return null;
+        })
+        .filter((value): value is number => value !== null);
+    }
+  }
+
+  return [];
+}
+
+function readCopyRowId(row: Record<string, unknown>) {
+  const copyIdColumns = ["id_copy", "id_copy_buku", "copy_id", "id_eksemplar", "id"];
+
+  for (const column of copyIdColumns) {
+    const value = row[column];
+
+    if (typeof value === "number" && Number.isFinite(value)) {
+      return { column, value };
+    }
+
+    if (typeof value === "string" && value.trim() && !Number.isNaN(Number(value))) {
+      return { column, value: Number(value) };
+    }
+  }
+
+  return null;
+}
+
+function normalizeCopyStatus(value: unknown) {
+  return String(value ?? "").trim().toLowerCase();
+}
+
+function isBorrowedCopyStatus(status: string) {
+  return status.includes("dipinjam") || status.includes("borrowed");
+}
+
+function isRemovedCopyStatus(status: string) {
+  return (
+    status.includes("dikeluarkan") ||
+    status.includes("hilang") ||
+    status.includes("keluar") ||
+    status.includes("dibuang") ||
+    status.includes("musnah")
+  );
+}
+
+function isRemovableCopy(row: Record<string, unknown>, statusColumn: string) {
+  const status = normalizeCopyStatus(row[statusColumn]);
+
+  return !isBorrowedCopyStatus(status) && !isRemovedCopyStatus(status);
+}
+
+async function updateCopyAsRemoved(
+  table: string,
+  statusColumn: string,
+  idColumn: string,
+  idValue: number,
+  reason: string
+) {
+  const supabase = getServerSupabaseClient();
+  let lastError = "";
+  const normalizedReason = reason.trim().toLowerCase();
+  const targetStatuses =
+    normalizedReason === "rusak berat"
+      ? ["dikeluarkan", "hilang", "rusak"]
+      : normalizedReason === "lainnya"
+        ? ["dikeluarkan", "hilang"]
+        : ["hilang", "dikeluarkan"];
+  const payloads = targetStatuses.flatMap((status) => [
+    {
+      [statusColumn]: status,
+      alasan_dikeluarkan: reason,
+      catatan: reason,
+    },
+    {
+      [statusColumn]: status,
+      alasan_dikeluarkan: reason,
+    },
+    {
+      [statusColumn]: status,
+      catatan: reason,
+    },
+    {
+      [statusColumn]: status,
+    },
+  ]);
+
+  for (const payload of payloads) {
+    const { error } = await supabase
+      .from(table)
+      .update(payload as never)
+      .eq(idColumn, idValue);
+
+    if (!error) {
+      return { success: true, error: "" };
+    }
+
+    lastError = error.message;
+  }
+
+  return { success: false, error: lastError };
+}
+
+async function hasBorrowedCopyStatus(bookId: number) {
+  const supabase = getServerSupabaseClient();
+
+  for (const config of getCopyTableConfigs()) {
+    const { count, error } = await supabase
+      .from(config.table)
+      .select("*", { count: "exact", head: true })
+      .eq(config.bookIdColumn, bookId)
+      .eq(config.statusColumn, "dipinjam");
+
+    if (!error && (count ?? 0) > 0) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+async function bookHasBorrowingHistory(bookId: number) {
+  const transactionTables = ["transaksi", "peminjaman"];
+  const transactionDetailTables = [
+    "detail_transaksi",
+    "transaksi_detail",
+    "detail_peminjaman",
+    "peminjaman_detail",
+  ];
+  const bookIdColumns = ["id_buku", "book_id"];
+  const copyIdColumns = ["id_copy", "id_copy_buku", "copy_id", "id_eksemplar"];
+
+  if (await hasBorrowedCopyStatus(bookId)) {
+    return true;
+  }
+
+  for (const table of [...transactionTables, ...transactionDetailTables]) {
+    for (const column of bookIdColumns) {
+      if (await hasRowsByColumn(table, column, bookId)) {
+        return true;
+      }
+    }
+  }
+
+  const copyIds = await getBookCopyIds(bookId);
+
+  for (const copyId of copyIds) {
+    for (const table of [...transactionTables, ...transactionDetailTables]) {
+      for (const column of copyIdColumns) {
+        if (await hasRowsByColumn(table, column, copyId)) {
+          return true;
+        }
+      }
+    }
+  }
+
+  return false;
+}
+
 export async function createCatalogGenre(
   _prevState: CatalogActionState | undefined,
   formData: FormData
@@ -180,22 +444,7 @@ export async function createCatalogGenre(
   const supabase = getServerSupabaseClient();
 
   for (const table of ["genre", "genres"]) {
-    const payloads = [
-      {
-        nama: name,
-        deskripsi: description || null,
-      },
-      {
-        nama_genre: name,
-        deskripsi_genre: description || null,
-      },
-      {
-        name,
-        description: description || null,
-      },
-    ];
-
-    for (const payload of payloads) {
+    for (const payload of genrePayloads(name, description)) {
       const { error } = await supabase.from(table).insert(payload as never);
 
       if (!error) {
@@ -209,6 +458,111 @@ export async function createCatalogGenre(
   return {
     error:
       "Tabel genre belum tersedia atau kolomnya berbeda. Siapkan tabel genre untuk menyimpan data ini.",
+    success: "",
+  };
+}
+
+export async function updateCatalogGenre(
+  genreId: string,
+  name: string,
+  description: string
+): Promise<CatalogActionState> {
+  await requireAdminAction();
+
+  const id = genreId.trim();
+  const nextName = name.trim();
+  const nextDescription = description.trim();
+
+  if (!id) {
+    return { error: "Genre tidak valid.", success: "" };
+  }
+
+  if (!nextName) {
+    return { error: "Nama genre wajib diisi.", success: "" };
+  }
+
+  const existingGenres = await getCatalogGenres();
+  const isDuplicate = existingGenres.some(
+    (genre) =>
+      genre.id !== id &&
+      genre.name.trim().toLowerCase() === nextName.toLowerCase()
+  );
+
+  if (isDuplicate) {
+    return { error: "Genre dengan nama tersebut sudah ada.", success: "" };
+  }
+
+  const supabase = getServerSupabaseClient();
+  const idColumns = ["id_genre", "genre_id", "id"];
+
+  for (const table of ["genre", "genres"]) {
+    for (const idColumn of idColumns) {
+      for (const payload of genrePayloads(nextName, nextDescription)) {
+        const { data, error } = await supabase
+          .from(table)
+          .update(payload as never)
+          .eq(idColumn, id)
+          .select("*")
+          .limit(1);
+
+        if (!error && data && data.length > 0) {
+          revalidatePath("/admin/buku");
+          revalidatePath("/admin/buku/tambah");
+          return { error: "", success: "Genre berhasil diperbarui." };
+        }
+      }
+    }
+  }
+
+  return {
+    error:
+      "Genre gagal diperbarui. Tabel genre belum tersedia atau kolomnya berbeda.",
+    success: "",
+  };
+}
+
+export async function deleteCatalogGenre(
+  genreId: string
+): Promise<CatalogActionState> {
+  await requireAdminAction();
+
+  const id = genreId.trim();
+
+  if (!id) {
+    return { error: "Genre tidak valid.", success: "" };
+  }
+
+  await removeGenreRelations(id);
+
+  const supabase = getServerSupabaseClient();
+  const idColumns = ["id_genre", "genre_id", "id"];
+  let lastError = "";
+
+  for (const table of ["genre", "genres"]) {
+    for (const idColumn of idColumns) {
+      const { data, error } = await supabase
+        .from(table)
+        .delete()
+        .eq(idColumn, id)
+        .select("*")
+        .limit(1);
+
+      if (!error && data && data.length > 0) {
+        revalidatePath("/admin/buku");
+        revalidatePath("/admin/buku/tambah");
+        return { error: "", success: "Genre berhasil dihapus." };
+      }
+
+      if (error) {
+        lastError = error.message;
+      }
+    }
+  }
+
+  return {
+    error: lastError
+      ? `Genre gagal dihapus: ${lastError}`
+      : "Genre gagal dihapus. Data genre tidak ditemukan.",
     success: "",
   };
 }
@@ -238,6 +592,10 @@ export async function createCatalogBook(
 
   if (!author) {
     return { error: "Penulis wajib diisi.", success: "" };
+  }
+
+  if (shelfLocation && !isCatalogShelfLocation(shelfLocation)) {
+    return { error: "Lokasi rak harus dipilih dari daftar rak yang tersedia.", success: "" };
   }
 
   if (readTrimmed(formData, "tahun_terbit") && year === null) {
@@ -279,6 +637,7 @@ export async function createCatalogBook(
         judul: title,
         penulis: author,
         penerbit: publisher || null,
+        isbn: isbn || null,
         tahun_terbit: year,
         lokasi_rak: shelfLocation || null,
         stok_buku: initialCopies,
@@ -337,6 +696,10 @@ export async function updateCatalogBook(
     return { error: "Judul dan penulis wajib diisi.", success: "" };
   }
 
+  if (shelfLocation && !isCatalogShelfLocation(shelfLocation)) {
+    return { error: "Lokasi rak harus dipilih dari daftar rak yang tersedia.", success: "" };
+  }
+
   if (readTrimmed(formData, "tahun_terbit") && year === null) {
     return { error: "Tahun terbit harus berupa angka tahun yang valid.", success: "" };
   }
@@ -362,6 +725,7 @@ export async function updateCatalogBook(
         judul: title,
         penulis: author,
         penerbit: publisher || null,
+        isbn: isbn || null,
         tahun_terbit: year,
         lokasi_rak: shelfLocation || null,
       } as never)
@@ -380,11 +744,83 @@ export async function updateCatalogBook(
   return { error: "", success: "Buku berhasil diperbarui." };
 }
 
-export async function deleteCatalogBook(bookId: number) {
+export async function loadCatalogBookCopySummary(
+  bookId: number
+): Promise<CatalogCopySummaryState> {
   await requireAdminAction();
 
   if (!Number.isInteger(bookId) || bookId <= 0) {
-    throw new Error("Buku tidak valid.");
+    return { error: "Buku tidak valid.", summary: null };
+  }
+
+  try {
+    const summary = await getCatalogBookCopySummary(bookId);
+
+    return { error: "", summary };
+  } catch (error) {
+    return {
+      error:
+        error instanceof Error
+          ? `Gagal memuat ringkasan eksemplar: ${error.message}`
+          : "Gagal memuat ringkasan eksemplar.",
+      summary: null,
+    };
+  }
+}
+
+export async function addCatalogCopies(
+  bookId: number,
+  quantity: number
+): Promise<CatalogActionState> {
+  await requireAdminAction();
+
+  if (!Number.isInteger(bookId) || bookId <= 0) {
+    return { error: "Buku tidak valid.", success: "" };
+  }
+
+  const parsedQuantity = parsePositiveInteger(String(quantity));
+
+  if (parsedQuantity === null) {
+    return { error: "Jumlah eksemplar harus minimal 1.", success: "" };
+  }
+
+  const inserted = await insertInitialCopies(bookId, parsedQuantity);
+
+  if (!inserted) {
+    return {
+      error:
+        "Tabel eksemplar belum tersedia atau kolomnya berbeda, sehingga eksemplar belum bisa ditambahkan.",
+      success: "",
+    };
+  }
+
+  await updateBookStock(bookId, parsedQuantity);
+
+  revalidatePath("/admin/buku");
+  revalidatePath("/admin/buku/tambah");
+  revalidatePath("/public/katalog");
+  revalidatePath("/siswa/katalog");
+
+  return {
+    error: "",
+    success: `${parsedQuantity} eksemplar berhasil ditambahkan.`,
+  };
+}
+
+export async function deleteCatalogBook(bookId: number): Promise<CatalogActionState> {
+  await requireAdminAction();
+
+  if (!Number.isInteger(bookId) || bookId <= 0) {
+    return { error: "Buku tidak valid.", success: "" };
+  }
+
+  if (await bookHasBorrowingHistory(bookId)) {
+    return {
+      error:
+        "Buku ini tidak dapat dihapus karena sudah pernah dipinjam. Riwayat peminjaman harus tetap tersimpan.",
+      success: "",
+      blockedByTransactions: true,
+    };
   }
 
   await Promise.all([removeBookCopies(bookId), removeBookGenres(bookId)]);
@@ -393,11 +829,134 @@ export async function deleteCatalogBook(bookId: number) {
   const { error } = await supabase.from("buku").delete().eq("id_buku", bookId);
 
   if (error) {
-    throw new Error(`Gagal menghapus buku: ${error.message}`);
+    const isRelationError =
+      error.code === "23503" ||
+      error.message.toLowerCase().includes("violates foreign key constraint") ||
+      error.message.toLowerCase().includes("transaksi");
+
+    if (isRelationError) {
+      return {
+        error:
+          "Buku ini tidak dapat dihapus karena sudah pernah dipinjam. Riwayat peminjaman harus tetap tersimpan.",
+        success: "",
+        blockedByTransactions: true,
+      };
+    }
+
+    return { error: `Gagal menghapus buku: ${error.message}`, success: "" };
   }
 
   revalidatePath("/admin/buku");
   revalidatePath("/admin/buku/tambah");
   revalidatePath("/public/katalog");
   revalidatePath("/siswa/katalog");
+
+  return { error: "", success: "Buku berhasil dihapus." };
+}
+
+export async function removeCatalogCopies(
+  bookId: number,
+  quantity: number,
+  reason: string
+): Promise<CatalogActionState> {
+  await requireAdminAction();
+
+  if (!Number.isInteger(bookId) || bookId <= 0) {
+    return { error: "Buku tidak valid.", success: "" };
+  }
+
+  const parsedQuantity = parsePositiveInteger(String(quantity));
+
+  if (parsedQuantity === null) {
+    return { error: "Jumlah eksemplar harus minimal 1.", success: "" };
+  }
+
+  if (!reason.trim()) {
+    return { error: "Alasan wajib dipilih.", success: "" };
+  }
+
+  const supabase = getServerSupabaseClient();
+  if (reason.trim().toLowerCase() === "tidak kembali dari peminjam") {
+    return {
+      error:
+        "Eksemplar yang tidak kembali dari peminjam harus diproses melalui modul pengembalian agar transaksi siswa ikut tercatat.",
+      success: "",
+    };
+  }
+
+  for (const config of getCopyTableConfigs()) {
+    const { data, error } = await supabase
+      .from(config.table)
+      .select("*")
+      .eq(config.bookIdColumn, bookId);
+
+    if (error || !data) {
+      continue;
+    }
+
+    const selectedCopies = (data as Record<string, unknown>[])
+      .filter((copy) => isRemovableCopy(copy, config.statusColumn))
+      .slice(0, parsedQuantity);
+
+    if (selectedCopies.length < parsedQuantity) {
+      return {
+        error: `Jumlah melebihi eksemplar aktif yang tidak sedang dipinjam. Maksimal ${selectedCopies.length} eksemplar.`,
+        success: "",
+      };
+    }
+
+    let updatedCount = 0;
+    let lastUpdateError = "";
+
+    for (const copy of selectedCopies) {
+      const copyId = readCopyRowId(copy);
+
+      if (!copyId) {
+        return {
+          error:
+            "Eksemplar tidak memiliki kolom ID yang dikenali, sehingga belum bisa dikeluarkan dari UI.",
+          success: "",
+        };
+      }
+
+      const updated = await updateCopyAsRemoved(
+        config.table,
+        config.statusColumn,
+        copyId.column,
+        copyId.value,
+        reason.trim()
+      );
+
+      if (updated.success) {
+        updatedCount += 1;
+      } else {
+        lastUpdateError = updated.error;
+      }
+    }
+
+    if (updatedCount !== parsedQuantity) {
+      return {
+        error: lastUpdateError
+          ? `Eksemplar gagal dikeluarkan: ${lastUpdateError}`
+          : "Sebagian eksemplar gagal dikeluarkan. Coba ulangi beberapa saat lagi.",
+        success: "",
+      };
+    }
+
+    revalidatePath("/admin/buku");
+    revalidatePath("/admin/buku/tambah");
+    revalidatePath("/public/katalog");
+    revalidatePath("/siswa/katalog");
+
+    return {
+      error: "",
+      success: `${parsedQuantity} eksemplar berhasil dikeluarkan.`,
+    };
+  }
+
+  return {
+    error:
+      "Tabel eksemplar belum tersedia atau kolomnya berbeda, sehingga eksemplar belum bisa dikeluarkan.",
+    success: "",
+  };
 }
