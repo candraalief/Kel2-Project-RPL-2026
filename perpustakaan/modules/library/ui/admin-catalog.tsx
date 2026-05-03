@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
+  type ReactNode,
   useActionState,
   useDeferredValue,
   useEffect,
@@ -743,89 +744,95 @@ function FilterPanel({
   const hiddenGenreCount = Math.max(genres.length - visibleGenres.length, 0);
 
   return (
-    <section>
+    <section className="rounded-2xl border border-zinc-200 bg-zinc-50 p-3">
       <div className="flex items-center gap-2 text-zinc-950">
         <FilterIcon />
-        <h2 className="text-xs font-semibold">Filter</h2>
+        <h2 className="text-sm font-semibold">Filter</h2>
         <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-[#dfeeff] px-1.5 text-[10px] font-semibold text-[#1768d8]">
           {activeFilterCount}
         </span>
       </div>
 
-      <div className="mt-2 space-y-2">
-          <div className="space-y-1">
-            <p className="text-[11px] font-semibold text-slate-600">Genre</p>
-            <div className="flex flex-wrap items-center gap-1.5">
-              {genres.length === 0 ? (
-                <p className="text-[11px] text-zinc-500">Belum ada genre.</p>
-              ) : (
-                visibleGenres.map((genre) => (
-                  <GenreOption
-                    key={genre.id}
-                    label={genre.name}
-                    checked={selectedGenreIds.includes(genre.id)}
-                    onClick={() => onToggleGenre(genre.id)}
-                  />
-                ))
-              )}
-              {genres.length > 3 ? (
-                <button
-                  type="button"
-                  onClick={() => onShowAllGenresChange(!showAllGenres)}
-                  className="inline-flex h-6 items-center justify-center rounded-full border border-zinc-200 bg-white px-3 text-[11px] font-semibold text-[#1768d8] transition hover:bg-zinc-50"
-                >
-                  {showAllGenres ? "Less" : `More +${hiddenGenreCount}`}
-                </button>
-              ) : null}
-            </div>
-          </div>
-
-          <div className="grid gap-2 md:grid-cols-[1.2fr_1fr_1fr] md:items-end">
-            <label className="block space-y-1">
-              <span className="text-xs font-semibold text-slate-600">
-                Status Ketersediaan
-              </span>
-              <select
-                value={availability}
-                onChange={(event) =>
-                  onAvailabilityChange(event.currentTarget.value as AvailabilityFilter)
-                }
-                className="h-9 w-full rounded-md border border-zinc-300 bg-white px-3 text-sm text-zinc-900 outline-none transition focus:border-[#1d66d6]"
+      <div className="mt-3 space-y-3">
+        <div className="space-y-1.5">
+          <p className="text-sm font-medium text-zinc-700">Genre</p>
+          <div className="flex flex-wrap items-center gap-1.5">
+            {genres.length === 0 ? (
+              <p className="text-[11px] text-zinc-500">Belum ada genre.</p>
+            ) : (
+              visibleGenres.map((genre) => (
+                <GenreOption
+                  key={genre.id}
+                  label={genre.name}
+                  checked={selectedGenreIds.includes(genre.id)}
+                  onClick={() => onToggleGenre(genre.id)}
+                />
+              ))
+            )}
+            {genres.length > 3 ? (
+              <button
+                type="button"
+                onClick={() => onShowAllGenresChange(!showAllGenres)}
+                className="inline-flex h-6 items-center justify-center rounded-full border border-zinc-200 bg-white px-3 text-[11px] font-semibold text-[#1768d8] transition hover:bg-zinc-50"
               >
-                <option value="all">Semua Status</option>
-                <option value="available">Tersedia</option>
-                <option value="unavailable">Tidak tersedia</option>
-              </select>
-            </label>
-
-            <label className="block space-y-1">
-              <span className="text-xs font-semibold text-slate-600">
-                Tahun Dari
-              </span>
-              <input
-                type="number"
-                value={yearFrom}
-                onChange={(event) => onYearFromChange(event.currentTarget.value)}
-                placeholder="2000"
-                className="h-9 w-full rounded-md border border-transparent bg-[#f1f1f4] px-3 text-sm text-zinc-900 outline-none transition placeholder:text-slate-500 focus:border-[#1d66d6]"
-              />
-            </label>
-
-            <label className="block space-y-1">
-              <span className="text-xs font-semibold text-slate-600">
-                Tahun Sampai
-              </span>
-              <input
-                type="number"
-                value={yearTo}
-                onChange={(event) => onYearToChange(event.currentTarget.value)}
-                placeholder="2026"
-                className="h-9 w-full rounded-md border border-transparent bg-[#f1f1f4] px-3 text-sm text-zinc-900 outline-none transition placeholder:text-slate-500 focus:border-[#1d66d6]"
-              />
-            </label>
+                {showAllGenres ? "Less" : `More +${hiddenGenreCount}`}
+              </button>
+            ) : null}
           </div>
         </div>
+
+        <div className="grid gap-3 xl:grid-cols-[1fr_0.8fr_0.8fr] xl:items-end">
+          <CatalogFilterField label="Status Ketersediaan">
+            <select
+              value={availability}
+              onChange={(event) =>
+                onAvailabilityChange(event.currentTarget.value as AvailabilityFilter)
+              }
+              className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2.5 text-sm text-zinc-900 outline-none transition focus:border-[#1d66d6]"
+            >
+              <option value="all">Semua Status</option>
+              <option value="available">Tersedia</option>
+              <option value="unavailable">Tidak tersedia</option>
+            </select>
+          </CatalogFilterField>
+
+          <CatalogFilterField label="Tahun Dari">
+            <input
+              type="number"
+              value={yearFrom}
+              onChange={(event) => onYearFromChange(event.currentTarget.value)}
+              placeholder="2000"
+              className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2.5 text-sm text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-[#1d66d6]"
+            />
+          </CatalogFilterField>
+
+          <CatalogFilterField label="Tahun Sampai">
+            <input
+              type="number"
+              value={yearTo}
+              onChange={(event) => onYearToChange(event.currentTarget.value)}
+              placeholder="2026"
+              className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2.5 text-sm text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-[#1d66d6]"
+            />
+          </CatalogFilterField>
+        </div>
+      </div>
     </section>
+  );
+}
+
+function CatalogFilterField({
+  label,
+  children,
+}: {
+  label: string;
+  children: ReactNode;
+}) {
+  return (
+    <label className="space-y-1.5 text-sm font-medium text-zinc-700">
+      <span>{label}</span>
+      {children}
+    </label>
   );
 }
 
