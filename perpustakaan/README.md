@@ -1,62 +1,52 @@
 # Sistem Informasi Perpustakaan SMAN 10 Bogor
 
-Proyek ini adalah aplikasi web perpustakaan sekolah berbasis **Next.js** dengan pendekatan **Modular Monolith**. Sistem dibangun untuk mendukung tiga mode akses utama:
+Aplikasi web perpustakaan sekolah berbasis **Next.js App Router** dan **Supabase PostgreSQL**. Sistem ini mendukung tiga mode akses:
 
-- **Administrator / Petugas Perpustakaan**
+- **Admin / Petugas Perpustakaan**
 - **Siswa**
 - **Publik / Pengunjung**
 
-Saat ini proyek sudah memiliki fondasi autentikasi, navigasi per peran, layout dashboard, pembacaan data nyata dari database Supabase, serta beberapa action penting seperti pendaftaran siswa, verifikasi akun siswa, update password siswa oleh admin, reset password siswa berbasis bantuan admin, dan absensi.
-
-README ini merangkum:
-
-- status implementasi saat ini
-- fitur yang sudah berjalan
-- fitur yang masih parsial
-- fitur yang belum diimplementasikan
-- kebutuhan konfigurasi
+Status proyek saat ini: aplikasi sudah memakai data nyata dari database untuk autentikasi, anggota, katalog buku, genre, eksemplar buku, absensi, profil, dan transaksi. Beberapa workflow inti admin seperti modul anggota dan katalog sudah memiliki aksi CRUD/konfirmasi yang cukup lengkap.
 
 ## Teknologi
 
 - **Frontend**: Next.js 16, React 19, Tailwind CSS 4
 - **Backend**: Next.js App Router + Server Actions
 - **Database**: Supabase PostgreSQL
-- **Password Hashing**: bcryptjs
+- **Auth/session**: session cookie internal
+- **Password hashing**: bcryptjs
 - **Bahasa UI**: Indonesia
 
-## Arsitektur
-
-Struktur saat ini masih satu aplikasi, tetapi sudah mulai dipisah ke area domain:
+## Struktur Domain
 
 - `modules/access`
-  - session
-  - login dan logout
-  - signup siswa
-  - verifikasi siswa
-  - update password siswa
-  - reset password siswa
-  - profil admin dan manajemen akun admin
-  - profil siswa (update data mandiri)
+  - login/logout
+  - session dan guard role
+  - registrasi siswa
+  - profil admin dan siswa
+  - manajemen akun admin
+  - reset/update password
 - `modules/library`
-  - data loader buku
-  - data loader siswa
-  - data loader transaksi
-  - data loader absensi
-  - katalog admin (list, filter, detail, edit)
-  - komponen tabel dan kartu ringkasan
+  - loader buku, genre, copy buku, siswa, absensi, transaksi
+  - katalog admin
+  - form tambah buku/genre
+  - pengembalian admin
+  - kartu dan tabel UI perpustakaan
+- `app/actions`
+  - server actions untuk auth, absensi, katalog, transaksi
 
 ## Mode Akses
 
-### 1. Administrator
+### Admin
 
-Administrator login menggunakan data pada tabel `admin`.
+Admin login dari tabel `admin`.
 
-Identifier yang didukung:
+Identifier login yang didukung:
 
 - `username`
 - `nama`
 
-Setelah login, admin diarahkan ke area:
+Route admin:
 
 - `/admin`
 - `/admin/buku`
@@ -68,25 +58,21 @@ Setelah login, admin diarahkan ke area:
 - `/admin/laporan`
 - `/admin/profil`
 
-Catatan:
+Catatan: manajemen akun admin hanya aktif untuk superadmin (`id_admin = 0`).
 
-- Manajemen akun admin hanya aktif untuk superadmin (id_admin = 0).
+### Siswa
 
-### 2. Siswa
+Siswa login dari tabel `siswa`.
 
-Siswa login menggunakan data pada tabel `siswa`.
-
-Identifier yang didukung:
+Identifier login yang didukung:
 
 - `nama`
 - `username`
 - `email`
 
-Siswa hanya bisa login jika `status_keanggotaan = 'aktif'`.
+Siswa hanya bisa login jika `status_keanggotaan = 'aktif'`. Akun `menunggu_verifikasi` ditolak sampai disetujui admin.
 
-Jika status masih `menunggu_verifikasi`, login akan ditolak.
-
-Setelah login, siswa diarahkan ke area:
+Route siswa:
 
 - `/siswa`
 - `/siswa/absensi`
@@ -95,403 +81,309 @@ Setelah login, siswa diarahkan ke area:
 - `/siswa/riwayat`
 - `/siswa/profil`
 
-### 3. Publik
+### Publik
 
-Publik dapat masuk melalui:
+Publik bisa masuk melalui tombol **Masuk sebagai publik** atau kredensial `public / public`.
 
-- tombol **Masuk sebagai publik**
-- kredensial `public / public`
-
-Area publik:
+Route publik:
 
 - `/public`
 - `/public/absensi`
 - `/public/katalog`
 
-## Fitur Yang Sudah Diimplementasikan
+## Fitur Terimplementasi
 
 ### Autentikasi dan Session
 
-Sudah:
+Sudah berjalan:
 
-- login admin dari database `admin`
-- login siswa dari database `siswa`
-- login publik
-- session berbasis cookie
-- proteksi route sesuai role
-- redirect sesuai role setelah login
+- login admin, siswa, dan publik
+- proteksi route berdasarkan role
+- redirect otomatis sesuai role
 - logout
+- session berbasis cookie
 
 File utama:
 
-- [app/actions/auth.ts](C:/Users/candra/Documents/GitHub/Kel2-Project-RPL-2026/perpustakaan/app/actions/auth.ts)
-- [modules/access/lib/database-auth.ts](C:/Users/candra/Documents/GitHub/Kel2-Project-RPL-2026/perpustakaan/modules/access/lib/database-auth.ts)
-- [modules/access/lib/session.ts](C:/Users/candra/Documents/GitHub/Kel2-Project-RPL-2026/perpustakaan/modules/access/lib/session.ts)
+- `app/actions/auth.ts`
+- `modules/access/lib/database-auth.ts`
+- `modules/access/lib/session.ts`
+- `modules/access/lib/guards.ts`
 
-### Registrasi Siswa
+### Registrasi dan Profil Siswa
 
-Sudah:
+Sudah berjalan:
 
-- halaman signup siswa
-- input data siswa lengkap:
-  - nama
-  - nisn
-  - tahun_masuk
-  - nomor_whatsapp
-  - email
-  - username
-  - password
-  - kelas
-- validasi sederhana
-- cek duplikasi `nisn`, `username`, `email`
-- password di-hash dengan bcrypt
-- status awal akun: `menunggu_verifikasi`
+- signup siswa
+- validasi duplikasi `nisn`, `username`, `email`
+- password hash bcrypt
+- status awal `menunggu_verifikasi`
+- siswa dapat update profil sendiri
+- session siswa ikut diperbarui setelah profil disimpan
 
-File utama:
+Data signup:
 
-- [app/signup/page.tsx](C:/Users/candra/Documents/GitHub/Kel2-Project-RPL-2026/perpustakaan/app/signup/page.tsx)
-- [modules/access/ui/signup-form.tsx](C:/Users/candra/Documents/GitHub/Kel2-Project-RPL-2026/perpustakaan/modules/access/ui/signup-form.tsx)
-- [modules/access/lib/student-registration.ts](C:/Users/candra/Documents/GitHub/Kel2-Project-RPL-2026/perpustakaan/modules/access/lib/student-registration.ts)
-
-### Verifikasi Siswa Oleh Admin
-
-Sudah:
-
-- admin dapat melihat siswa dengan status `menunggu_verifikasi`
-- admin dapat menyetujui akun siswa
-- status siswa diubah menjadi `aktif`
+- nama
+- nisn
+- tahun masuk
+- nomor WhatsApp / telepon
+- email
+- username
+- password
+- kelas
 
 File utama:
 
-- [app/admin/anggota/page.tsx](C:/Users/candra/Documents/GitHub/Kel2-Project-RPL-2026/perpustakaan/app/admin/anggota/page.tsx)
-- [modules/access/ui/approve-siswa-form.tsx](C:/Users/candra/Documents/GitHub/Kel2-Project-RPL-2026/perpustakaan/modules/access/ui/approve-siswa-form.tsx)
+- `app/signup/page.tsx`
+- `modules/access/ui/signup-form.tsx`
+- `modules/access/lib/student-registration.ts`
+- `modules/access/ui/student-profile-form.tsx`
 
-### Update Password Siswa Oleh Admin
+### Modul Anggota Admin
 
-Sudah:
+Sudah berjalan:
 
-- admin dapat mengubah password siswa dari halaman anggota
-- password baru disimpan dalam bentuk bcrypt hash
-- admin dapat mengosongkan password siswa dari panel anggota
-- siswa dapat membuat password baru sendiri lewat halaman lupa password jika password lama sudah dikosongkan admin
-- siswa yang masih ingat password lama juga dapat mengganti password sendiri dari halaman yang sama
-
-File utama:
-
-- [modules/access/ui/update-siswa-password-form.tsx](C:/Users/candra/Documents/GitHub/Kel2-Project-RPL-2026/perpustakaan/modules/access/ui/update-siswa-password-form.tsx)
-- [app/actions/auth.ts](C:/Users/candra/Documents/GitHub/Kel2-Project-RPL-2026/perpustakaan/app/actions/auth.ts)
-- [app/lupa-password/page.tsx](C:/Users/candra/Documents/GitHub/Kel2-Project-RPL-2026/perpustakaan/app/lupa-password/page.tsx)
-
-### Absensi
-
-Sudah:
-
-- publik dapat mengisi absensi pengunjung
-- data masuk ke tabel:
-  - `absensi`
-  - `absensi_umum`
-- siswa dapat mencatat absensi dirinya
-- data masuk ke tabel:
-  - `absensi`
-  - `absensi_siswa`
-- admin dapat melihat daftar absensi
+- daftar siswa terdaftar dan menunggu verifikasi
+- search siswa
+- filter/sort kolom
+- reset filter
+- tambah siswa manual
+- lihat detail siswa
+- edit siswa
+- hapus siswa dengan confirmation card
+- fallback nonaktif jika siswa terikat transaksi dan tidak bisa dihapus
+- reset password siswa dengan confirmation card
+- reset password tidak mengubah status siswa
+- notifikasi sukses standar untuk action penting
+- accept pendaftaran dengan confirmation card
+- reject pendaftaran dengan confirmation card dan langsung hapus dari database
+- status dan aksi tabel dibuat center
+- nomor telepon digunakan sebagai kolom utama menggantikan email di tabel
 
 File utama:
 
-- [app/actions/attendance.ts](C:/Users/candra/Documents/GitHub/Kel2-Project-RPL-2026/perpustakaan/app/actions/attendance.ts)
-- [app/public/absensi/page.tsx](C:/Users/candra/Documents/GitHub/Kel2-Project-RPL-2026/perpustakaan/app/public/absensi/page.tsx)
-- [app/siswa/absensi/page.tsx](C:/Users/candra/Documents/GitHub/Kel2-Project-RPL-2026/perpustakaan/app/siswa/absensi/page.tsx)
-- [app/admin/absensi/page.tsx](C:/Users/candra/Documents/GitHub/Kel2-Project-RPL-2026/perpustakaan/app/admin/absensi/page.tsx)
-
-### Katalog Buku
-
-Sudah:
-
-- admin dapat melihat daftar, mencari, filter, dan detail buku
-- admin dapat menambah buku baru (cover opsional, multi-genre, jumlah copy awal)
-- admin dapat edit data buku dasar (judul, penulis, penerbit, ISBN, tahun, lokasi, deskripsi)
-- admin dapat menghapus buku
-- admin dapat menambah genre
-- siswa dapat melihat katalog buku
-- publik dapat melihat katalog buku
-- data buku dibaca dari tabel `buku` dan ketersediaan dihitung dari tabel copy jika ada
-
-File utama:
-
-- [app/admin/buku/page.tsx](C:/Users/candra/Documents/GitHub/Kel2-Project-RPL-2026/perpustakaan/app/admin/buku/page.tsx)
-- [app/admin/buku/tambah/page.tsx](C:/Users/candra/Documents/GitHub/Kel2-Project-RPL-2026/perpustakaan/app/admin/buku/tambah/page.tsx)
-- [app/siswa/katalog/page.tsx](C:/Users/candra/Documents/GitHub/Kel2-Project-RPL-2026/perpustakaan/app/siswa/katalog/page.tsx)
-- [app/public/katalog/page.tsx](C:/Users/candra/Documents/GitHub/Kel2-Project-RPL-2026/perpustakaan/app/public/katalog/page.tsx)
-- [app/actions/catalog.ts](C:/Users/candra/Documents/GitHub/Kel2-Project-RPL-2026/perpustakaan/app/actions/catalog.ts)
-- [modules/library/ui/admin-catalog.tsx](C:/Users/candra/Documents/GitHub/Kel2-Project-RPL-2026/perpustakaan/modules/library/ui/admin-catalog.tsx)
-- [modules/library/ui/admin-catalog-forms.tsx](C:/Users/candra/Documents/GitHub/Kel2-Project-RPL-2026/perpustakaan/modules/library/ui/admin-catalog-forms.tsx)
-
-Catatan: detail refactor katalog admin ada di README_ADMIN_KATALOG.md.
+- `app/admin/anggota/page.tsx`
+- `app/actions/auth.ts`
+- `modules/access/ui/*siswa*`
 
 ### Profil Admin
 
-Sudah:
+Sudah berjalan:
 
-- daftar admin dan ringkasan statistik
-- detail admin via modal
-- superadmin (id_admin = 0) bisa tambah, edit, dan hapus admin
-- form menyesuaikan kolom email / nomor telephone jika tersedia di schema
-
-### Profil Siswa
-
-Sudah:
-
-- siswa dapat memperbarui profil sendiri (nama, username, email, kelas, tahun masuk, nomor WhatsApp)
-- validasi unik username dan email
-- session siswa ikut diperbarui setelah simpan profil
-
-### Transaksi dan Riwayat
-
-Sudah:
-
-- admin dapat melihat transaksi peminjaman
-- admin dapat melihat transaksi pengembalian
-- siswa dapat melihat peminjaman aktif
-- siswa dapat melihat riwayat transaksi sendiri
-
-Data dibaca dari tabel `transaksi`.
+- daftar admin
+- detail admin
+- tambah admin
+- edit admin
+- hapus admin khusus superadmin
+- hapus admin memakai konfirmasi ketik `hapus admin`
+- loading dan popup sukses standar
 
 File utama:
 
-- [app/admin/peminjaman/page.tsx](C:/Users/candra/Documents/GitHub/Kel2-Project-RPL-2026/perpustakaan/app/admin/peminjaman/page.tsx)
-- [app/admin/pengembalian/page.tsx](C:/Users/candra/Documents/GitHub/Kel2-Project-RPL-2026/perpustakaan/app/admin/pengembalian/page.tsx)
-- [app/siswa/peminjaman/page.tsx](C:/Users/candra/Documents/GitHub/Kel2-Project-RPL-2026/perpustakaan/app/siswa/peminjaman/page.tsx)
-- [app/siswa/riwayat/page.tsx](C:/Users/candra/Documents/GitHub/Kel2-Project-RPL-2026/perpustakaan/app/siswa/riwayat/page.tsx)
+- `app/admin/profil/page.tsx`
+- `modules/access/ui/admin-profile-forms.tsx`
+- `app/actions/auth.ts`
 
-### Dashboard dan Navigasi
+### Absensi
 
-Sudah:
+Sudah berjalan:
 
-- layout dashboard dengan sidebar kiri
-- top bar konsisten untuk admin, siswa, dan publik
-- menu sidebar bisa diklik dan menuju route berbeda
-- label menu berbahasa Indonesia
-- halaman admin, siswa, dan publik sudah dipisah per route utama
+- publik mengisi absensi pengunjung
+- siswa mencatat absensi sendiri
+- admin melihat daftar absensi
+- data dicoba masuk ke tabel `absensi`, `absensi_umum`, dan `absensi_siswa` sesuai konteks
 
 File utama:
 
-- [modules/access/ui/dashboard-shell.tsx](C:/Users/candra/Documents/GitHub/Kel2-Project-RPL-2026/perpustakaan/modules/access/ui/dashboard-shell.tsx)
+- `app/actions/attendance.ts`
+- `app/public/absensi/page.tsx`
+- `app/siswa/absensi/page.tsx`
+- `app/admin/absensi/page.tsx`
 
-## Fitur Yang Sudah Ada Tapi Masih Parsial
+## Katalog Admin
 
-Bagian berikut sudah ada sebagai halaman dan pembacaan data nyata, tetapi belum menjadi CRUD atau proses bisnis lengkap.
+### Daftar Buku
 
-### Admin - Buku
+Sudah berjalan:
 
-Sudah:
+- daftar buku admin
+- pencarian judul, penulis, penerbit, ISBN, genre
+- filter genre
+- filter status ketersediaan
+- filter tahun dari/sampai
+- reset filter
+- card informasi ringkas
+- jumlah tersedia tampil di card buku
+- pagination default 5 buku
+- pilihan jumlah tampil 5, 10, 25
+- pagination angka `1 2 3 ...`
+- detail buku via modal
+- edit buku via modal
+- hapus buku via confirmation card
 
-- lihat daftar, search, filter, dan detail buku
-- tambah buku baru dengan cover opsional dan jumlah copy awal
+Aturan hapus buku:
+
+- buku hanya bisa dihapus jika belum pernah dipinjam
+- jika pernah dipinjam atau terikat transaksi, hapus diblokir dan pesan ditampilkan di card
+
+File utama:
+
+- `app/admin/buku/page.tsx`
+- `modules/library/ui/admin-catalog.tsx`
+- `modules/library/lib/catalog.ts`
+- `app/actions/catalog.ts`
+
+### Tambah dan Edit Buku
+
+Sudah berjalan:
+
+- tambah buku baru
+- upload cover opsional ke bucket `book-covers`
+- judul, penulis, penerbit, ISBN, tahun terbit, lokasi rak, deskripsi
+- jumlah copy awal
+- multi-genre
+- validasi ISBN unik
 - edit data buku dasar
-- hapus buku
+- setelah edit berhasil, data katalog refresh dan modal ditutup
+
+Catatan ISBN:
+
+- kolom database yang digunakan adalah `isbn` lowercase
+- kode baca data tetap punya fallback `ISBN` untuk kompatibilitas data lama
+
+### Lokasi Rak
+
+Lokasi rak dibatasi sebagai pilihan tetap:
+
+- `Rak A1` sampai `Rak A6`
+- `Rak B1` sampai `Rak B6`
+- berlanjut sampai
+- `Rak J1` sampai `Rak J6`
+
+Form tambah buku memakai picker:
+
+- dropdown kode rak `A-J`
+- tombol kiri/kanan untuk nomor `1-6`
+- hidden input menyimpan nilai final, misalnya `Rak B2`
+- preview denah terdiri dari dua placeholder gambar:
+  - kiri: persegi panjang untuk denah utama
+  - kanan: persegi untuk detail/undak rak
+
+Validasi server menolak `lokasi_rak` di luar daftar tersebut.
+
+File utama:
+
+- `modules/library/lib/shelf-locations.ts`
+- `modules/library/ui/admin-catalog-forms.tsx`
+- `app/actions/catalog.ts`
+
+### Genre
+
+Sudah berjalan:
+
 - tambah genre
+- cari genre berdasarkan nama
+- list genre yang sudah dibuat
+- edit genre via modal/card
+- hapus genre via modal/card
+- hapus genre juga melepas relasi buku-genre
+- pemilihan genre di tambah buku berupa checklist button
+- genre di form tambah buku tampil 3 dulu, sisanya lewat tombol `More`
 
-Belum:
+File utama:
 
-- edit atau hapus genre
-- edit cover setelah upload
-- kelola copy buku (status, kondisi, penambahan manual)
-- pengelolaan denah rak lebih detail
+- `modules/library/ui/admin-catalog-forms.tsx`
+- `app/actions/catalog.ts`
 
-### Admin - Anggota
+### Eksemplar Buku
 
-Sudah:
+Konsep status eksemplar:
 
-- lihat data siswa
-- verifikasi siswa
-- update password siswa
-- kosongkan password siswa agar bisa set ulang mandiri
+- `tersedia`
+- `dipinjam`
+- `rusak`
+- `dikeluarkan` atau fallback legacy `hilang`
 
-Belum:
+Definisi yang dipakai:
 
-- tambah anggota manual oleh admin
-- edit data siswa
-- nonaktifkan akun siswa
-- hapus anggota
+- **Total Eksemplar Aktif**: eksemplar yang masih masuk koleksi, yaitu tersedia + dipinjam + rusak. Tidak termasuk dikeluarkan/hilang.
+- **Eksemplar Tersedia**: status `tersedia`, bisa dipinjam.
+- **Eksemplar Dipinjam**: status `dipinjam`.
+- **Kondisi/Status Rusak**: status `rusak`, masih dianggap aktif.
+- **Eksemplar Dikeluarkan**: eksemplar tidak masuk koleksi aktif.
 
-### Admin - Peminjaman
+Sudah berjalan:
 
-Sudah:
+- tambah eksemplar dari card buku
+- eksemplar baru otomatis `tersedia`
+- keluarkan eksemplar via modal/card
+- yang bisa dikeluarkan adalah eksemplar aktif yang tidak sedang dipinjam
+- copy `rusak` bisa dikeluarkan
+- copy `dipinjam` tidak bisa dikeluarkan dari katalog
+- alasan `Tidak Kembali dari Peminjam` bisa dipilih tetapi tombol submit disabled
+- untuk alasan tidak kembali, UI memberi peringatan agar memakai modul pengembalian
+- server action juga menolak alasan tidak kembali jika dipanggil langsung
 
-- lihat daftar transaksi
+File utama:
 
-Belum:
+- `app/actions/catalog.ts`
+- `modules/library/ui/admin-catalog.tsx`
+- `modules/library/lib/catalog.ts`
 
-- form pencatatan peminjaman
-- pilih copy buku otomatis
-- validasi stok saat pinjam dari UI
+## Peminjaman dan Pengembalian
 
-### Admin - Pengembalian
+Sudah berjalan:
 
-Sudah:
+- admin melihat data peminjaman
+- admin melihat data pengembalian
+- siswa melihat peminjaman aktif
+- siswa melihat riwayat transaksi
+- modul pengembalian mendukung detail transaksi siswa
+- proses pengembalian dapat mencatat jumlah buku baik/rusak/hilang per buku transaksi
+- status eksemplar saat kembali:
+  - baik -> `tersedia`
+  - rusak -> `rusak`
+  - hilang/tidak kembali -> `hilang` atau fallback `dikeluarkan`
 
-- lihat transaksi selesai
+Catatan desain:
 
-Belum:
+- kasus `Tidak Kembali dari Peminjam` harus diproses dari modul pengembalian agar transaksi siswa ikut tercatat
+- katalog hanya menangani pengeluaran eksemplar aktif yang tidak sedang dipinjam
 
-- proses pengembalian dari UI
-- input kondisi saat kembali
-- hitung keterlambatan dari UI
+File utama:
 
-### Admin - Laporan
+- `app/admin/peminjaman/page.tsx`
+- `app/admin/pengembalian/page.tsx`
+- `app/actions/transactions.ts`
+- `modules/library/ui/admin-returns.tsx`
+- `modules/library/lib/data.ts`
 
-Sudah:
+## Katalog Siswa dan Publik
 
-- ringkasan angka/statistik laporan
+Sudah berjalan:
 
-Belum:
+- siswa melihat katalog
+- publik melihat katalog
+- lokasi rak dan stok ditampilkan dari data buku/copy
+
+Masih dapat ditingkatkan:
+
+- search/filter interaktif siswa dan publik
+- detail buku publik/siswa
+- tampilan denah rak nyata jika aset gambar sudah tersedia
+
+## Laporan
+
+Sudah ada:
+
+- halaman laporan admin
+- ringkasan angka/statistik dasar
+
+Belum lengkap:
 
 - filter periode
-- cetak laporan
-- unduh laporan
-- laporan kehilangan buku
-
-### Siswa
-
-Sudah:
-
-- lihat katalog
-- lihat transaksi sendiri
-- absensi siswa
-- ganti password sendiri lewat halaman lupa password
-- update profil siswa
-
-Belum:
-
-- QR code scan sungguhan
-- detail buku per transaksi
-- notifikasi jatuh tempo
-
-### Publik
-
-Sudah:
-
-- absensi pengunjung
-- lihat katalog
-
-Belum:
-
-- pencarian realtime
-- filter kategori
-- detail buku
-
-## Fitur Yang Belum Diimplementasikan
-
-Fitur berikut belum ada atau belum dikerjakan sama sekali:
-
-- CRUD penuh anggota
-- transaksi peminjaman dari admin
-- transaksi pengembalian dari admin
-- detail transaksi (`detail_transaksi`) dari UI
-- laporan kehilangan buku
-- export / print laporan
-- integrasi QR code scan nyata
-- pencarian dan filter katalog untuk siswa dan publik
-- edit genre dan cover buku setelah dibuat
-- manajemen copy buku yang lengkap
-- reset password via email
-- notifikasi WhatsApp / email
-- role management lebih detail
-- audit log aktivitas admin
-
-## Pemetaan Use Case Ke Status Implementasi
-
-### UC-01 Mengelola Data Buku
-
-Status:
-
-- **Sudah / Parsial**
-
-Sudah:
-
-- baca data buku
-- tambah, edit, hapus buku dasar
-- tambah genre
-
-Belum:
-
-- edit / hapus genre
-- manajemen copy buku
-- edit cover setelah upload
-
-### UC-02 Mengelola Data Anggota
-
-Status:
-
-- **Parsial**
-
-Sudah:
-
-- registrasi siswa
-- verifikasi siswa
-- update password siswa
-- reset password siswa dengan bantuan admin
-- update profil siswa mandiri
-
-Belum:
-
-- edit penuh data anggota
-
-### UC-03 Mencatat Peminjaman Buku
-
-Status:
-
-- **Belum**
-
-### UC-04 Mencatat Pengembalian Buku
-
-Status:
-
-- **Belum**
-
-### UC-05 Lihat Riwayat Transaksi
-
-Status:
-
-- **Sudah / Parsial**
-
-Sudah:
-
-- admin lihat daftar transaksi
-- siswa lihat transaksi sendiri
-
-Belum:
-
-- detail lengkap transaksi per copy buku
-
-### UC-06 Absensi Pengunjung
-
-Status:
-
-- **Sudah**
-
-### UC-07 Cetak atau Unduh Laporan
-
-Status:
-
-- **Belum**
-
-### UC-08 Telusuri Katalog Buku
-
-Status:
-
-- **Sudah / Parsial**
-
-Sudah:
-
-- lihat daftar buku
-- tampilkan lokasi rak
-- tampilkan stok
-- pencarian dan filter katalog untuk admin
-
-Belum:
-
-- pencarian/filter interaktif untuk siswa dan publik
+- cetak/unduh laporan
+- laporan kehilangan/kerusakan detail
 
 ## Konfigurasi Environment
 
@@ -505,41 +397,56 @@ SUPABASE_SECRET_KEY=sb_secret_xxx
 
 Catatan:
 
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY` dipakai untuk kebutuhan client
-- `SUPABASE_SECRET_KEY` dipakai server-side untuk query login, registrasi, verifikasi, update password, dan absensi
-- bucket Supabase Storage `book-covers` dipakai untuk cover buku (jika belum ada, buku tetap bisa dibuat tanpa gambar)
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY` dipakai untuk client Supabase bila diperlukan
+- `SUPABASE_SECRET_KEY` dipakai server-side untuk query database
+- bucket Supabase Storage `book-covers` dipakai untuk cover buku
 - jangan commit `.env.local`
 
-## Permission Database Yang Dibutuhkan
+## Permission Database Minimal
 
-Karena aplikasi memakai query server-side ke Supabase, role server perlu akses ke schema dan tabel.
+Karena aplikasi memakai Supabase server-side, `service_role` perlu akses ke tabel yang digunakan.
 
-Minimal:
+Contoh grant dasar:
 
 ```sql
 grant usage on schema public to service_role;
-grant select, insert, update, delete on table public.admin to service_role;
-grant select, insert, update on table public.siswa to service_role;
-grant select, insert on table public.absensi to service_role;
-grant select, insert on table public.absensi_umum to service_role;
-grant select, insert on table public.absensi_siswa to service_role;
-grant select, insert, update, delete on table public.buku to service_role;
-grant select on table public.transaksi to service_role;
 
--- Opsional: tabel katalog yang dipakai aplikasi jika tersedia
-grant select, insert on table public.genre to service_role;
-grant select, insert on table public.genres to service_role;
-grant select, insert, delete on table public.buku_genre to service_role;
-grant select, insert, delete on table public.genre_buku to service_role;
-grant select, insert, delete on table public.buku_genres to service_role;
-grant select, insert, delete on table public.book_genres to service_role;
-grant select, insert, delete on table public.copy_buku to service_role;
-grant select, insert, delete on table public.buku_copy to service_role;
-grant select, insert, delete on table public.buku_copies to service_role;
-grant select, insert, delete on table public.book_copies to service_role;
+grant select, insert, update, delete on table public.admin to service_role;
+grant select, insert, update, delete on table public.siswa to service_role;
+grant select, insert, update, delete on table public.absensi to service_role;
+grant select, insert, update, delete on table public.absensi_umum to service_role;
+grant select, insert, update, delete on table public.absensi_siswa to service_role;
+
+grant select, insert, update, delete on table public.buku to service_role;
+grant select, insert, update, delete on table public.genre to service_role;
+grant select, insert, update, delete on table public.genres to service_role;
+
+grant select, insert, update, delete on table public.buku_genre to service_role;
+grant select, insert, update, delete on table public.genre_buku to service_role;
+grant select, insert, update, delete on table public.buku_genres to service_role;
+grant select, insert, update, delete on table public.book_genres to service_role;
+
+grant select, insert, update, delete on table public.copy_buku to service_role;
+grant select, insert, update, delete on table public.buku_copy to service_role;
+grant select, insert, update, delete on table public.buku_copies to service_role;
+grant select, insert, update, delete on table public.book_copies to service_role;
+
+grant select, insert, update, delete on table public.transaksi to service_role;
+grant select, insert, update, delete on table public.detail_transaksi to service_role;
+grant select, insert, update, delete on table public.transaksi_detail to service_role;
+grant select, insert, update, delete on table public.detail_peminjaman to service_role;
+grant select, insert, update, delete on table public.peminjaman_detail to service_role;
 ```
 
+Sesuaikan grant dengan nama tabel yang benar-benar ada di database.
+
 ## Menjalankan Proyek
+
+Masuk ke folder aplikasi:
+
+```bash
+cd perpustakaan
+```
 
 Install dependency:
 
@@ -553,19 +460,19 @@ Jalankan development server:
 npm run dev
 ```
 
+Build production:
+
+```bash
+npm run build
+```
+
 Lint:
 
 ```bash
 npm run lint
 ```
 
-Type check:
-
-```bash
-node .\node_modules\typescript\bin\tsc --noEmit
-```
-
-## Struktur Route Saat Ini
+## Struktur Route
 
 ### Publik
 
@@ -599,28 +506,19 @@ node .\node_modules\typescript\bin\tsc --noEmit
 - `/siswa/riwayat`
 - `/siswa/profil`
 
-## Catatan Kondisi Proyek Saat Ini
+## Catatan Implementasi
 
-Status umum:
+- README ini menggambarkan implementasi saat ini, bukan rancangan awal.
+- Katalog admin sudah melewati mockup dan memakai data Supabase.
+- Beberapa tabel dibuat adaptif dengan fallback nama tabel/kolom, misalnya tabel genre/copy.
+- Untuk produksi, sebaiknya schema database distandarkan agar fallback bisa dikurangi.
 
-- fondasi autentikasi sudah ada
-- layout dashboard sudah ada
-- navigasi sidebar sudah berfungsi
-- beberapa modul sudah membaca data nyata dari database
-- sebagian proses bisnis inti masih belum menjadi CRUD / workflow lengkap
+## Rekomendasi Lanjutan
 
-Dengan kata lain:
+Prioritas berikutnya:
 
-- proyek **sudah melewati tahap mockup murni**
-- beberapa halaman **sudah menampilkan data nyata dari database**
-- tetapi sistem **belum selesai sebagai sistem perpustakaan penuh**
-
-## Rekomendasi Langkah Berikutnya
-
-Urutan yang paling masuk akal:
-
-1. selesaikan **CRUD Buku**
-2. lanjutkan **peminjaman**
-3. lanjutkan **pengembalian**
-4. selesaikan **laporan**
-5. rapikan **katalog publik dan siswa** dengan search/filter
+1. finalisasi workflow peminjaman dari admin
+2. finalisasi pengembalian dan detail transaksi per eksemplar
+3. tambahkan aset gambar denah rak nyata
+4. lengkapi laporan periode dan export
+5. tambah search/filter katalog untuk siswa dan publik
