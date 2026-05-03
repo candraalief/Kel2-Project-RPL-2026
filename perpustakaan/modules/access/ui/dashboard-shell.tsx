@@ -31,7 +31,7 @@ function NavIcon({ label }: { label: string }) {
     );
   }
 
-  if (label === "Katalog" || label === "Buku") {
+  if (label === "Katalog" || label === "Buku" || label === "Katalog & Peminjaman") {
     return (
       <svg viewBox="0 0 24 24" fill="none" className={iconClassName} aria-hidden>
         <path d="M5 6.5A2.5 2.5 0 017.5 4H20v14H7.5A2.5 2.5 0 005 20.5V6.5z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
@@ -93,8 +93,8 @@ const navByRole: Record<UserRole, NavItem[]> = {
     { label: "Profil", href: "/admin/profil" },
     { label: "Anggota", href: "/admin/anggota" },
     { label: "Absensi", href: "/admin/absensi" },
-    { label: "Katalog", href: "/admin/buku" },
-    { label: "Peminjaman & Pengembalian", href: "/admin/peminjaman" },
+    { label: "Katalog & Peminjaman", href: "/admin/buku" },
+    { label: "Pengembalian", href: "/admin/peminjaman" },
     { label: "Laporan", href: "/admin/laporan" },
   ],
   siswa: [
@@ -167,8 +167,11 @@ export function DashboardShell({
             {navItems.map((item) => {
               const isActive =
                 item.label === activeNav ||
-                (item.label === "Katalog" && activeNav === "Buku") ||
-                (item.label === "Peminjaman & Pengembalian" &&
+                ((item.label === "Katalog" ||
+                  item.label === "Katalog & Peminjaman") &&
+                  activeNav === "Buku") ||
+                ((item.label === "Peminjaman & Pengembalian" ||
+                  item.label === "Pengembalian") &&
                   (activeNav === "Peminjaman" || activeNav === "Pengembalian"));
 
               return (

@@ -384,6 +384,7 @@ async function hasBorrowedCopyStatus(bookId: number) {
 async function bookHasBorrowingHistory(bookId: number) {
   const transactionTables = ["transaksi", "peminjaman"];
   const transactionDetailTables = [
+    "detail_transaksi_peminjaman",
     "detail_transaksi",
     "transaksi_detail",
     "detail_peminjaman",

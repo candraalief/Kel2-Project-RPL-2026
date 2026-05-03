@@ -2,7 +2,7 @@ import { requireRole } from "@/modules/access/lib/guards";
 import { DashboardShell } from "@/modules/access/ui/dashboard-shell";
 import { getDetailedTransactions } from "@/modules/library/lib/data";
 import { AdminReturns } from "@/modules/library/ui/admin-returns";
-import { SectionCard, TransactionsTable } from "@/modules/library/ui/library-cards";
+import { SectionCard } from "@/modules/library/ui/library-cards";
 
 export default async function AdminReturnPage() {
   const user = await requireRole("admin");
@@ -19,21 +19,17 @@ export default async function AdminReturnPage() {
       role="admin"
       user={user}
       title="Modul Pengembalian"
-      description="Lihat transaksi yang sudah dikembalikan dan status akhir pengembalian."
+      description="Proses pengembalian buku, catat kondisi eksemplar, dan pantau riwayat pengembalian."
       activeNav="Pengembalian"
     >
       <SectionCard
-        title="Proses Pengembalian"
-        subtitle="Pilih transaksi aktif, lalu catat kondisi tiap buku"
+        title="Pengembalian Buku"
+        subtitle="Transaksi yang belum dan sudah dikembalikan"
       >
-        <AdminReturns transactions={activeTransactions} />
-      </SectionCard>
-
-      <SectionCard
-        title="Pengembalian"
-        subtitle="Transaksi yang telah selesai"
-      >
-        <TransactionsTable transactions={completedTransactions} />
+        <AdminReturns
+          transactions={activeTransactions}
+          historyTransactions={completedTransactions}
+        />
       </SectionCard>
     </DashboardShell>
   );

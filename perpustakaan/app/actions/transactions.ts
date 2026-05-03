@@ -34,9 +34,33 @@ function isValidCount(value: number) {
   return Number.isInteger(value) && value >= 0;
 }
 
+function normalizeReturnNote(value: string) {
+  return value.trim().replace(/\s+/g, " ").slice(0, 1000);
+}
+
+function buildConditionNote(items: ReturnItemInput[]) {
+  return items
+    .map((item) => {
+      const notes = [
+        item.damaged > 0 ? `${item.damaged} rusak` : "",
+        item.lost > 0 ? `${item.lost} hilang` : "",
+      ].filter(Boolean);
+
+      return notes.length > 0 ? `${item.title}: ${notes.join(", ")}` : "";
+    })
+    .filter(Boolean)
+    .join("; ");
+}
+
+function combineReturnNotes(adminNote: string, conditionNote: string) {
+  const notes = [adminNote, conditionNote].filter(Boolean);
+
+  return notes.length > 0 ? notes.join(" | ") : null;
+}
+
 async function updateCopyStatus(
   copyId: number,
-  statuses: Array<"tersedia" | "dipinjam" | "hilang" | "dikeluarkan" | "rusak">,
+  statuses: Array<"tersedia" | "dipinjam" | "dikeluarkan" | "rusak">,
   note: string
 ) {
   const supabase = getServerSupabaseClient();
@@ -83,15 +107,25 @@ async function updateCopyStatus(
   };
 }
 
-async function closeTransaction(transactionId: number, hasLostOrDamaged: boolean) {
+async function closeTransaction(
+  transactionId: number,
+  hasReturnNote: boolean,
+  note: string | null
+) {
   const supabase = getServerSupabaseClient();
+  const closedAt = new Date().toISOString();
   const payloads = [
     {
-      tanggal_kembali: new Date().toISOString(),
-      status: hasLostOrDamaged ? "selesai_dengan_catatan" : "dikembalikan",
+      tanggal_kembali: closedAt,
+      status: hasReturnNote ? "selesai_dengan_catatan" : "dikembalikan",
+      catatan: note,
     },
     {
-      tanggal_kembali: new Date().toISOString(),
+      tanggal_kembali: closedAt,
+      status: hasReturnNote ? "selesai_dengan_catatan" : "dikembalikan",
+    },
+    {
+      tanggal_kembali: closedAt,
     },
   ];
 
@@ -111,7 +145,8 @@ async function closeTransaction(transactionId: number, hasLostOrDamaged: boolean
 
 export async function processTransactionReturn(
   transactionId: number,
-  items: ReturnItemInput[]
+  items: ReturnItemInput[],
+  note = ""
 ): Promise<TransactionActionState> {
   await requireAdminAction();
 
@@ -169,12 +204,15 @@ export async function processTransactionReturn(
   }
 
   let hasLostOrDamaged = false;
+  const adminNote = normalizeReturnNote(note);
+  const conditionNote = buildConditionNote(items);
+  const returnNote = combineReturnNotes(adminNote, conditionNote);
 
   for (const item of items) {
     const copyQueue = [...item.copyIds];
     const updates: Array<{
       count: number;
-      statuses: Array<"tersedia" | "dipinjam" | "hilang" | "dikeluarkan" | "rusak">;
+      statuses: Array<"tersedia" | "dipinjam" | "dikeluarkan" | "rusak">;
       note: string;
     }> = [
       { count: item.good, statuses: ["tersedia"], note: "" },
@@ -185,7 +223,7 @@ export async function processTransactionReturn(
       },
       {
         count: item.lost,
-        statuses: ["hilang", "dikeluarkan"],
+        statuses: ["dikeluarkan"],
         note: "Tidak kembali dari peminjam",
       },
     ];
@@ -221,7 +259,13 @@ export async function processTransactionReturn(
     }
   }
 
-  if (!(await closeTransaction(transactionId, hasLostOrDamaged))) {
+  if (
+    !(await closeTransaction(
+      transactionId,
+      hasLostOrDamaged || Boolean(returnNote),
+      returnNote
+    ))
+  ) {
     return {
       error: "Eksemplar berhasil diperbarui, tetapi transaksi gagal ditutup.",
       success: "",

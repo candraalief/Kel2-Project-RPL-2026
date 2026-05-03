@@ -30,6 +30,7 @@ export type TransaksiRecord = {
   tanggal_jatuh_tempo: string;
   tanggal_kembali: string | null;
   status: string | null;
+  catatan: string | null;
 };
 
 type Row = Record<string, unknown>;
@@ -44,31 +45,38 @@ type DetailTableConfig = {
 
 const detailTableConfigs: DetailTableConfig[] = [
   {
+    table: "detail_transaksi_peminjaman",
+    transactionIdColumn: "id_transaksi",
+    bookIdColumn: "id_buku",
+    copyIdColumn: "id_copy_buku",
+    quantityColumn: "jumlah",
+  },
+  {
     table: "detail_transaksi",
     transactionIdColumn: "id_transaksi",
     bookIdColumn: "id_buku",
-    copyIdColumn: "id_copy",
+    copyIdColumn: "id_copy_buku",
     quantityColumn: "jumlah",
   },
   {
     table: "transaksi_detail",
     transactionIdColumn: "id_transaksi",
     bookIdColumn: "id_buku",
-    copyIdColumn: "id_copy",
+    copyIdColumn: "id_copy_buku",
     quantityColumn: "jumlah",
   },
   {
     table: "detail_peminjaman",
     transactionIdColumn: "id_transaksi",
     bookIdColumn: "id_buku",
-    copyIdColumn: "id_copy",
+    copyIdColumn: "id_copy_buku",
     quantityColumn: "jumlah",
   },
   {
     table: "peminjaman_detail",
     transactionIdColumn: "id_transaksi",
     bookIdColumn: "id_buku",
-    copyIdColumn: "id_copy",
+    copyIdColumn: "id_copy_buku",
     quantityColumn: "jumlah",
   },
 ];
@@ -204,7 +212,7 @@ export async function getTransactions() {
   const { data, error } = await supabase
     .from("transaksi")
     .select(
-      "id_transaksi, id_siswa, id_admin, tanggal_pinjam, tanggal_jatuh_tempo, tanggal_kembali, status"
+      "id_transaksi, id_siswa, id_admin, tanggal_pinjam, tanggal_jatuh_tempo, tanggal_kembali, status, catatan"
     )
     .order("id_transaksi", { ascending: false })
     .returns<TransaksiRecord[]>();
@@ -222,6 +230,7 @@ async function loadTransactionDetailRows(transactionIds: number[]) {
   }
 
   const supabase = getServerSupabaseClient();
+  let emptyResult: { rows: Row[]; config: DetailTableConfig } | null = null;
 
   for (const config of detailTableConfigs) {
     const { data, error } = await supabase
@@ -230,8 +239,18 @@ async function loadTransactionDetailRows(transactionIds: number[]) {
       .in(config.transactionIdColumn, transactionIds);
 
     if (!error && data) {
-      return { rows: data as Row[], config };
+      const rows = data as Row[];
+
+      if (rows.length > 0) {
+        return { rows, config };
+      }
+
+      emptyResult ??= { rows, config };
     }
+  }
+
+  if (emptyResult) {
+    return emptyResult;
   }
 
   return { rows: [] as Row[], config: null };
@@ -263,12 +282,20 @@ export async function getDetailedTransactions(): Promise<DetailedTransactionReco
   ]);
   const transactionIds = transactions.map((item) => item.id_transaksi);
   const { rows, config } = await loadTransactionDetailRows(transactionIds);
+  const bookIdKeys = config
+    ? [config.bookIdColumn, "id_buku", "book_id"]
+    : ["id_buku", "book_id"];
+  const copyIdKeys = config
+    ? [
+        config.copyIdColumn,
+        "id_copy_buku",
+        "id_copy",
+        "copy_id",
+        "id_eksemplar",
+      ]
+    : ["id_copy_buku", "id_copy", "copy_id", "id_eksemplar"];
   const bookIds = rows
-    .map((row) =>
-      config
-        ? readNumber(row, [config.bookIdColumn, "id_buku", "book_id"])
-        : null
-    )
+    .map((row) => readNumber(row, bookIdKeys))
     .filter((id): id is number => typeof id === "number");
   const bookMap = await loadBookMap([...new Set(bookIds)]);
   const studentMap = new Map(students.map((student) => [student.id_siswa, student]));
@@ -286,14 +313,8 @@ export async function getDetailedTransactions(): Promise<DetailedTransactionReco
         return;
       }
 
-      const bookId = readNumber(row, [config.bookIdColumn, "id_buku", "book_id"]);
-      const copyId = readNumber(row, [
-        config.copyIdColumn,
-        "id_copy",
-        "id_copy_buku",
-        "copy_id",
-        "id_eksemplar",
-      ]);
+      const bookId = readNumber(row, bookIdKeys);
+      const copyId = readNumber(row, copyIdKeys);
       const quantity = readNumber(row, [
         config.quantityColumn,
         "jumlah",
