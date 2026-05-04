@@ -272,7 +272,6 @@ export async function processTransactionReturn(
     };
   }
 
-  revalidatePath("/admin/peminjaman");
   revalidatePath("/admin/pengembalian");
   revalidatePath("/siswa/peminjaman");
   revalidatePath("/siswa/riwayat");

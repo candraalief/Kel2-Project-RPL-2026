@@ -94,7 +94,7 @@ const navByRole: Record<UserRole, NavItem[]> = {
     { label: "Anggota", href: "/admin/anggota" },
     { label: "Absensi", href: "/admin/absensi" },
     { label: "Katalog & Peminjaman", href: "/admin/buku" },
-    { label: "Pengembalian", href: "/admin/peminjaman" },
+    { label: "Pengembalian", href: "/admin/pengembalian" },
     { label: "Laporan", href: "/admin/laporan" },
   ],
   siswa: [

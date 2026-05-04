@@ -451,9 +451,7 @@ export function AdminCatalog({
                 book={book}
                 onOpen={() => setSelectedBook(book)}
                 onEdit={() => setEditingBook(book)}
-                onAddCopies={() => openAddCopiesModal(book)}
                 onDelete={() => openDeleteModal(book)}
-                onRemoveCopies={() => openRemoveCopiesModal(book)}
               />
             ))}
           </div>
@@ -479,6 +477,8 @@ export function AdminCatalog({
         <EditBookModal
           book={editingBook}
           onClose={() => setEditingBook(null)}
+          onAddCopies={() => openAddCopiesModal(editingBook)}
+          onRemoveCopies={() => openRemoveCopiesModal(editingBook)}
         />
       ) : null}
 
@@ -966,16 +966,12 @@ function BookCard({
   book,
   onOpen,
   onEdit,
-  onAddCopies,
   onDelete,
-  onRemoveCopies,
 }: {
   book: AdminCatalogBook;
   onOpen: () => void;
   onEdit: () => void;
-  onAddCopies: () => void;
   onDelete: () => void;
-  onRemoveCopies: () => void;
 }) {
   const available = book.availableCount > 0;
 
@@ -1018,27 +1014,7 @@ function BookCard({
         <p>Tersedia: <span className="font-semibold text-zinc-900">{book.availableCount} eksemplar</span></p>
       </div>
 
-      <div className="mt-auto space-y-1.5 pt-2">
-        <button
-          type="button"
-          onClick={(event) => {
-            event.stopPropagation();
-            onAddCopies();
-          }}
-          className="inline-flex h-7 w-full items-center justify-center rounded-md border border-blue-200 bg-blue-50 px-2 text-[10px] font-semibold text-blue-600 transition hover:bg-blue-100"
-        >
-          Tambah Eksemplar
-        </button>
-        <button
-          type="button"
-          onClick={(event) => {
-            event.stopPropagation();
-            onRemoveCopies();
-          }}
-          className="inline-flex h-7 w-full items-center justify-center rounded-md border border-red-200 bg-red-50 px-2 text-[10px] font-semibold text-red-600 transition hover:bg-red-100"
-        >
-          Keluarkan Eksemplar
-        </button>
+      <div className="mt-auto pt-2">
         <div className="grid grid-cols-2 gap-1.5">
           <button
             type="button"
@@ -1615,9 +1591,13 @@ function ActionToast({
 function EditBookModal({
   book,
   onClose,
+  onAddCopies,
+  onRemoveCopies,
 }: {
   book: AdminCatalogBook;
   onClose: () => void;
+  onAddCopies: () => void;
+  onRemoveCopies: () => void;
 }) {
   const [state, formAction, pending] = useActionState(
     updateCatalogBook,
@@ -1661,6 +1641,36 @@ function EditBookModal({
         </div>
 
         <input type="hidden" name="id_buku" value={book.id} />
+
+        <div className="mt-5 rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm font-semibold text-zinc-950">
+                Manajemen Eksemplar
+              </p>
+              <p className="mt-1 text-xs text-zinc-500">
+                Tambah atau keluarkan eksemplar untuk buku ini.
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-2 sm:min-w-[320px]">
+              <button
+                type="button"
+                onClick={onAddCopies}
+                className="inline-flex h-10 items-center justify-center rounded-xl border border-blue-200 bg-blue-50 px-3 text-xs font-semibold text-blue-600 transition hover:bg-blue-100"
+              >
+                Tambah Eksemplar
+              </button>
+              <button
+                type="button"
+                onClick={onRemoveCopies}
+                className="inline-flex h-10 items-center justify-center rounded-xl border border-red-200 bg-red-50 px-3 text-xs font-semibold text-red-600 transition hover:bg-red-100"
+              >
+                Keluarkan Eksemplar
+              </button>
+            </div>
+          </div>
+        </div>
+
         <div className="mt-5 grid gap-4 md:grid-cols-2">
           <Field label="Judul Buku" name="judul" defaultValue={book.title} required />
           <Field label="Penulis" name="penulis" defaultValue={book.author ?? ""} required />

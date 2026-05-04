@@ -52,11 +52,12 @@ Route admin:
 - `/admin/buku`
 - `/admin/buku/tambah`
 - `/admin/anggota`
-- `/admin/peminjaman`
 - `/admin/pengembalian`
 - `/admin/absensi`
 - `/admin/laporan`
 - `/admin/profil`
+
+Catatan route: peminjaman admin berada di `/admin/buku` (Katalog & Peminjaman). Route lama `/admin/peminjaman` diarahkan kembali ke katalog.
 
 Catatan: manajemen akun admin hanya aktif untuk superadmin (`id_admin = 0`).
 
@@ -352,8 +353,8 @@ Catatan desain:
 
 File utama:
 
-- `app/admin/peminjaman/page.tsx`
 - `app/admin/pengembalian/page.tsx`
+- `app/admin/peminjaman/page.tsx` (redirect ke katalog)
 - `app/actions/transactions.ts`
 - `modules/library/ui/admin-returns.tsx`
 - `modules/library/lib/data.ts`
@@ -491,7 +492,6 @@ npm run lint
 - `/admin/buku`
 - `/admin/buku/tambah`
 - `/admin/anggota`
-- `/admin/peminjaman`
 - `/admin/pengembalian`
 - `/admin/absensi`
 - `/admin/laporan`

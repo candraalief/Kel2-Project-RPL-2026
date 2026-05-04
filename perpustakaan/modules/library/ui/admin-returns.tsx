@@ -739,7 +739,7 @@ function ReturnDetailModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-3"
       onClick={() => {
         if (!isPending) {
           onClose();
@@ -747,44 +747,44 @@ function ReturnDetailModal({
       }}
     >
       <section
-        className="flex max-h-[88vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl"
+        className="flex max-h-[82vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl"
         onClick={(event) => event.stopPropagation()}
       >
-        <div className="flex shrink-0 items-start justify-between gap-4 border-b border-zinc-200 px-6 py-4">
-          <h2 className="text-2xl font-semibold text-black">
+        <div className="flex shrink-0 items-start justify-between gap-3 border-b border-zinc-200 px-5 py-3">
+          <h2 className="text-xl font-semibold text-black">
             Detail Transaksi Siswa
           </h2>
           <button
             type="button"
             onClick={onClose}
             disabled={isPending}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-xl text-black transition hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-black transition hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            <Icon name="x" className="h-6 w-6" />
+            <Icon name="x" className="h-5 w-5" />
           </button>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto bg-[#f7f8fa] px-6 py-5">
+        <div className="min-h-0 flex-1 overflow-y-auto bg-[#f7f8fa] px-5 py-4">
           <section>
-            <h3 className="text-base font-semibold text-slate-600">
+            <h3 className="text-sm font-semibold text-slate-600">
               Informasi Siswa
             </h3>
-            <div className="mt-3 grid gap-4 rounded-xl border border-zinc-200 bg-white p-4 md:grid-cols-[80px_1fr_1fr]">
-              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#dbeafe] text-[#1d4ed8]">
-                <Icon name="user" className="h-8 w-8" />
+            <div className="mt-2 grid gap-3 rounded-xl border border-zinc-200 bg-white p-3 md:grid-cols-[60px_1fr_1fr]">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#dbeafe] text-[#1d4ed8]">
+                <Icon name="user" className="h-6 w-6" />
               </div>
-              <div className="space-y-3">
+              <div className="space-y-2">
                 <InfoBlock label="Nama Lengkap" value={transaction.siswa?.nama ?? "-"} />
                 <InfoBlock
-                  icon={<Icon name="school" className="h-4 w-4" />}
+                  icon={<Icon name="school" className="h-3.5 w-3.5" />}
                   label="Kelas"
                   value={transaction.siswa?.kelas ?? "-"}
                 />
               </div>
-              <div className="space-y-3">
+              <div className="space-y-2">
                 <InfoBlock label="NIS" value={transaction.siswa?.nisn ?? "-"} />
                 <InfoBlock
-                  icon={<Icon name="phone" className="h-4 w-4" />}
+                  icon={<Icon name="phone" className="h-3.5 w-3.5" />}
                   label="No. Telepon"
                   value={transaction.siswa?.nomor_whatsapp ?? "-"}
                 />
@@ -792,19 +792,19 @@ function ReturnDetailModal({
             </div>
           </section>
 
-          <section className="mt-5">
-            <h3 className="text-base font-semibold text-slate-600">
+          <section className="mt-4">
+            <h3 className="text-sm font-semibold text-slate-600">
               Daftar Buku Dipinjam ({totalBooks} buku)
             </h3>
 
             {transaction.items.length === 0 ? (
-              <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
+              <div className="mt-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800">
                 Detail buku belum tersedia. Pengembalian dengan kondisi hanya
                 bisa diproses jika transaksi menyimpan item buku atau ID
                 eksemplar per buku.
               </div>
             ) : (
-              <div className="mt-3 space-y-3">
+              <div className="mt-2 space-y-2">
                 {transaction.items.map((item) => (
                   <ReturnBookCard
                     key={item.key}
@@ -817,8 +817,8 @@ function ReturnDetailModal({
               </div>
             )}
 
-            <label className="mt-4 block space-y-2">
-              <span className="text-sm font-semibold text-slate-700">
+            <label className="mt-3 block space-y-1.5">
+              <span className="text-xs font-semibold text-slate-700">
                 Catatan Pengembalian
               </span>
               <textarea
@@ -826,30 +826,30 @@ function ReturnDetailModal({
                 onChange={(event) => setReturnNote(event.currentTarget.value)}
                 maxLength={1000}
                 placeholder="Tambahkan catatan bila diperlukan..."
-                className="min-h-20 w-full resize-y rounded-xl border border-zinc-300 bg-white px-4 py-3 text-sm text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-[#1d66d6]"
+                className="min-h-16 w-full resize-y rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-[#1d66d6]"
               />
             </label>
 
             {conditionWarning ? (
-              <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
+              <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800">
                 {conditionWarning}
               </div>
             ) : null}
 
             {error ? (
-              <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
+              <div className="mt-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700">
                 {error}
               </div>
             ) : null}
           </section>
         </div>
 
-        <div className="flex shrink-0 justify-end gap-3 border-t border-zinc-200 bg-white px-6 py-4">
+        <div className="flex shrink-0 justify-end gap-2.5 border-t border-zinc-200 bg-white px-5 py-3">
           <button
             type="button"
             onClick={onClose}
             disabled={isPending}
-            className="inline-flex h-11 min-w-28 items-center justify-center rounded-xl bg-zinc-200 px-5 text-base font-semibold text-slate-700 transition hover:bg-zinc-300 disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex h-10 min-w-24 items-center justify-center rounded-xl bg-zinc-200 px-4 text-sm font-semibold text-slate-700 transition hover:bg-zinc-300 disabled:cursor-not-allowed disabled:opacity-60"
           >
             Batal
           </button>
@@ -857,7 +857,7 @@ function ReturnDetailModal({
             type="button"
             onClick={handleSubmit}
             disabled={isPending || transaction.items.length === 0}
-            className="inline-flex h-11 min-w-56 items-center justify-center rounded-xl bg-[#1d66d6] px-5 text-base font-semibold text-white transition hover:bg-[#1553b2] disabled:cursor-not-allowed disabled:bg-zinc-400"
+            className="inline-flex h-10 min-w-48 items-center justify-center rounded-xl bg-[#1d66d6] px-4 text-sm font-semibold text-white transition hover:bg-[#1553b2] disabled:cursor-not-allowed disabled:bg-zinc-400"
           >
             {isPending ? "Memproses..." : "Proses Pengembalian"}
           </button>
@@ -877,11 +877,11 @@ function InfoBlock({
   value: string;
 }) {
   return (
-    <div className="flex gap-2.5">
-      {icon ? <span className="mt-5 text-slate-400">{icon}</span> : null}
+    <div className="flex gap-2">
+      {icon ? <span className="mt-4 text-slate-400">{icon}</span> : null}
       <div>
-        <p className="text-sm text-slate-500">{label}</p>
-        <p className="mt-0.5 text-base font-semibold text-black">{value}</p>
+        <p className="text-xs text-slate-500">{label}</p>
+        <p className="mt-0.5 text-sm font-semibold text-black">{value}</p>
       </div>
     </div>
   );
@@ -907,45 +907,45 @@ function ReturnBookCard({
   const good = Math.max(item.quantity - (damaged + lost), 0);
 
   return (
-    <article className="rounded-xl border border-zinc-200 bg-white p-4">
-      <div className="grid gap-4 md:grid-cols-[56px_1fr_auto]">
-        <div className="h-16 w-12 rounded-md bg-zinc-200" />
-        <div className="grid gap-2 md:grid-cols-2">
+    <article className="rounded-xl border border-zinc-200 bg-white p-3">
+      <div className="grid gap-3 md:grid-cols-[44px_1fr_auto]">
+        <div className="h-12 w-9 rounded-md bg-zinc-200" />
+        <div className="grid gap-x-3 gap-y-1.5 md:grid-cols-2">
           <div className="md:col-span-2">
-            <h4 className="text-lg font-semibold text-black">{item.title}</h4>
+            <h4 className="text-base font-semibold text-black">{item.title}</h4>
           </div>
-          <p className="text-sm text-slate-500">
+          <p className="text-xs text-slate-500">
             Kode: <span className="text-slate-700">{item.code ?? "-"}</span>
           </p>
-          <p className="text-sm text-slate-500">
+          <p className="text-xs text-slate-500">
             Kategori:{" "}
             <span className="text-slate-700">{item.category ?? "-"}</span>
           </p>
-          <p className="text-sm text-slate-500">
+          <p className="text-xs text-slate-500">
             Tgl Pinjam:{" "}
             <span className="text-black">{formatDate(transaction.tanggal_pinjam)}</span>
           </p>
-          <p className="text-sm text-slate-500">
+          <p className="text-xs text-slate-500">
             Batas Kembali:{" "}
             <span className="text-black">{formatDate(transaction.tanggal_jatuh_tempo)}</span>
           </p>
         </div>
         <div className="text-left md:text-right">
-          <p className="text-sm text-slate-500">
+          <p className="text-xs text-slate-500">
             Jumlah Total:{" "}
             <span className="font-semibold text-[#0b55ff]">
               {item.quantity} buku
             </span>
           </p>
-          <span className="mt-2 inline-flex rounded-lg bg-[#dbeafe] px-2.5 py-1 text-xs font-medium text-[#0b55ff]">
+          <span className="mt-1.5 inline-flex rounded-lg bg-[#dbeafe] px-2 py-0.5 text-[11px] font-medium text-[#0b55ff]">
             Dipinjam
           </span>
         </div>
       </div>
 
-      <div className="mt-4 border-t border-zinc-200 pt-4">
-        <p className="text-sm font-semibold text-slate-700">Kondisi Buku:</p>
-        <div className="mt-3 grid gap-3 md:grid-cols-3">
+      <div className="mt-3 border-t border-zinc-200 pt-3">
+        <p className="text-xs font-semibold text-slate-700">Kondisi Buku:</p>
+        <div className="mt-2 grid gap-2.5 md:grid-cols-3">
           <ConditionInput
             label="Baik"
             tone="green"
@@ -994,8 +994,8 @@ function ConditionInput({
   }[tone];
 
   return (
-    <label className="block space-y-1.5">
-      <span className="text-sm font-semibold text-slate-600">{label}</span>
+    <label className="block space-y-1">
+      <span className="text-xs font-semibold text-slate-600">{label}</span>
       <input
         type="number"
         min={0}
@@ -1003,7 +1003,7 @@ function ConditionInput({
         value={value}
         readOnly={readOnly}
         onChange={(event) => onChange?.(event.currentTarget.value)}
-        className={`h-11 w-full rounded-lg border px-3 text-xl text-black outline-none transition ${toneClass} ${
+        className={`h-9 w-full rounded-lg border px-3 text-base text-black outline-none transition ${toneClass} ${
           readOnly ? "cursor-not-allowed text-slate-700" : ""
         }`}
       />
