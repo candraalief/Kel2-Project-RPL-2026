@@ -434,9 +434,6 @@ grant select, insert, update, delete on table public.book_copies to service_role
 
 grant select, insert, update, delete on table public.transaksi to service_role;
 grant select, insert, update, delete on table public.detail_transaksi to service_role;
-grant select, insert, update, delete on table public.transaksi_detail to service_role;
-grant select, insert, update, delete on table public.detail_peminjaman to service_role;
-grant select, insert, update, delete on table public.peminjaman_detail to service_role;
 ```
 
 Sesuaikan grant dengan nama tabel yang benar-benar ada di database.

@@ -20,6 +20,20 @@ export type ReturnItemInput = {
   lost: number;
 };
 
+export type BorrowCartItemInput = {
+  bookId: number;
+  title: string;
+  quantity: number;
+};
+
+export type CreateBorrowTransactionInput = {
+  idSiswa: number;
+  tanggalPinjam: string;
+  tanggalJatuhTempo: string;
+  catatan?: string;
+  items: BorrowCartItemInput[];
+};
+
 const copyIdColumns = ["id_copy", "id_copy_buku", "copy_id", "id_eksemplar", "id"];
 
 async function requireAdminAction() {
@@ -28,6 +42,8 @@ async function requireAdminAction() {
   if (!sessionUser || sessionUser.role !== "admin") {
     throw new Error("Unauthorized");
   }
+
+  return sessionUser;
 }
 
 function isValidCount(value: number) {
@@ -36,6 +52,14 @@ function isValidCount(value: number) {
 
 function normalizeReturnNote(value: string) {
   return value.trim().replace(/\s+/g, " ").slice(0, 1000);
+}
+
+function normalizeBorrowNote(value: string | undefined) {
+  return (value ?? "").trim().replace(/\s+/g, " ").slice(0, 1000);
+}
+
+function isDateInput(value: string) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(value);
 }
 
 function buildConditionNote(items: ReturnItemInput[]) {
@@ -104,6 +128,117 @@ async function updateCopyStatus(
   return {
     error: lastError || "Eksemplar tidak ditemukan di tabel copy buku.",
     success: false,
+  };
+}
+
+export async function createBorrowTransaction(
+  input: CreateBorrowTransactionInput
+): Promise<TransactionActionState & { transactionId?: number }> {
+  const sessionUser = await requireAdminAction();
+
+  if (!Number.isInteger(input.idSiswa) || input.idSiswa <= 0) {
+    return { error: "Siswa tidak valid.", success: "" };
+  }
+
+  if (!isDateInput(input.tanggalPinjam) || !isDateInput(input.tanggalJatuhTempo)) {
+    return { error: "Tanggal peminjaman tidak valid.", success: "" };
+  }
+
+  if (input.tanggalJatuhTempo < input.tanggalPinjam) {
+    return {
+      error: "Tenggat kembali tidak boleh lebih awal dari tanggal pinjam.",
+      success: "",
+    };
+  }
+
+  const items = input.items
+    .map((item) => ({
+      ...item,
+      quantity: Number(item.quantity),
+    }))
+    .filter(
+      (item) =>
+        Number.isInteger(item.bookId) &&
+        item.bookId > 0 &&
+        Number.isInteger(item.quantity) &&
+        item.quantity > 0
+    );
+
+  if (items.length === 0) {
+    return { error: "Keranjang peminjaman masih kosong.", success: "" };
+  }
+
+  const supabase = getServerSupabaseClient();
+  const { data: siswa, error: siswaError } = await supabase
+    .from("siswa")
+    .select("id_siswa, status_keanggotaan")
+    .eq("id_siswa", input.idSiswa)
+    .maybeSingle<{ id_siswa: number; status_keanggotaan: string | null }>();
+
+  if (siswaError || !siswa) {
+    return { error: "Siswa tidak ditemukan.", success: "" };
+  }
+
+  if (siswa.status_keanggotaan !== "aktif") {
+    return { error: "Peminjaman hanya bisa dibuat untuk siswa aktif.", success: "" };
+  }
+
+  // Atomicity: delegate the entire checkout (allocate copies + insert transaksi + insert detail)
+  // to a single Postgres RPC so it's truly all-or-nothing.
+  // See: supabase/sql/checkout_peminjaman.sql
+  const note = normalizeBorrowNote(input.catatan);
+  const grouped = new Map<number, number>();
+
+  for (const item of items) {
+    grouped.set(item.bookId, (grouped.get(item.bookId) ?? 0) + item.quantity);
+  }
+
+  const payloadItems = Array.from(grouped.entries()).map(([bookId, quantity]) => ({
+    bookId,
+    quantity,
+  }));
+
+  const { data: transactionId, error: rpcError } = await supabase.rpc(
+    "checkout_peminjaman",
+    {
+      p_id_siswa: input.idSiswa,
+      p_id_admin: sessionUser.id,
+      p_tanggal_pinjam: input.tanggalPinjam,
+      p_tanggal_jatuh_tempo: input.tanggalJatuhTempo,
+      p_catatan: note || null,
+      p_items: payloadItems,
+    } as never
+  );
+
+  if (rpcError) {
+    return {
+      error:
+        rpcError.message ||
+        "Gagal checkout peminjaman. Pastikan RPC checkout_peminjaman sudah dibuat di Supabase.",
+      success: "",
+    };
+  }
+
+  const normalizedTransactionId =
+    typeof transactionId === "number"
+      ? transactionId
+      : typeof transactionId === "string" && !Number.isNaN(Number(transactionId))
+        ? Number(transactionId)
+        : undefined;
+
+  revalidatePath("/admin/buku");
+  revalidatePath("/admin/pengembalian");
+  revalidatePath("/siswa/peminjaman");
+  revalidatePath("/siswa/riwayat");
+  revalidatePath("/public/katalog");
+  revalidatePath("/siswa/katalog");
+
+  return {
+    error: "",
+    success: normalizedTransactionId
+      ? `Peminjaman berhasil dibuat dengan ID transaksi ${normalizedTransactionId}.`
+      : "Peminjaman berhasil dibuat.",
+    transactionId: normalizedTransactionId,
   };
 }
 

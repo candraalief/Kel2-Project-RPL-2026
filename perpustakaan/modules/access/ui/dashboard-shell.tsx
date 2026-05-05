@@ -10,6 +10,7 @@ type DashboardShellProps = {
   title: string;
   description: string;
   activeNav: string;
+  headerActions?: ReactNode;
   children: ReactNode;
 };
 
@@ -141,6 +142,7 @@ export function DashboardShell({
   title,
   description,
   activeNav,
+  headerActions,
   children,
 }: DashboardShellProps) {
   const navItems = navByRole[role];
@@ -235,7 +237,9 @@ export function DashboardShell({
               </p>
             </div>
 
-            <div className="flex flex-wrap items-center gap-3" />
+            <div className="flex flex-wrap items-center gap-3">
+              {headerActions}
+            </div>
           </header>
 
           <div className="scrollbar-hidden min-h-0 flex-1 overflow-y-auto px-5 py-5 sm:px-6">

@@ -45,35 +45,7 @@ type DetailTableConfig = {
 
 const detailTableConfigs: DetailTableConfig[] = [
   {
-    table: "detail_transaksi_peminjaman",
-    transactionIdColumn: "id_transaksi",
-    bookIdColumn: "id_buku",
-    copyIdColumn: "id_copy_buku",
-    quantityColumn: "jumlah",
-  },
-  {
     table: "detail_transaksi",
-    transactionIdColumn: "id_transaksi",
-    bookIdColumn: "id_buku",
-    copyIdColumn: "id_copy_buku",
-    quantityColumn: "jumlah",
-  },
-  {
-    table: "transaksi_detail",
-    transactionIdColumn: "id_transaksi",
-    bookIdColumn: "id_buku",
-    copyIdColumn: "id_copy_buku",
-    quantityColumn: "jumlah",
-  },
-  {
-    table: "detail_peminjaman",
-    transactionIdColumn: "id_transaksi",
-    bookIdColumn: "id_buku",
-    copyIdColumn: "id_copy_buku",
-    quantityColumn: "jumlah",
-  },
-  {
-    table: "peminjaman_detail",
     transactionIdColumn: "id_transaksi",
     bookIdColumn: "id_buku",
     copyIdColumn: "id_copy_buku",

@@ -25,6 +25,11 @@ import type {
   CatalogGenre,
 } from "@/modules/library/lib/catalog";
 import { CATALOG_SHELF_LOCATIONS } from "@/modules/library/lib/shelf-locations";
+import {
+  BorrowCheckoutDrawer,
+  type BorrowStudentOption,
+} from "@/modules/library/ui/borrow-checkout-drawer";
+import { useCartStore } from "@/store/use-cart-store";
 
 const initialActionState: CatalogActionState = {
   error: "",
@@ -106,9 +111,13 @@ function useCatalogCopySummary(bookId: number, enabled = true) {
 export function AdminCatalog({
   books,
   genres,
+  students,
+  adminName,
 }: {
   books: AdminCatalogBook[];
   genres: CatalogGenre[];
+  students: BorrowStudentOption[];
+  adminName: string;
 }) {
   const [search, setSearch] = useState("");
   const [selectedGenreIds, setSelectedGenreIds] = useState<string[]>([]);
@@ -119,6 +128,7 @@ export function AdminCatalog({
   const [currentPage, setCurrentPage] = useState(1);
   const [showAllGenres, setShowAllGenres] = useState(false);
   const [selectedBook, setSelectedBook] = useState<AdminCatalogBook | null>(null);
+  const [borrowingBook, setBorrowingBook] = useState<AdminCatalogBook | null>(null);
   const [editingBook, setEditingBook] = useState<AdminCatalogBook | null>(null);
   const [addingCopiesBook, setAddingCopiesBook] =
     useState<AdminCatalogBook | null>(null);
@@ -136,6 +146,7 @@ export function AdminCatalog({
   const [isRemovingCopies, startRemoveCopiesTransition] = useTransition();
   const router = useRouter();
   const deferredSearch = useDeferredValue(search);
+  const { addItem, openCart } = useCartStore();
 
   const filteredBooks = useMemo(() => {
     const query = normalize(deferredSearch);
@@ -263,6 +274,22 @@ export function AdminCatalog({
   function openRemoveCopiesModal(book: AdminCatalogBook) {
     setRemoveCopiesState(initialActionState);
     setRemovingCopiesBook(book);
+  }
+
+  function addBookToBorrowCart(book: AdminCatalogBook, quantity: number) {
+    if (book.availableCount < 1) {
+      return;
+    }
+
+    addItem({
+      bookId: book.id,
+      title: book.title,
+      coverUrl: book.coverUrl,
+      availableCount: book.availableCount,
+      quantity,
+    });
+    setBorrowingBook(null);
+    openCart();
   }
 
   function closeDeleteModal() {
@@ -450,6 +477,7 @@ export function AdminCatalog({
                 key={book.id}
                 book={book}
                 onOpen={() => setSelectedBook(book)}
+                onAddToBorrowCart={() => setBorrowingBook(book)}
                 onEdit={() => setEditingBook(book)}
                 onDelete={() => openDeleteModal(book)}
               />
@@ -479,6 +507,14 @@ export function AdminCatalog({
           onClose={() => setEditingBook(null)}
           onAddCopies={() => openAddCopiesModal(editingBook)}
           onRemoveCopies={() => openRemoveCopiesModal(editingBook)}
+        />
+      ) : null}
+
+      {borrowingBook ? (
+        <BorrowBookModal
+          book={borrowingBook}
+          onClose={() => setBorrowingBook(null)}
+          onConfirm={(quantity) => addBookToBorrowCart(borrowingBook, quantity)}
         />
       ) : null}
 
@@ -515,6 +551,8 @@ export function AdminCatalog({
       {deleteToast ? (
         <ActionToast message={deleteToast} onClose={() => setDeleteToast("")} />
       ) : null}
+
+      <BorrowCheckoutDrawer students={students} adminName={adminName} />
     </div>
   );
 }
@@ -965,11 +1003,13 @@ function CatalogPaginationControls({
 function BookCard({
   book,
   onOpen,
+  onAddToBorrowCart,
   onEdit,
   onDelete,
 }: {
   book: AdminCatalogBook;
   onOpen: () => void;
+  onAddToBorrowCart: () => void;
   onEdit: () => void;
   onDelete: () => void;
 }) {
@@ -1014,7 +1054,18 @@ function BookCard({
         <p>Tersedia: <span className="font-semibold text-zinc-900">{book.availableCount} eksemplar</span></p>
       </div>
 
-      <div className="mt-auto pt-2">
+      <div className="mt-auto space-y-1.5 pt-2">
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation();
+            onAddToBorrowCart();
+          }}
+          disabled={!available}
+          className="inline-flex h-7 w-full items-center justify-center rounded-md border border-blue-200 bg-blue-50 px-2 text-[10px] font-semibold text-blue-600 transition hover:bg-blue-100 disabled:cursor-not-allowed disabled:border-zinc-200 disabled:bg-zinc-100 disabled:text-zinc-400"
+        >
+          Pinjam
+        </button>
         <div className="grid grid-cols-2 gap-1.5">
           <button
             type="button"
@@ -1059,6 +1110,176 @@ function BookCover({ book }: { book: AdminCatalogBook }) {
       Foto
       <br />
       Buku
+    </div>
+  );
+}
+
+function BorrowBookModal({
+  book,
+  onClose,
+  onConfirm,
+}: {
+  book: AdminCatalogBook;
+  onClose: () => void;
+  onConfirm: (quantity: number) => void;
+}) {
+  const maxQuantity = Math.max(book.availableCount, 0);
+  const [quantityInput, setQuantityInput] = useState("1");
+  const quantityNumber = Number(quantityInput);
+  const safeQuantity =
+    Number.isInteger(quantityNumber) && quantityNumber > 0
+      ? Math.min(quantityNumber, Math.max(maxQuantity, 1))
+      : 1;
+  const disabled = maxQuantity < 1;
+
+  function updateQuantity(value: string) {
+    if (!value) {
+      setQuantityInput("");
+      return;
+    }
+
+    const nextQuantity = Number(value);
+
+    if (!Number.isFinite(nextQuantity)) {
+      return;
+    }
+
+    setQuantityInput(
+      String(Math.max(1, Math.min(Math.floor(nextQuantity), maxQuantity)))
+    );
+  }
+
+  function increaseQuantity() {
+    setQuantityInput((current) => {
+      const currentNumber = Number(current);
+      const nextQuantity = Number.isFinite(currentNumber) ? currentNumber + 1 : 1;
+
+      return String(Math.max(1, Math.min(Math.floor(nextQuantity), maxQuantity)));
+    });
+  }
+
+  function decreaseQuantity() {
+    setQuantityInput((current) => {
+      const currentNumber = Number(current);
+      const nextQuantity = Number.isFinite(currentNumber) ? currentNumber - 1 : 1;
+
+      return String(Math.max(1, Math.min(Math.floor(nextQuantity), maxQuantity)));
+    });
+  }
+
+  function normalizeEmptyQuantity() {
+    if (!quantityInput) {
+      setQuantityInput("1");
+    }
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/50 p-4"
+      onClick={onClose}
+    >
+      <article
+        className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#1d66d6]">
+              Pinjam Buku
+            </p>
+            <h2 className="mt-1 text-2xl font-semibold text-zinc-950">
+              {book.title}
+            </h2>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-zinc-200 text-lg font-semibold text-zinc-500 transition hover:bg-zinc-100"
+          >
+            x
+          </button>
+        </div>
+
+        <div className="mt-4 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-blue-900">
+          <div className="flex gap-3">
+            <div className="w-20 shrink-0">
+              <BookCover book={book} />
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold">Informasi Buku</p>
+              <p className="mt-1 truncate text-base font-semibold text-zinc-950">
+                {book.title}
+              </p>
+              <p className="mt-2 text-sm text-blue-800">
+                Total: {book.totalCopies} eksemplar - Tersedia:{" "}
+                {book.availableCount} eksemplar - Dipinjam:{" "}
+                {book.borrowedCount} eksemplar
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <label className="mt-5 block space-y-2">
+          <span className="text-sm font-semibold text-zinc-950">
+            Jumlah Dipinjam
+          </span>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={decreaseQuantity}
+              disabled={disabled}
+              className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-zinc-200 text-lg font-semibold text-zinc-700 transition hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              -
+            </button>
+            <input
+              type="number"
+              min={1}
+              max={Math.max(maxQuantity, 1)}
+              value={quantityInput}
+              onChange={(event) => updateQuantity(event.currentTarget.value)}
+              onBlur={normalizeEmptyQuantity}
+              disabled={disabled}
+              className="h-10 min-w-0 flex-1 rounded-xl border border-zinc-300 bg-white px-3 text-center text-base font-semibold text-zinc-950 outline-none transition focus:border-[#1d66d6] disabled:cursor-not-allowed disabled:bg-zinc-100"
+            />
+            <button
+              type="button"
+              onClick={increaseQuantity}
+              disabled={disabled}
+              className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-zinc-200 text-lg font-semibold text-zinc-700 transition hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              +
+            </button>
+          </div>
+          <p className="text-xs text-slate-500">
+            Maksimal {maxQuantity} eksemplar tersedia untuk dipinjam.
+          </p>
+        </label>
+
+        {disabled ? (
+          <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-800">
+            Buku ini belum memiliki eksemplar tersedia untuk dipinjam.
+          </div>
+        ) : null}
+
+        <div className="mt-5 flex justify-end gap-3">
+          <button
+            type="button"
+            onClick={onClose}
+            className="inline-flex min-w-24 items-center justify-center rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-700 transition hover:bg-zinc-100"
+          >
+            Batal
+          </button>
+          <button
+            type="button"
+            onClick={() => onConfirm(safeQuantity)}
+            disabled={disabled || !quantityInput}
+            className="inline-flex min-w-32 items-center justify-center rounded-xl bg-[#1d66d6] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#1553b2] disabled:cursor-not-allowed disabled:bg-zinc-400"
+          >
+            Masukkan Cart
+          </button>
+        </div>
+      </article>
     </div>
   );
 }
