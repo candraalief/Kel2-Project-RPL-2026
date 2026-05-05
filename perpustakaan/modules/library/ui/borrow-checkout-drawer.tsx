@@ -26,6 +26,17 @@ function toDateInputValue(date: Date) {
   return localDate.toISOString().slice(0, 10);
 }
 
+function toDateTimeLocalInputValue(date: Date) {
+  const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
+
+  // YYYY-MM-DDTHH:mm:ss for <input type="datetime-local">
+  return localDate.toISOString().slice(0, 19);
+}
+
+function getDatePart(value: string) {
+  return value.slice(0, 10);
+}
+
 function addDays(dateValue: string, days: number) {
   const date = dateValue ? new Date(`${dateValue}T00:00:00`) : new Date();
 
@@ -164,7 +175,9 @@ export function BorrowCheckoutDrawer({
   const router = useRouter();
   const [studentQuery, setStudentQuery] = useState("");
   const [selectedStudentId, setSelectedStudentId] = useState("");
-  const [borrowDate, setBorrowDate] = useState(() => toDateInputValue(new Date()));
+  const [borrowDate, setBorrowDate] = useState(() =>
+    toDateTimeLocalInputValue(new Date())
+  );
   const [dueDate, setDueDate] = useState(() => addDays(toDateInputValue(new Date()), 7));
   const [note, setNote] = useState("");
   const [error, setError] = useState("");
@@ -226,7 +239,7 @@ export function BorrowCheckoutDrawer({
 
   function updateBorrowDate(value: string) {
     setBorrowDate(value);
-    setDueDate(addDays(value, 7));
+    setDueDate(addDays(getDatePart(value), 7));
   }
 
   function handleStudentQueryChange(value: string) {
@@ -455,7 +468,8 @@ export function BorrowCheckoutDrawer({
                         Tanggal Pinjam
                       </span>
                       <input
-                        type="date"
+                        type="datetime-local"
+                        step={1}
                         value={borrowDate}
                         onChange={(event) => updateBorrowDate(event.currentTarget.value)}
                         className="h-10 w-full rounded-xl border border-zinc-300 bg-white px-3 text-sm text-zinc-900 outline-none transition focus:border-[#1d66d6]"

@@ -10,9 +10,14 @@ export default async function AdminReturnPage() {
   const activeTransactions = transactions.filter(
     (item) => item.tanggal_kembali === null
   );
-  const completedTransactions = transactions.filter(
-    (item) => item.tanggal_kembali !== null
-  );
+  const completedTransactions = transactions
+    .filter((item) => item.tanggal_kembali !== null)
+    .sort((a, b) => {
+      const timeA = a.tanggal_kembali ? new Date(a.tanggal_kembali).getTime() : 0;
+      const timeB = b.tanggal_kembali ? new Date(b.tanggal_kembali).getTime() : 0;
+
+      return timeB - timeA;
+    });
 
   return (
     <DashboardShell

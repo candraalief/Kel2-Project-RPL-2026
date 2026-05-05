@@ -62,6 +62,26 @@ function isDateInput(value: string) {
   return /^\d{4}-\d{2}-\d{2}$/.test(value);
 }
 
+function isDateTimeLocalInput(value: string) {
+  return /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?$/.test(value);
+}
+
+function parseBorrowDateTime(value: string) {
+  if (isDateInput(value)) {
+    const date = new Date(`${value}T00:00:00`);
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
+
+  if (isDateTimeLocalInput(value)) {
+    const normalized = value.length === 16 ? `${value}:00` : value;
+    const date = new Date(normalized);
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
+
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
 function buildConditionNote(items: ReturnItemInput[]) {
   return items
     .map((item) => {
@@ -140,11 +160,17 @@ export async function createBorrowTransaction(
     return { error: "Siswa tidak valid.", success: "" };
   }
 
-  if (!isDateInput(input.tanggalPinjam) || !isDateInput(input.tanggalJatuhTempo)) {
+  const borrowedAt = parseBorrowDateTime(input.tanggalPinjam);
+
+  if (!borrowedAt || !isDateInput(input.tanggalJatuhTempo)) {
     return { error: "Tanggal peminjaman tidak valid.", success: "" };
   }
 
-  if (input.tanggalJatuhTempo < input.tanggalPinjam) {
+  const borrowDateOnly = isDateInput(input.tanggalPinjam)
+    ? input.tanggalPinjam
+    : input.tanggalPinjam.slice(0, 10);
+
+  if (input.tanggalJatuhTempo < borrowDateOnly) {
     return {
       error: "Tenggat kembali tidak boleh lebih awal dari tanggal pinjam.",
       success: "",
@@ -203,7 +229,7 @@ export async function createBorrowTransaction(
     {
       p_id_siswa: input.idSiswa,
       p_id_admin: sessionUser.id,
-      p_tanggal_pinjam: input.tanggalPinjam,
+      p_tanggal_pinjam: borrowedAt.toISOString(),
       p_tanggal_jatuh_tempo: input.tanggalJatuhTempo,
       p_catatan: note || null,
       p_items: payloadItems,

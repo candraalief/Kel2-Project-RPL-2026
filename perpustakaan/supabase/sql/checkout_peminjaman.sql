@@ -11,7 +11,7 @@
 create or replace function public.checkout_peminjaman(
   p_id_siswa integer,
   p_id_admin integer,
-  p_tanggal_pinjam date,
+  p_tanggal_pinjam timestamptz,
   p_tanggal_jatuh_tempo date,
   p_catatan text,
   p_items jsonb
@@ -38,7 +38,7 @@ begin
     raise exception 'Tanggal peminjaman wajib diisi.';
   end if;
 
-  if p_tanggal_jatuh_tempo < p_tanggal_pinjam then
+  if p_tanggal_jatuh_tempo < (p_tanggal_pinjam at time zone 'Asia/Jakarta')::date then
     raise exception 'Tenggat kembali tidak boleh lebih awal dari tanggal pinjam.';
   end if;
 
@@ -198,7 +198,7 @@ $$;
 grant execute on function public.checkout_peminjaman(
   integer,
   integer,
-  date,
+  timestamptz,
   date,
   text,
   jsonb
