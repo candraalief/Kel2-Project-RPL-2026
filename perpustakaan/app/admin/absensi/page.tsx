@@ -7,8 +7,8 @@ import {
 } from "@/modules/library/lib/data";
 import { AdminAttendanceContent } from "./admin-attendance-content";
 
-const attendanceLimitOptions = [10, 25, 50, 100, 250] as const;
-const defaultAttendanceLimit = 25;
+const attendanceLimitOptions = [5, 10, 25, 50, 100, 250] as const;
+const defaultAttendanceLimit = 5;
 
 type AdminAttendancePageProps = {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
