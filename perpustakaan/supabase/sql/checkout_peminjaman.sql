@@ -42,7 +42,7 @@ begin
     raise exception 'Siswa tidak valid.';
   end if;
 
-  if p_id_admin is null or p_id_admin <= 0 then
+  if p_id_admin is null or p_id_admin < 0 then
     raise exception 'Admin tidak valid.';
   end if;
 
