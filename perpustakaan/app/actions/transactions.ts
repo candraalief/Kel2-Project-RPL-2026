@@ -244,7 +244,6 @@ export async function createBorrowTransaction(
 
 async function closeTransaction(
   transactionId: number,
-  hasReturnNote: boolean,
   note: string | null
 ) {
   const supabase = getServerSupabaseClient();
@@ -252,12 +251,12 @@ async function closeTransaction(
   const payloads = [
     {
       tanggal_kembali: closedAt,
-      status: hasReturnNote ? "selesai_dengan_catatan" : "dikembalikan",
+      status: "kembali",
       catatan: note,
     },
     {
       tanggal_kembali: closedAt,
-      status: hasReturnNote ? "selesai_dengan_catatan" : "dikembalikan",
+      status: "kembali",
     },
     {
       tanggal_kembali: closedAt,
@@ -338,7 +337,6 @@ export async function processTransactionReturn(
     }
   }
 
-  let hasLostOrDamaged = false;
   const adminNote = normalizeReturnNote(note);
   const conditionNote = buildConditionNote(items);
   const returnNote = combineReturnNotes(adminNote, conditionNote);
@@ -362,10 +360,6 @@ export async function processTransactionReturn(
         note: "Tidak kembali dari peminjam",
       },
     ];
-
-    if (item.damaged > 0 || item.lost > 0) {
-      hasLostOrDamaged = true;
-    }
 
     for (const update of updates) {
       for (let index = 0; index < update.count; index += 1) {
@@ -397,7 +391,6 @@ export async function processTransactionReturn(
   if (
     !(await closeTransaction(
       transactionId,
-      hasLostOrDamaged || Boolean(returnNote),
       returnNote
     ))
   ) {

@@ -38,7 +38,7 @@ const removedCopyStatusKeywords = [
   "hilang",
 ];
 const borrowedCopyStatusKeywords = ["dipinjam"];
-const availableCopyStatusValues = ["tersedia", "available"];
+const availableCopyStatusValues = ["tersedia", "available", "rusak", "damaged"];
 const damagedCopyConditionKeywords = ["rusak", "damaged"];
 
 type CopyCounts = {
