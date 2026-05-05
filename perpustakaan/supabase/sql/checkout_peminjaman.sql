@@ -3,10 +3,22 @@
 --
 -- Prinsip:
 -- - 1 transaksi dapat berisi banyak judul dan banyak copy.
--- - Copy yang boleh dipinjam hanya status `tersedia` atau `rusak`.
+-- - Copy yang boleh dipinjam hanya status `tersedia`.
 -- - Copy status `dipinjam` atau `dikeluarkan` dilewati.
 -- - Semua proses all-or-nothing. Jika satu buku kurang copy, transaksi,
 --   detail_transaksi, dan update copy_buku semuanya rollback otomatis.
+
+-- NOTE: pastikan tidak ada overload lama yang memakai p_tanggal_pinjam bertipe DATE,
+-- karena PostgREST/Supabase bisa mengirim parameter bertipe "unknown" dan membuat
+-- pemanggilan RPC jadi ambigu.
+drop function if exists public.checkout_peminjaman(
+  integer,
+  integer,
+  date,
+  date,
+  text,
+  jsonb
+);
 
 create or replace function public.checkout_peminjaman(
   p_id_siswa integer,
@@ -120,19 +132,11 @@ begin
     from (
       select
         cb.id_copy_buku,
-        case
-          when cb.status = 'rusak'::public.status_buku then 'rusak'
-          else 'baik'
-        end as kondisi_saat_pinjam
+        'baik' as kondisi_saat_pinjam
       from public.copy_buku cb
       where cb.id_buku = v_request.id_buku
-        and cb.status in ('tersedia'::public.status_buku, 'rusak'::public.status_buku)
-      order by
-        case
-          when cb.status = 'tersedia'::public.status_buku then 0
-          else 1
-        end,
-        cb.id_copy_buku
+        and cb.status in ('tersedia'::public.status_buku)
+      order by cb.id_copy_buku
       limit v_request.quantity
       for update skip locked
     ) selected;

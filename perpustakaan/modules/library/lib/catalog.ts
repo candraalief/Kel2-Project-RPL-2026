@@ -38,14 +38,12 @@ const removedCopyStatusKeywords = [
   "hilang",
 ];
 const borrowedCopyStatusKeywords = ["dipinjam"];
-const availableCopyStatusValues = ["tersedia", "available", "rusak", "damaged"];
-const damagedCopyConditionKeywords = ["rusak", "damaged"];
+const availableCopyStatusValues = ["tersedia", "available"];
 
 type CopyCounts = {
   active: number;
   available: number;
   borrowed: number;
-  damaged: number;
   removed: number;
 };
 
@@ -53,7 +51,6 @@ export type CatalogCopySummary = {
   totalCopies: number;
   availableCount: number;
   borrowedCount: number;
-  damagedCount: number;
   removedCount: number;
   unavailableCount: number;
 };
@@ -79,7 +76,6 @@ export type AdminCatalogBook = {
   totalCopies: number;
   availableCount: number;
   borrowedCount: number;
-  damagedCount: number;
   removedCount: number;
   unavailableCount: number;
 };
@@ -118,7 +114,13 @@ function readNumber(row: Row, keys: string[]) {
 }
 
 function normalizeStatus(status: string | null) {
-  return (status ?? "").trim().toLowerCase();
+  const normalized = (status ?? "").trim().toLowerCase();
+
+  if (normalized === "rusak" || normalized === "damaged") {
+    return "tersedia";
+  }
+
+  return normalized;
 }
 
 function isRemovedCopyStatus(normalizedStatus: string) {
@@ -147,20 +149,6 @@ function isAvailableCopyStatus(normalizedStatus: string) {
   }
 
   return availableCopyStatusValues.includes(normalizedStatus);
-}
-
-function isDamagedCopyCondition(normalizedCondition: string) {
-  if (!normalizedCondition) {
-    return false;
-  }
-
-  return damagedCopyConditionKeywords.some((keyword) =>
-    normalizedCondition.includes(keyword)
-  );
-}
-
-function isDamagedCopyStatus(normalizedStatus: string) {
-  return normalizedStatus === "rusak";
 }
 
 function parseInlineGenres(row: Row) {
@@ -291,30 +279,15 @@ async function loadCopyCounts(bookIds: number[]) {
           active: 0,
           available: 0,
           borrowed: 0,
-          damaged: 0,
           removed: 0,
         };
         const status = readString(row, [config.statusColumn]);
         const normalizedStatus = normalizeStatus(status);
-        const condition = readString(row, [
-          "kondisi",
-          "condition",
-          "kondisi_fisik",
-          "status_kondisi",
-        ]);
-        const normalizedCondition = normalizeStatus(condition);
 
         if (isRemovedCopyStatus(normalizedStatus)) {
           current.removed += 1;
         } else {
           current.active += 1;
-
-          if (
-            isDamagedCopyStatus(normalizedStatus) ||
-            isDamagedCopyCondition(normalizedCondition)
-          ) {
-            current.damaged += 1;
-          }
 
           if (isAvailableCopyStatus(normalizedStatus)) {
             current.available += 1;
@@ -340,7 +313,6 @@ function toCopySummary(counts: CopyCounts): CatalogCopySummary {
     totalCopies: counts.active,
     availableCount: counts.available,
     borrowedCount: counts.borrowed,
-    damagedCount: counts.damaged,
     removedCount: counts.removed,
     unavailableCount: Math.max(counts.active - counts.available, 0),
   };
@@ -353,7 +325,6 @@ export async function getCatalogBookCopySummary(
     active: 0,
     available: 0,
     borrowed: 0,
-    damaged: 0,
     removed: 0,
   };
 
@@ -389,7 +360,6 @@ export async function getAdminCatalogData(): Promise<AdminCatalogData> {
       active: fallbackStock,
       available: fallbackStock,
       borrowed: 0,
-      damaged: 0,
       removed: 0,
     };
     const inlineGenres = parseInlineGenres(row).map((name) => ({

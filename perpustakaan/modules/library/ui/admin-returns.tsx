@@ -82,7 +82,6 @@ function getTransactionStatus(transaction: DetailedTransactionRecord) {
     const normalizedNote = (transaction.catatan ?? "").toLowerCase();
     const hasNote =
       normalizedStatus.includes("catatan") ||
-      normalizedStatus.includes("rusak") ||
       normalizedStatus.includes("hilang") ||
       normalizedNote.length > 0;
 
@@ -130,14 +129,12 @@ function getReturnConditionCounts(
   const itemSegment = segments.find((segment) =>
     segment.toLowerCase().startsWith(`${item.title.toLowerCase()}:`)
   );
-  const damaged =
-    itemSegment?.match(/(\d+)\s+rusak/i)?.[1] !== undefined
-      ? Number(itemSegment.match(/(\d+)\s+rusak/i)?.[1])
-      : 0;
-  const lost =
-    itemSegment?.match(/(\d+)\s+hilang/i)?.[1] !== undefined
-      ? Number(itemSegment.match(/(\d+)\s+hilang/i)?.[1])
-      : 0;
+  const damagedMatch =
+    itemSegment?.match(/rusak\s*:\s*(\d+)/i) ?? itemSegment?.match(/(\d+)\s+rusak/i);
+  const lostMatch =
+    itemSegment?.match(/hilang\s*:\s*(\d+)/i) ?? itemSegment?.match(/(\d+)\s+hilang/i);
+  const damaged = damagedMatch?.[1] ? Number(damagedMatch[1]) : 0;
+  const lost = lostMatch?.[1] ? Number(lostMatch[1]) : 0;
   const good = Math.max(item.quantity - damaged - lost, 0);
 
   return { good, damaged, lost };
@@ -695,14 +692,12 @@ function ReturnDetailModal({
       const itemCounts = counts[item.key] ?? { damaged: 0, lost: 0 };
       const damaged = itemCounts.damaged;
       const lost = itemCounts.lost;
-      const good = item.quantity - (damaged + lost);
 
       return {
         key: item.key,
         title: item.title,
         copyIds: item.copyIds,
         quantity: item.quantity,
-        good,
         damaged,
         lost,
       };
@@ -710,13 +705,12 @@ function ReturnDetailModal({
 
     const invalidItem = payload.find(
       (item) =>
-        item.damaged + item.lost > item.quantity ||
-        item.good + item.damaged + item.lost !== item.quantity
+        item.damaged + item.lost > item.quantity
     );
 
     if (invalidItem) {
       setError(
-        `Total kondisi untuk ${invalidItem.title} harus sama dengan ${invalidItem.quantity} eksemplar.`
+        `Jumlah rusak dan hilang untuk ${invalidItem.title} tidak boleh melebihi ${invalidItem.quantity} eksemplar.`
       );
       return;
     }

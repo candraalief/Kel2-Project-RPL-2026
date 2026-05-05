@@ -324,7 +324,7 @@ async function updateCopyAsRemoved(
   const normalizedReason = reason.trim().toLowerCase();
   const targetStatuses =
     normalizedReason === "rusak berat"
-      ? ["dikeluarkan", "hilang", "rusak"]
+      ? ["dikeluarkan", "hilang"]
       : normalizedReason === "lainnya"
         ? ["dikeluarkan", "hilang"]
         : ["hilang", "dikeluarkan"];

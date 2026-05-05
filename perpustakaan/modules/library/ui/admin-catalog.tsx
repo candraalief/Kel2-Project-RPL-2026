@@ -40,7 +40,6 @@ const emptyCopySummary: CatalogCopySummary = {
   totalCopies: 0,
   availableCount: 0,
   borrowedCount: 0,
-  damagedCount: 0,
   removedCount: 0,
   unavailableCount: 0,
 };
@@ -1331,11 +1330,10 @@ function BookDetailModal({
             <DetailItem label="ISBN" value={book.isbn} />
             <DetailItem label="Tahun terbit" value={book.publishedYear?.toString() ?? null} />
             <DetailItem label="Genre" value={genreText(book)} />
-            <DetailItem label="Lokasi rak" value={book.shelfLocation} />
             <DetailItem
               label="Total Eksemplar Aktif"
               value={countLabel(counts.totalCopies)}
-              helper="Semua eksemplar yang masih masuk koleksi: tersedia, dipinjam, atau rusak; tidak termasuk hilang/dikeluarkan."
+              helper="Semua eksemplar yang masih masuk koleksi: tersedia atau dipinjam; tidak termasuk hilang/dikeluarkan."
             />
             <DetailItem
               label="Eksemplar Tersedia"
@@ -1346,11 +1344,6 @@ function BookDetailModal({
               label="Eksemplar Dipinjam"
               value={countLabel(counts.borrowedCount)}
               helper="Eksemplar yang sedang dipinjam siswa dengan status dipinjam."
-            />
-            <DetailItem
-              label="Status Rusak"
-              value={countLabel(counts.damagedCount)}
-              helper="Eksemplar dengan status rusak."
             />
             <DetailItem
               label="Eksemplar Hilang/Dikeluarkan"
@@ -1364,6 +1357,9 @@ function BookDetailModal({
             ) : null}
             <div className="md:col-span-2">
               <DetailItem label="Deskripsi" value={book.description} />
+            </div>
+            <div className="md:col-span-2">
+              <DetailItem label="Lokasi rak" value={book.shelfLocation} />
             </div>
             <div className="md:col-span-2">
               {book.shelfMapUrl ? (

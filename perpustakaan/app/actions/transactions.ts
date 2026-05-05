@@ -15,7 +15,6 @@ export type ReturnItemInput = {
   title: string;
   copyIds: number[];
   quantity: number;
-  good: number;
   damaged: number;
   lost: number;
 };
@@ -86,8 +85,8 @@ function buildConditionNote(items: ReturnItemInput[]) {
   return items
     .map((item) => {
       const notes = [
-        item.damaged > 0 ? `${item.damaged} rusak` : "",
-        item.lost > 0 ? `${item.lost} hilang` : "",
+        item.damaged > 0 ? `rusak: ${item.damaged}` : "",
+        item.lost > 0 ? `hilang: ${item.lost}` : "",
       ].filter(Boolean);
 
       return notes.length > 0 ? `${item.title}: ${notes.join(", ")}` : "";
@@ -104,7 +103,7 @@ function combineReturnNotes(adminNote: string, conditionNote: string) {
 
 async function updateCopyStatus(
   copyId: number,
-  statuses: Array<"tersedia" | "dipinjam" | "dikeluarkan" | "rusak">,
+  statuses: Array<"tersedia" | "dipinjam" | "dikeluarkan">,
   note: string
 ) {
   const supabase = getServerSupabaseClient();
@@ -338,19 +337,13 @@ export async function processTransactionReturn(
   }
 
   for (const item of items) {
-    if (
-      !isValidCount(item.good) ||
-      !isValidCount(item.damaged) ||
-      !isValidCount(item.lost)
-    ) {
+    if (!isValidCount(item.damaged) || !isValidCount(item.lost)) {
       return { error: `Jumlah kondisi untuk ${item.title} tidak valid.`, success: "" };
     }
 
-    const total = item.good + item.damaged + item.lost;
-
-    if (total !== item.quantity) {
+    if (item.damaged + item.lost > item.quantity) {
       return {
-        error: `Total kondisi untuk ${item.title} harus sama dengan ${item.quantity} eksemplar.`,
+        error: `Jumlah rusak dan hilang untuk ${item.title} tidak boleh melebihi ${item.quantity} eksemplar.`,
         success: "",
       };
     }
@@ -371,20 +364,15 @@ export async function processTransactionReturn(
     const copyQueue = [...item.copyIds];
     const updates: Array<{
       count: number;
-      statuses: Array<"tersedia" | "dipinjam" | "dikeluarkan" | "rusak">;
+      statuses: Array<"tersedia" | "dipinjam" | "dikeluarkan">;
       note: string;
     }> = [
-      { count: item.good, statuses: ["tersedia"], note: "" },
       {
-        count: item.damaged,
-        statuses: ["rusak"],
-        note: "Rusak saat pengembalian",
+        count: Math.max(item.quantity - item.lost, 0),
+        statuses: ["tersedia"],
+        note: "",
       },
-      {
-        count: item.lost,
-        statuses: ["dikeluarkan"],
-        note: "Tidak kembali dari peminjam",
-      },
+      { count: item.lost, statuses: ["dikeluarkan"], note: "Tidak kembali dari peminjam" },
     ];
 
     for (const update of updates) {
