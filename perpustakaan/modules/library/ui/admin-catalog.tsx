@@ -110,13 +110,15 @@ function useCatalogCopySummary(bookId: number, enabled = true) {
 export function AdminCatalog({
   books,
   genres,
-  students,
-  adminName,
+  students = [],
+  adminName = "",
+  readOnly = false,
 }: {
   books: AdminCatalogBook[];
   genres: CatalogGenre[];
-  students: BorrowStudentOption[];
-  adminName: string;
+  students?: BorrowStudentOption[];
+  adminName?: string;
+  readOnly?: boolean;
 }) {
   const [search, setSearch] = useState("");
   const [selectedGenreIds, setSelectedGenreIds] = useState<string[]>([]);
@@ -411,13 +413,15 @@ export function AdminCatalog({
               />
             </label>
 
-            <Link
-              href="/admin/buku/tambah"
-              className="inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-md bg-[#1768d8] px-4 text-sm font-semibold text-white transition hover:bg-[#1258ba] md:w-auto"
-            >
-              <PlusIcon />
-              Tambah Buku
-            </Link>
+            {!readOnly ? (
+              <Link
+                href="/admin/buku/tambah"
+                className="inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-md bg-[#1768d8] px-4 text-sm font-semibold text-white transition hover:bg-[#1258ba] md:w-auto"
+              >
+                <PlusIcon />
+                Tambah Buku
+              </Link>
+            ) : null}
           </div>
 
           <div className="my-3 border-t border-zinc-200" />
@@ -475,6 +479,7 @@ export function AdminCatalog({
               <BookCard
                 key={book.id}
                 book={book}
+                readOnly={readOnly}
                 onOpen={() => setSelectedBook(book)}
                 onAddToBorrowCart={() => setBorrowingBook(book)}
                 onEdit={() => setEditingBook(book)}
@@ -496,11 +501,12 @@ export function AdminCatalog({
       {selectedBook ? (
         <BookDetailModal
           book={selectedBook}
+          readOnly={readOnly}
           onClose={() => setSelectedBook(null)}
         />
       ) : null}
 
-      {editingBook ? (
+      {!readOnly && editingBook ? (
         <EditBookModal
           book={editingBook}
           onClose={() => setEditingBook(null)}
@@ -509,7 +515,7 @@ export function AdminCatalog({
         />
       ) : null}
 
-      {borrowingBook ? (
+      {!readOnly && borrowingBook ? (
         <BorrowBookModal
           book={borrowingBook}
           onClose={() => setBorrowingBook(null)}
@@ -517,7 +523,7 @@ export function AdminCatalog({
         />
       ) : null}
 
-      {addingCopiesBook ? (
+      {!readOnly && addingCopiesBook ? (
         <CatalogAddCopiesModal
           book={addingCopiesBook}
           state={addCopiesState}
@@ -527,7 +533,7 @@ export function AdminCatalog({
         />
       ) : null}
 
-      {deletingBook ? (
+      {!readOnly && deletingBook ? (
         <DeleteBookModal
           book={deletingBook}
           state={deleteState}
@@ -537,7 +543,7 @@ export function AdminCatalog({
         />
       ) : null}
 
-      {removingCopiesBook ? (
+      {!readOnly && removingCopiesBook ? (
         <RemoveCopiesModal
           book={removingCopiesBook}
           state={removeCopiesState}
@@ -551,7 +557,9 @@ export function AdminCatalog({
         <ActionToast message={deleteToast} onClose={() => setDeleteToast("")} />
       ) : null}
 
-      <BorrowCheckoutDrawer students={students} adminName={adminName} />
+      {!readOnly ? (
+        <BorrowCheckoutDrawer students={students} adminName={adminName} />
+      ) : null}
     </div>
   );
 }
@@ -1001,12 +1009,14 @@ function CatalogPaginationControls({
 
 function BookCard({
   book,
+  readOnly = false,
   onOpen,
   onAddToBorrowCart,
   onEdit,
   onDelete,
 }: {
   book: AdminCatalogBook;
+  readOnly?: boolean;
   onOpen: () => void;
   onAddToBorrowCart: () => void;
   onEdit: () => void;
@@ -1053,41 +1063,43 @@ function BookCard({
         <p>Tersedia: <span className="font-semibold text-zinc-900">{book.availableCount} eksemplar</span></p>
       </div>
 
-      <div className="mt-auto space-y-1.5 pt-2">
-        <button
-          type="button"
-          onClick={(event) => {
-            event.stopPropagation();
-            onAddToBorrowCart();
-          }}
-          disabled={!available}
-          className="inline-flex h-7 w-full items-center justify-center rounded-md border border-blue-200 bg-blue-50 px-2 text-[10px] font-semibold text-blue-600 transition hover:bg-blue-100 disabled:cursor-not-allowed disabled:border-zinc-200 disabled:bg-zinc-100 disabled:text-zinc-400"
-        >
-          Pinjam
-        </button>
-        <div className="grid grid-cols-2 gap-1.5">
+      {!readOnly ? (
+        <div className="mt-auto space-y-1.5 pt-2">
           <button
             type="button"
             onClick={(event) => {
               event.stopPropagation();
-              onEdit();
+              onAddToBorrowCart();
             }}
-            className="inline-flex h-7 w-full items-center justify-center rounded-md border border-blue-200 bg-blue-50 px-2 text-[10px] font-semibold text-blue-600 transition hover:bg-blue-100"
+            disabled={!available}
+            className="inline-flex h-7 w-full items-center justify-center rounded-md border border-blue-200 bg-blue-50 px-2 text-[10px] font-semibold text-blue-600 transition hover:bg-blue-100 disabled:cursor-not-allowed disabled:border-zinc-200 disabled:bg-zinc-100 disabled:text-zinc-400"
           >
-            Edit
+            Pinjam
           </button>
-          <button
-            type="button"
-            onClick={(event) => {
-              event.stopPropagation();
-              onDelete();
-            }}
-            className="inline-flex h-7 w-full items-center justify-center rounded-md border border-red-200 bg-red-50 px-2 text-[10px] font-semibold text-red-600 transition hover:bg-red-100"
-          >
-            Hapus
-          </button>
+          <div className="grid grid-cols-2 gap-1.5">
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                onEdit();
+              }}
+              className="inline-flex h-7 w-full items-center justify-center rounded-md border border-blue-200 bg-blue-50 px-2 text-[10px] font-semibold text-blue-600 transition hover:bg-blue-100"
+            >
+              Edit
+            </button>
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                onDelete();
+              }}
+              className="inline-flex h-7 w-full items-center justify-center rounded-md border border-red-200 bg-red-50 px-2 text-[10px] font-semibold text-red-600 transition hover:bg-red-100"
+            >
+              Hapus
+            </button>
+          </div>
         </div>
-      </div>
+      ) : null}
     </article>
   );
 }
@@ -1285,12 +1297,25 @@ function BorrowBookModal({
 
 function BookDetailModal({
   book,
+  readOnly = false,
   onClose,
 }: {
   book: AdminCatalogBook;
+  readOnly?: boolean;
   onClose: () => void;
 }) {
-  const { counts, error, loading } = useCatalogCopySummary(book.id);
+  const copySummary = useCatalogCopySummary(book.id, !readOnly);
+  const counts = readOnly
+    ? {
+        totalCopies: book.totalCopies,
+        availableCount: book.availableCount,
+        borrowedCount: book.borrowedCount,
+        removedCount: book.removedCount,
+        unavailableCount: book.unavailableCount,
+      }
+    : copySummary.counts;
+  const error = readOnly ? "" : copySummary.error;
+  const loading = readOnly ? false : copySummary.loading;
   const countLabel = (value: number) =>
     loading ? "Memuat..." : `${value} eksemplar`;
 

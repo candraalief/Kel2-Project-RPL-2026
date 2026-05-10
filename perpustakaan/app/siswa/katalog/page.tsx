@@ -1,23 +1,28 @@
 import { requireRole } from "@/modules/access/lib/guards";
 import { DashboardShell } from "@/modules/access/ui/dashboard-shell";
-import { getBooks } from "@/modules/library/lib/data";
-import { BooksTable, SectionCard } from "@/modules/library/ui/library-cards";
+import { getAdminCatalogData } from "@/modules/library/lib/catalog";
+import { AdminCatalog } from "@/modules/library/ui/admin-catalog";
+import { BorrowCartProvider } from "@/store/use-cart-store";
 
 export default async function SiswaCatalogPage() {
   const user = await requireRole("siswa");
-  const books = await getBooks();
+  const catalogData = await getAdminCatalogData();
 
   return (
-    <DashboardShell
-      role="siswa"
-      user={user}
-      title="Katalog Buku"
-      description="Telusuri koleksi buku perpustakaan, stok, dan lokasi rak."
-      activeNav="Katalog"
-    >
-      <SectionCard title="Daftar buku" subtitle="Katalog perpustakaan">
-        <BooksTable books={books} />
-      </SectionCard>
-    </DashboardShell>
+    <BorrowCartProvider>
+      <DashboardShell
+        role="siswa"
+        user={user}
+        title="Katalog Buku"
+        description="Telusuri koleksi buku perpustakaan, stok, dan lokasi rak."
+        activeNav="Katalog"
+      >
+        <AdminCatalog
+          books={catalogData.books}
+          genres={catalogData.genres}
+          readOnly
+        />
+      </DashboardShell>
+    </BorrowCartProvider>
   );
 }
