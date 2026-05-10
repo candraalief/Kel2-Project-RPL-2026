@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState, useDeferredValue, useEffect, useMemo, useRef, useState, useTransition, type ReactNode } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useActionState, useCallback, useEffect, useRef, useState, useTransition, type ReactNode } from "react";
 import {
   approveSiswaRegistration,
   clearSiswaPassword,
@@ -11,13 +12,19 @@ import {
   updateSiswaByAdmin,
   type SiswaAdminActionState,
 } from "@/app/actions/auth";
-import type { SiswaAccount } from "@/modules/access/lib/student-registration";
+import {
+  siswaAccountLimitOptions,
+  type SiswaAccount,
+  type SiswaAccountFilters,
+  type SiswaAccountPage,
+  type SiswaAccountStatusFilter,
+} from "@/modules/access/lib/student-registration";
 
 type ActiveTab = "registered" | "pending";
 type ModalMode = "add" | "detail" | "edit";
 type SortKey = "nisn" | "nama" | "kelas";
 type SortDirection = "asc" | "desc";
-type StatusFilter = "aktif" | "nonaktif" | null;
+type StatusFilter = SiswaAccountStatusFilter;
 type MemberModal =
   | { mode: "add"; siswa?: never }
   | { mode: "detail" | "edit"; siswa: SiswaAccount };
@@ -26,10 +33,6 @@ const initialActionState: SiswaAdminActionState = {
   error: "",
   success: "",
 };
-
-function normalize(value: string | null | number | boolean) {
-  return String(value ?? "").trim().toLowerCase();
-}
 
 function isPending(siswa: SiswaAccount) {
   return siswa.status_keanggotaan === "menunggu_verifikasi";
@@ -62,24 +65,6 @@ function StatusBadge({ status }: { status: string | null }) {
       {statusLabel(status)}
     </span>
   );
-}
-
-function compareText(first: string | null, second: string | null) {
-  return (first ?? "").localeCompare(second ?? "", "id-ID", {
-    numeric: true,
-    sensitivity: "base",
-  });
-}
-
-function compareNis(first: string | null, second: string | null) {
-  const firstNumber = Number(first);
-  const secondNumber = Number(second);
-
-  if (Number.isFinite(firstNumber) && Number.isFinite(secondNumber)) {
-    return firstNumber - secondNumber;
-  }
-
-  return compareText(first, second);
 }
 
 function Icon({
@@ -155,9 +140,22 @@ function Icon({
   );
 }
 
-export function AdminMembers({ siswa }: { siswa: SiswaAccount[] }) {
-  const [activeTab, setActiveTab] = useState<ActiveTab>("registered");
-  const [search, setSearch] = useState("");
+export function AdminMembers({
+  siswaPage,
+  filters,
+}: {
+  siswaPage: SiswaAccountPage;
+  filters: SiswaAccountFilters;
+}) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const activeTab = filters.tab;
+  const statusFilter = filters.status;
+  const sortConfig = filters.sort
+    ? { key: filters.sort, direction: filters.direction }
+    : null;
+  const [search, setSearch] = useState(filters.search);
   const [modal, setModal] = useState<MemberModal | null>(null);
   const [resetSiswa, setResetSiswa] = useState<SiswaAccount | null>(null);
   const [deleteSiswa, setDeleteSiswa] = useState<SiswaAccount | null>(null);
@@ -167,12 +165,38 @@ export function AdminMembers({ siswa }: { siswa: SiswaAccount[] }) {
   const [deleteNotice, setDeleteNotice] = useState("");
   const [approveNotice, setApproveNotice] = useState(false);
   const [rejectNotice, setRejectNotice] = useState(false);
-  const [sortConfig, setSortConfig] = useState<{
-    key: SortKey;
-    direction: SortDirection;
-  } | null>(null);
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>(null);
-  const deferredSearch = useDeferredValue(search);
+  const [resetPasswordIds, setResetPasswordIds] = useState<Set<number>>(
+    () => new Set()
+  );
+
+  const updateQuery = useCallback(
+    (updates: Record<string, string | number | null>) => {
+      const params = new URLSearchParams(searchParams.toString());
+
+      Object.entries(updates).forEach(([key, value]) => {
+        if (value === null || value === "") {
+          params.delete(key);
+          return;
+        }
+
+        params.set(key, String(value));
+      });
+
+      const query = params.toString();
+      router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+    },
+    [pathname, router, searchParams]
+  );
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      if (search !== filters.search) {
+        updateQuery({ q: search.trim(), page: 1 });
+      }
+    }, 350);
+
+    return () => window.clearTimeout(timeout);
+  }, [filters.search, search, updateQuery]);
 
   useEffect(() => {
     if (!resetNotice) {
@@ -222,81 +246,86 @@ export function AdminMembers({ siswa }: { siswa: SiswaAccount[] }) {
     return () => window.clearTimeout(timeout);
   }, [rejectNotice]);
 
-  const registeredSiswa = useMemo(
-    () => siswa.filter((item) => !isPending(item)),
-    [siswa]
-  );
-  const pendingSiswa = useMemo(() => siswa.filter(isPending), [siswa]);
-  const visibleSource = activeTab === "registered" ? registeredSiswa : pendingSiswa;
-
-  const filteredSiswa = useMemo(() => {
-    const query = normalize(deferredSearch);
-    const filtered = visibleSource.filter((item) => {
-      const matchesSearch =
-        !query ||
-        [
-          item.nisn,
-          item.nama,
-          item.kelas,
-          item.email,
-          item.username,
-          item.nomor_whatsapp,
-          item.tahun_masuk,
-          statusLabel(item.status_keanggotaan),
-        ].some((value) => normalize(value).includes(query));
-      const matchesStatus =
-        !statusFilter || item.status_keanggotaan === statusFilter;
-
-      return matchesSearch && matchesStatus;
-    });
-
-    if (!sortConfig) {
-      return filtered;
-    }
-
-    return [...filtered].sort((first, second) => {
-      const result =
-        sortConfig.key === "nisn"
-          ? compareNis(first.nisn, second.nisn)
-          : compareText(first[sortConfig.key], second[sortConfig.key]);
-
-      return sortConfig.direction === "asc" ? result : -result;
-    });
-  }, [deferredSearch, sortConfig, statusFilter, visibleSource]);
+  const filteredSiswa = siswaPage.siswa;
+  const registeredSiswaCount = siswaPage.registeredTotal;
+  const pendingSiswaCount = siswaPage.pendingTotal;
 
   function toggleSort(key: SortKey) {
-    setSortConfig((current) => {
-      if (!current || current.key !== key) {
-        return { key, direction: "asc" };
-      }
+    if (!sortConfig || sortConfig.key !== key) {
+      updateQuery({ sort: key, dir: "asc", page: 1 });
+      return;
+    }
 
-      if (current.direction === "asc") {
-        return { key, direction: "desc" };
-      }
+    if (sortConfig.direction === "asc") {
+      updateQuery({ sort: key, dir: "desc", page: 1 });
+      return;
+    }
 
-      return null;
-    });
+    updateQuery({ sort: null, dir: null, page: 1 });
   }
 
   function toggleStatusFilter() {
-    setStatusFilter((current) => {
-      if (current === null) {
-        return "aktif";
-      }
+    if (activeTab === "pending") {
+      return;
+    }
 
-      if (current === "aktif") {
-        return "nonaktif";
-      }
+    if (statusFilter === null) {
+      updateQuery({ status: "aktif", page: 1 });
+      return;
+    }
 
-      return null;
-    });
+    if (statusFilter === "aktif") {
+      updateQuery({ status: "nonaktif", page: 1 });
+      return;
+    }
+
+    updateQuery({ status: null, page: 1 });
   }
 
   function resetFilters() {
     setSearch("");
-    setSortConfig(null);
-    setStatusFilter(null);
+    updateQuery({ q: null, status: null, sort: null, dir: null, page: 1 });
   }
+
+  function changeTab(tab: ActiveTab) {
+    updateQuery({ tab: tab === "registered" ? null : tab, status: null, page: 1 });
+  }
+
+  function changeLimit(limit: number) {
+    updateQuery({ limit: limit === 5 ? null : limit, page: 1 });
+  }
+
+  function changePage(page: number) {
+    const nextPage = Math.min(Math.max(page, 1), siswaPage.pageCount);
+    updateQuery({ page: nextPage === 1 ? null : nextPage });
+  }
+
+  function isResetPasswordDisabled(item: SiswaAccount) {
+    return (
+      isPending(item) ||
+      !item.password_tersedia ||
+      resetPasswordIds.has(item.id_siswa)
+    );
+  }
+
+  function resetPasswordTitle(item: SiswaAccount) {
+    if (isPending(item)) {
+      return "Reset password aktif setelah akun diverifikasi";
+    }
+
+    if (!item.password_tersedia || resetPasswordIds.has(item.id_siswa)) {
+      return "Password sudah direset";
+    }
+
+    return "Reset password";
+  }
+
+  const firstVisibleItem =
+    siswaPage.total === 0 ? 0 : (siswaPage.page - 1) * siswaPage.limit + 1;
+  const lastVisibleItem = Math.min(
+    siswaPage.page * siswaPage.limit,
+    siswaPage.total
+  );
 
   return (
     <div className="overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm">
@@ -305,21 +334,21 @@ export function AdminMembers({ siswa }: { siswa: SiswaAccount[] }) {
           <div className="grid h-12 w-full grid-cols-2 rounded-2xl bg-[#e8e8ed] p-1 lg:flex-1">
             <button
               type="button"
-              onClick={() => setActiveTab("registered")}
+              onClick={() => changeTab("registered")}
               className={`rounded-2xl text-sm font-semibold transition ${
                 activeTab === "registered" ? "bg-white text-black shadow-sm" : "text-black"
               }`}
             >
-              Siswa Terdaftar ({registeredSiswa.length})
+              Siswa Terdaftar ({registeredSiswaCount})
             </button>
             <button
               type="button"
-              onClick={() => setActiveTab("pending")}
+              onClick={() => changeTab("pending")}
               className={`rounded-2xl text-sm font-semibold transition ${
                 activeTab === "pending" ? "bg-white text-black shadow-sm" : "text-black"
               }`}
             >
-              Menunggu Verifikasi ({pendingSiswa.length})
+              Menunggu Verifikasi ({pendingSiswaCount})
             </button>
           </div>
 
@@ -420,8 +449,10 @@ export function AdminMembers({ siswa }: { siswa: SiswaAccount[] }) {
                     <td className="w-[16%] px-2 py-4">
                       <button
                         type="button"
+                        disabled={isResetPasswordDisabled(item)}
                         onClick={() => setResetSiswa(item)}
-                        className="rounded-lg border border-zinc-200 px-3 py-1.5 text-xs font-semibold text-black transition hover:bg-zinc-50"
+                        title={resetPasswordTitle(item)}
+                        className="rounded-lg border border-zinc-200 px-3 py-1.5 text-xs font-semibold text-black transition hover:bg-zinc-50 disabled:cursor-not-allowed disabled:border-zinc-100 disabled:bg-zinc-50 disabled:text-zinc-400 disabled:hover:bg-zinc-50"
                       >
                         Reset
                       </button>
@@ -474,6 +505,51 @@ export function AdminMembers({ siswa }: { siswa: SiswaAccount[] }) {
             </tbody>
           </table>
           </div>
+          <div className="mt-4 flex flex-col gap-3 border-t border-zinc-200 pt-4 text-sm text-slate-600 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              Menampilkan {firstVisibleItem}-{lastVisibleItem} dari{" "}
+              {siswaPage.total} anggota
+            </div>
+
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+              <label className="flex items-center gap-2">
+                <span>Baris</span>
+                <select
+                  value={siswaPage.limit}
+                  onChange={(event) => changeLimit(Number(event.target.value))}
+                  className="h-9 rounded-lg border border-zinc-200 bg-white px-3 text-sm font-semibold text-black outline-none transition focus:border-[#020016]"
+                >
+                  {siswaAccountLimitOptions.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => changePage(siswaPage.page - 1)}
+                  disabled={siswaPage.page <= 1}
+                  className="inline-flex h-9 items-center justify-center rounded-lg border border-zinc-200 bg-white px-3 text-sm font-semibold text-black transition hover:bg-zinc-50 disabled:cursor-not-allowed disabled:bg-zinc-50 disabled:text-zinc-400"
+                >
+                  Sebelumnya
+                </button>
+                <span className="min-w-24 text-center text-sm font-semibold text-black">
+                  {siswaPage.page} / {siswaPage.pageCount}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => changePage(siswaPage.page + 1)}
+                  disabled={siswaPage.page >= siswaPage.pageCount}
+                  className="inline-flex h-9 items-center justify-center rounded-lg border border-zinc-200 bg-white px-3 text-sm font-semibold text-black transition hover:bg-zinc-50 disabled:cursor-not-allowed disabled:bg-zinc-50 disabled:text-zinc-400"
+                >
+                  Berikutnya
+                </button>
+              </div>
+            </div>
+          </div>
           </div>
         </div>
       </div>
@@ -484,6 +560,11 @@ export function AdminMembers({ siswa }: { siswa: SiswaAccount[] }) {
           siswa={resetSiswa}
           onClose={() => setResetSiswa(null)}
           onSuccess={() => {
+            setResetPasswordIds((currentIds) => {
+              const nextIds = new Set(currentIds);
+              nextIds.add(resetSiswa.id_siswa);
+              return nextIds;
+            });
             setResetSiswa(null);
             setResetNotice(true);
           }}
