@@ -161,7 +161,7 @@ export function DashboardShell({
             </div>
             <div className="min-w-0">
               <p className="text-[13px] font-semibold leading-5 text-white">Perpustakaan Sekolah</p>
-              <p className="text-[11px] text-[#b7d7ff]">{user.className ?? "SMP Negeri 1"}</p>
+              <p className="text-[11px] text-[#b7d7ff]">{user.className ?? "SMAN 10 Bogor"}</p>
             </div>
           </div>
 

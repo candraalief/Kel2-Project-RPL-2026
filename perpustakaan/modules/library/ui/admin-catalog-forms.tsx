@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useDeferredValue, useEffect, useMemo, useState, useTransition } from "react";
+import { useActionState, useDeferredValue, useEffect, useMemo, useState, useTransition, type ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
 import {
   createCatalogBook,
@@ -80,12 +80,41 @@ export function AdminCatalogCreatePage({ genres }: { genres: CatalogGenre[] }) {
 }
 
 function AddBookForm({ genres }: { genres: CatalogGenre[] }) {
-  const [state, formAction, pending] = useActionState(
-    createCatalogBook,
-    initialActionState
-  );
+  const [bookFields, setBookFields] = useState({
+    judul: "",
+    penulis: "",
+    penerbit: "",
+    isbn: "",
+    tahun_terbit: "",
+    jumlah_copy: "1",
+    deskripsi: "",
+    lokasi_rak: "Rak A1",
+  });
   const [selectedGenreIds, setSelectedGenreIds] = useState<string[]>([]);
   const [showAllGenres, setShowAllGenres] = useState(false);
+  const [state, formAction, pending] = useActionState(async (
+    prevState: CatalogActionState | undefined,
+    formData: FormData
+  ) => {
+    const nextState = await createCatalogBook(prevState, formData);
+
+    if (nextState.success) {
+      setBookFields({
+        judul: "",
+        penulis: "",
+        penerbit: "",
+        isbn: "",
+        tahun_terbit: "",
+        jumlah_copy: "1",
+        deskripsi: "",
+        lokasi_rak: "Rak A1",
+      });
+      setSelectedGenreIds([]);
+      setShowAllGenres(false);
+    }
+
+    return nextState;
+  }, initialActionState);
   const sortedGenres = useMemo(
     () => [...genres].sort((first, second) => first.name.localeCompare(second.name, "id-ID")),
     [genres]
@@ -99,6 +128,13 @@ function AddBookForm({ genres }: { genres: CatalogGenre[] }) {
         ? current.filter((id) => id !== genreId)
         : [...current, genreId]
     );
+  }
+
+  function updateBookField(field: keyof typeof bookFields, value: string) {
+    setBookFields((currentFields) => ({
+      ...currentFields,
+      [field]: value,
+    }));
   }
 
   return (
@@ -119,17 +155,47 @@ function AddBookForm({ genres }: { genres: CatalogGenre[] }) {
       </label>
 
       <div className="grid gap-4 md:grid-cols-2">
-        <Field label="Judul Buku" name="judul" required className="md:col-span-2" />
-        <Field label="Penulis" name="penulis" required />
-        <Field label="Penerbit" name="penerbit" />
-        <Field label="ISBN" name="isbn" />
-        <Field label="Tahun Terbit" name="tahun_terbit" type="number" />
+        <Field
+          label="Judul Buku"
+          name="judul"
+          value={bookFields.judul}
+          onChange={(value) => updateBookField("judul", value)}
+          required
+          className="md:col-span-2"
+        />
+        <Field
+          label="Penulis"
+          name="penulis"
+          value={bookFields.penulis}
+          onChange={(value) => updateBookField("penulis", value)}
+          required
+        />
+        <Field
+          label="Penerbit"
+          name="penerbit"
+          value={bookFields.penerbit}
+          onChange={(value) => updateBookField("penerbit", value)}
+        />
+        <Field
+          label="ISBN"
+          name="isbn"
+          value={bookFields.isbn}
+          onChange={(value) => updateBookField("isbn", value)}
+        />
+        <Field
+          label="Tahun Terbit"
+          name="tahun_terbit"
+          type="number"
+          value={bookFields.tahun_terbit}
+          onChange={(value) => updateBookField("tahun_terbit", value)}
+        />
         <Field
           label="Jumlah Copy Awal"
           name="jumlah_copy"
           type="number"
           min="1"
-          defaultValue="1"
+          value={bookFields.jumlah_copy}
+          onChange={(value) => updateBookField("jumlah_copy", value)}
           required
         />
 
@@ -189,11 +255,16 @@ function AddBookForm({ genres }: { genres: CatalogGenre[] }) {
           <textarea
             name="deskripsi"
             rows={4}
+            value={bookFields.deskripsi}
+            onChange={(event) => updateBookField("deskripsi", event.currentTarget.value)}
             className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2.5 text-sm text-zinc-900 outline-none transition focus:border-[#1d66d6]"
           />
         </label>
 
-        <ShelfLocationPicker />
+        <ShelfLocationPicker
+          value={bookFields.lokasi_rak}
+          onChange={(value) => updateBookField("lokasi_rak", value)}
+        />
       </div>
 
       <ActionNotice state={state} />
@@ -601,22 +672,39 @@ function SearchIcon() {
   );
 }
 
-function ShelfLocationPicker() {
-  const [letter, setLetter] = useState("A");
-  const [number, setNumber] = useState(1);
-  const shelfValue = `Rak ${letter}${number}`;
+function parseShelfLocation(value: string) {
+  const match = /^Rak ([A-J])([1-6])$/.exec(value);
+
+  return {
+    letter: match?.[1] ?? "A",
+    number: Number(match?.[2] ?? "1"),
+  };
+}
+
+function ShelfLocationPicker({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  const { letter, number } = parseShelfLocation(value);
+
+  function updateShelfLocation(nextLetter: string, nextNumber: number) {
+    onChange(`Rak ${nextLetter}${nextNumber}`);
+  }
 
   function previousNumber() {
-    setNumber((current) => (current === 1 ? 6 : current - 1));
+    updateShelfLocation(letter, number === 1 ? 6 : number - 1);
   }
 
   function nextNumber() {
-    setNumber((current) => (current === 6 ? 1 : current + 1));
+    updateShelfLocation(letter, number === 6 ? 1 : number + 1);
   }
 
   return (
     <section className="space-y-3 md:col-span-2">
-      <input type="hidden" name="lokasi_rak" value={shelfValue} />
+      <input type="hidden" name="lokasi_rak" value={value} />
 
       <div className="rounded-2xl border border-zinc-200 bg-white p-4">
         <div className="grid gap-3 md:grid-cols-[1fr_auto] md:items-end">
@@ -626,7 +714,9 @@ function ShelfLocationPicker() {
             </span>
             <select
               value={letter}
-              onChange={(event) => setLetter(event.currentTarget.value)}
+              onChange={(event) =>
+                updateShelfLocation(event.currentTarget.value, number)
+              }
               className="h-11 w-full rounded-xl border border-zinc-300 bg-white px-3 text-sm font-semibold text-zinc-900 outline-none transition focus:border-[#1d66d6]"
             >
               {SHELF_LETTERS.map((item) => (
@@ -669,7 +759,7 @@ function ShelfLocationPicker() {
           <div className="grid gap-0 md:grid-cols-[1fr_minmax(180px,0.42fr)]">
             <div className="flex min-h-80 items-center justify-center bg-zinc-200 p-5">
               <div className="flex h-full min-h-72 w-full items-center justify-center rounded-2xl border border-dashed border-zinc-400 bg-zinc-100 px-4 text-center text-sm font-semibold text-zinc-500">
-                Placeholder gambar denah utama {shelfValue}
+                Placeholder gambar denah utama {value}
               </div>
             </div>
 
@@ -691,6 +781,8 @@ function Field({
   name,
   type = "text",
   defaultValue = "",
+  value,
+  onChange,
   required,
   className = "",
   min,
@@ -699,10 +791,21 @@ function Field({
   name: string;
   type?: string;
   defaultValue?: string;
+  value?: string;
+  onChange?: (value: string) => void;
   required?: boolean;
   className?: string;
   min?: string;
 }) {
+  const controlledProps =
+    value === undefined
+      ? { defaultValue }
+      : {
+          value,
+          onChange: (event: ChangeEvent<HTMLInputElement>) =>
+            onChange?.(event.currentTarget.value),
+        };
+
   return (
     <label className={`block space-y-2 ${className}`}>
       <span className="text-sm font-semibold text-zinc-900">
@@ -712,7 +815,7 @@ function Field({
       <input
         name={name}
         type={type}
-        defaultValue={defaultValue}
+        {...controlledProps}
         required={required}
         min={min}
         className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2.5 text-sm text-zinc-900 outline-none transition focus:border-[#1d66d6]"
