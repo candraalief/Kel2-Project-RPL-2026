@@ -6,6 +6,7 @@ type AdminRow = {
   id_admin: number;
   nama: string;
   username: string;
+  email: string | null;
   password: string;
 };
 
@@ -26,7 +27,7 @@ async function findAdminByIdentifier(identifier: string) {
 
   const usernameResult = await supabase
     .from("admin")
-    .select("id_admin, nama, username, password")
+    .select("id_admin, nama, username, email, password")
     .eq("username", lowerIdentifier)
     .limit(1)
     .maybeSingle<AdminRow>();
@@ -41,9 +42,24 @@ async function findAdminByIdentifier(identifier: string) {
     return usernameResult.data;
   }
 
+  const emailResult = await supabase
+    .from("admin")
+    .select("id_admin, nama, username, email, password")
+    .ilike("email", lowerIdentifier)
+    .limit(1)
+    .maybeSingle<AdminRow>();
+
+  if (emailResult.error) {
+    throw new Error(`Failed to query admin by email: ${emailResult.error.message}`);
+  }
+
+  if (emailResult.data) {
+    return emailResult.data;
+  }
+
   const nameResult = await supabase
     .from("admin")
-    .select("id_admin, nama, username, password")
+    .select("id_admin, nama, username, email, password")
     .ilike("nama", normalizedIdentifier)
     .limit(1)
     .maybeSingle<AdminRow>();
@@ -143,7 +159,7 @@ export async function findSessionUserByCredentials(
       id: admin.id_admin,
       role: "admin",
       name: admin.nama,
-      identifier: admin.username || admin.nama,
+      identifier: admin.username || admin.email || admin.nama,
     };
   }
 

@@ -44,6 +44,7 @@ Admin login dari tabel `admin`.
 Identifier login yang didukung:
 
 - `username`
+- `email`
 - `nama`
 
 Route admin:
