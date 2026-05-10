@@ -7,6 +7,7 @@ import {
   useRef,
   useState,
   useTransition,
+  type ChangeEvent,
   type ReactNode,
 } from "react";
 import {
@@ -37,13 +38,14 @@ export function AdminProfileForms({
   totalSiswa: number;
   canManageAdmins: boolean;
 }) {
+  const [localAdmins, setLocalAdmins] = useState(admins);
   const [modalMode, setModalMode] = useState<ModalMode | null>(null);
   const [selectedAdmin, setSelectedAdmin] = useState<AdminProfile | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<AdminProfile | null>(null);
   const [deleteNotice, setDeleteNotice] = useState(false);
   const sortedAdmins = useMemo(
-    () => [...admins].sort((a, b) => a.id - b.id),
-    [admins]
+    () => [...localAdmins].sort((a, b) => a.id - b.id),
+    [localAdmins]
   );
 
   useEffect(() => {
@@ -66,6 +68,15 @@ export function AdminProfileForms({
   function closeModal() {
     setModalMode(null);
     setSelectedAdmin(null);
+  }
+
+  function updateAdminProfile(updatedAdmin: AdminProfile) {
+    setLocalAdmins((currentAdmins) =>
+      currentAdmins.map((item) =>
+        item.id === updatedAdmin.id ? updatedAdmin : item
+      )
+    );
+    setSelectedAdmin(updatedAdmin);
   }
 
   return (
@@ -153,6 +164,7 @@ export function AdminProfileForms({
           currentAdminId={admin.id}
           canManageAdmins={canManageAdmins}
           onClose={closeModal}
+          onUpdated={updateAdminProfile}
           onDelete={() => setDeleteTarget(selectedAdmin)}
         />
       ) : null}
@@ -201,29 +213,52 @@ function AdminDetailModal({
   currentAdminId,
   canManageAdmins,
   onClose,
+  onUpdated,
   onDelete,
 }: {
   admin: AdminProfile;
   currentAdminId: number;
   canManageAdmins: boolean;
   onClose: () => void;
+  onUpdated: (admin: AdminProfile) => void;
   onDelete: () => void;
 }) {
-  const [updateState, updateAction, updatePending] = useActionState(
-    updateAdminAccount,
-    initialState
-  );
+  const [fields, setFields] = useState(admin);
+  const [updateState, updateAction, updatePending] = useActionState(async (
+    prevState: AdminProfileState | undefined,
+    formData: FormData
+  ) => {
+    const nextState = await updateAdminAccount(prevState, formData);
+
+    if (nextState.profile) {
+      setFields(nextState.profile);
+      onUpdated(nextState.profile);
+    }
+
+    return nextState;
+  }, initialState);
   const canDelete = canManageAdmins && admin.id !== 0 && admin.id !== currentAdminId;
+
+  function updateField(
+    field: "nama" | "username" | "email" | "nomorTelephone",
+    value: string
+  ) {
+    setFields((currentFields) => ({
+      ...currentFields,
+      [field]: value,
+    }));
+  }
 
   return (
     <Modal title="Detail Admin" onClose={onClose}>
       <form action={updateAction} className="space-y-4">
-        <input type="hidden" name="admin_id" value={admin.id} />
+        <input type="hidden" name="admin_id" value={fields.id} />
         <div className="grid gap-4 md:grid-cols-2">
           <Field
             label="Nama Lengkap"
             name="nama"
-            defaultValue={admin.nama}
+            value={fields.nama}
+            onChange={(value) => updateField("nama", value)}
             placeholder="Masukkan nama lengkap"
             required
             disabled={!canManageAdmins}
@@ -231,7 +266,8 @@ function AdminDetailModal({
           <Field
             label="Username"
             name="username"
-            defaultValue={admin.username}
+            value={fields.username}
+            onChange={(value) => updateField("username", value)}
             placeholder="Masukkan username"
             required
             disabled={!canManageAdmins}
@@ -240,16 +276,18 @@ function AdminDetailModal({
             label="Email"
             name="email"
             type="email"
-            defaultValue={admin.email}
+            value={fields.email}
+            onChange={(value) => updateField("email", value)}
             placeholder="admin@sekolah.sch.id"
-            disabled={!canManageAdmins || !admin.supportsEmail}
+            disabled={!canManageAdmins || !fields.supportsEmail}
           />
           <Field
             label="Nomor Telephone"
             name="nomor_telephone"
-            defaultValue={admin.nomorTelephone}
+            value={fields.nomorTelephone}
+            onChange={(value) => updateField("nomorTelephone", value)}
             placeholder="08xxxxxxxxxx"
-            disabled={!canManageAdmins || !admin.supportsNomorTelephone}
+            disabled={!canManageAdmins || !fields.supportsNomorTelephone}
           />
           <Field
             label="Password Baru"
@@ -261,17 +299,17 @@ function AdminDetailModal({
         </div>
 
         <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-600">
-          <p>ID Admin: {admin.id}</p>
+          <p>ID Admin: {fields.id}</p>
           <p>
             Status:{" "}
-            {admin.id === 0 ? "Superadmin" : "Admin perpustakaan"}
+            {fields.id === 0 ? "Superadmin" : "Admin perpustakaan"}
           </p>
           <p>Password lama tidak ditampilkan karena tersimpan sebagai hash.</p>
         </div>
 
         <SchemaNote
-          supportsEmail={admin.supportsEmail}
-          supportsNomorTelephone={admin.supportsNomorTelephone}
+          supportsEmail={fields.supportsEmail}
+          supportsNomorTelephone={fields.supportsNomorTelephone}
         />
         <FormStatus state={updateState} />
 
@@ -614,6 +652,8 @@ type FieldProps = {
   name: string;
   placeholder: string;
   defaultValue?: string;
+  value?: string;
+  onChange?: (value: string) => void;
   type?: string;
   required?: boolean;
   disabled?: boolean;
@@ -624,17 +664,28 @@ function Field({
   name,
   placeholder,
   defaultValue,
+  value,
+  onChange,
   type = "text",
   required = false,
   disabled = false,
 }: FieldProps) {
+  const controlledProps =
+    value === undefined
+      ? { defaultValue }
+      : {
+          value,
+          onChange: (event: ChangeEvent<HTMLInputElement>) =>
+            onChange?.(event.currentTarget.value),
+        };
+
   return (
     <label className="space-y-2">
       <span className="text-sm font-semibold text-zinc-800">{label}</span>
       <input
         name={name}
         type={type}
-        defaultValue={defaultValue}
+        {...controlledProps}
         required={required}
         disabled={disabled}
         placeholder={disabled ? "Tidak tersedia" : placeholder}

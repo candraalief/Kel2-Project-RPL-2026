@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import {
   updateOwnSiswaProfile,
   type UpdateSiswaProfileState,
@@ -12,11 +12,47 @@ const initialState: UpdateSiswaProfileState = {
   success: "",
 };
 
+type SiswaProfileFields = {
+  nama: string;
+  username: string;
+  email: string;
+  kelas: string;
+  tahunMasuk: string;
+  nomorWhatsapp: string;
+};
+
+function getInitialFields(siswa: SiswaRecord): SiswaProfileFields {
+  return {
+    nama: siswa.nama,
+    username: siswa.username ?? "",
+    email: siswa.email ?? "",
+    kelas: siswa.kelas ?? "",
+    tahunMasuk: siswa.tahun_masuk?.toString() ?? "",
+    nomorWhatsapp: siswa.nomor_whatsapp ?? "",
+  };
+}
+
 export function UpdateSiswaProfileForm({ siswa }: { siswa: SiswaRecord }) {
-  const [state, formAction, pending] = useActionState(
-    updateOwnSiswaProfile,
-    initialState
-  );
+  const [fields, setFields] = useState(() => getInitialFields(siswa));
+  const [state, formAction, pending] = useActionState(async (
+    prevState: UpdateSiswaProfileState | undefined,
+    formData: FormData
+  ) => {
+    const nextState = await updateOwnSiswaProfile(prevState, formData);
+
+    if (nextState.profile) {
+      setFields(nextState.profile);
+    }
+
+    return nextState;
+  }, initialState);
+
+  function updateField(field: keyof SiswaProfileFields, value: string) {
+    setFields((currentFields) => ({
+      ...currentFields,
+      [field]: value,
+    }));
+  }
 
   return (
     <form action={formAction} className="space-y-4">
@@ -24,39 +60,47 @@ export function UpdateSiswaProfileForm({ siswa }: { siswa: SiswaRecord }) {
         <Field
           label="Nama lengkap"
           name="nama"
-          defaultValue={siswa.nama}
+          value={fields.nama}
+          onChange={(value) => updateField("nama", value)}
           placeholder="Masukkan nama lengkap"
+          disabled
         />
         <Field
           label="Username"
           name="username"
-          defaultValue={siswa.username ?? ""}
+          value={fields.username}
+          onChange={(value) => updateField("username", value)}
           placeholder="Masukkan username"
         />
         <Field
           label="Email"
           name="email"
           type="email"
-          defaultValue={siswa.email ?? ""}
+          value={fields.email}
+          onChange={(value) => updateField("email", value)}
           placeholder="Masukkan email"
         />
         <Field
           label="Kelas"
           name="kelas"
-          defaultValue={siswa.kelas ?? ""}
+          value={fields.kelas}
+          onChange={(value) => updateField("kelas", value)}
           placeholder="Contoh: XII IPA 2"
         />
         <Field
           label="Tahun masuk"
           name="tahun_masuk"
           type="number"
-          defaultValue={siswa.tahun_masuk?.toString() ?? ""}
+          value={fields.tahunMasuk}
+          onChange={(value) => updateField("tahunMasuk", value)}
           placeholder="Contoh: 2024"
+          disabled
         />
         <Field
           label="Nomor WhatsApp"
           name="nomor_whatsapp"
-          defaultValue={siswa.nomor_whatsapp ?? ""}
+          value={fields.nomorWhatsapp}
+          onChange={(value) => updateField("nomorWhatsapp", value)}
           placeholder="08xxxxxxxxxx"
         />
       </div>
@@ -92,17 +136,21 @@ export function UpdateSiswaProfileForm({ siswa }: { siswa: SiswaRecord }) {
 type FieldProps = {
   label: string;
   name: string;
-  defaultValue: string;
+  value: string;
+  onChange: (value: string) => void;
   placeholder: string;
   type?: string;
+  disabled?: boolean;
 };
 
 function Field({
   label,
   name,
-  defaultValue,
+  value,
+  onChange,
   placeholder,
   type = "text",
+  disabled = false,
 }: FieldProps) {
   return (
     <div className="space-y-2">
@@ -113,10 +161,12 @@ function Field({
         id={name}
         name={name}
         type={type}
-        defaultValue={defaultValue}
+        value={value}
+        onChange={(event) => onChange(event.currentTarget.value)}
+        disabled={disabled}
         required
         placeholder={placeholder}
-        className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2.5 text-sm text-zinc-950 outline-none transition focus:border-[#145da0]"
+        className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2.5 text-sm text-zinc-950 outline-none transition focus:border-[#145da0] disabled:cursor-not-allowed disabled:bg-zinc-100 disabled:text-zinc-500"
       />
     </div>
   );

@@ -17,18 +17,18 @@ const initialState: AttendanceState = {
 const visitorTypes = ["siswa", "umum"] as const;
 type VisitorType = (typeof visitorTypes)[number];
 
-function canCheckStudentSuggestions(name: string, debouncedName: string) {
-  const trimmedName = name.trim().toLowerCase();
-  const trimmedDebouncedName = debouncedName.trim().toLowerCase();
-
-  return (
-    /\s/.test(name) ||
-    (trimmedDebouncedName.length >= 5 && trimmedDebouncedName === trimmedName)
-  );
+function normalizeStudentText(value: string) {
+  return value.trim().replace(/\s+/g, " ").toLowerCase();
 }
 
-function normalizeStudentName(name: string) {
-  return name.trim().toLowerCase();
+function studentDisplayName(student: StudentSuggestion) {
+  return [
+    student.nama,
+    student.nisn ? `NIS ${student.nisn}` : "",
+    student.kelas ?? "",
+  ]
+    .filter(Boolean)
+    .join(" - ");
 }
 
 export function PublicAttendanceForm({
@@ -39,7 +39,6 @@ export function PublicAttendanceForm({
   const [visitorType, setVisitorType] = useState<VisitorType | null>(null);
   const [selectedStudentId, setSelectedStudentId] = useState<number | null>(null);
   const [nameInput, setNameInput] = useState("");
-  const [debouncedNameInput, setDebouncedNameInput] = useState("");
   const [kelasInput, setKelasInput] = useState("");
   const [tujuanInput, setTujuanInput] = useState("");
   const [hideSuccessNotice, setHideSuccessNotice] = useState(false);
@@ -53,18 +52,9 @@ export function PublicAttendanceForm({
     setVisitorType(null);
     setSelectedStudentId(null);
     setNameInput("");
-    setDebouncedNameInput("");
     setKelasInput("");
     setTujuanInput("");
   }
-
-  useEffect(() => {
-    const timeoutId = window.setTimeout(() => {
-      setDebouncedNameInput(nameInput);
-    }, 1000);
-
-    return () => window.clearTimeout(timeoutId);
-  }, [nameInput]);
 
   useEffect(() => {
     if (pending) {
@@ -90,56 +80,52 @@ export function PublicAttendanceForm({
     const map = new Map<string, StudentSuggestion>();
 
     studentNameSuggestions.forEach((student) => {
-      const key = normalizeStudentName(student.nama);
-
-      if (!map.has(key)) {
-        map.set(key, student);
-      }
+      [
+        normalizeStudentText(student.nama),
+        normalizeStudentText(studentDisplayName(student)),
+        student.nisn ? normalizeStudentText(student.nisn) : "",
+      ]
+        .filter(Boolean)
+        .forEach((key) => {
+          if (!map.has(key)) {
+            map.set(key, student);
+          }
+        });
     });
 
     return map;
   }, [studentNameSuggestions]);
 
-  const wordBasedSuggestions = useMemo(() => {
+  const selectedStudent = useMemo(() => {
+    if (selectedStudentId === null) {
+      return null;
+    }
+
+    return (
+      studentNameSuggestions.find((student) => student.id_siswa === selectedStudentId) ??
+      null
+    );
+  }, [selectedStudentId, studentNameSuggestions]);
+
+  const filteredStudents = useMemo(() => {
     if (visitorType !== "siswa") {
       return [];
     }
 
-    if (!canCheckStudentSuggestions(nameInput, debouncedNameInput)) {
-      return [];
+    const query = nameInput.trim().toLowerCase();
+
+    if (!query) {
+      return studentNameSuggestions;
     }
 
-    const queryWords = nameInput
-      .trim()
-      .toLowerCase()
-      .split(/\s+/)
-      .filter((word) => word.length >= 3);
-
-    if (queryWords.length === 0) {
-      return [];
-    }
-
-    return studentNameSuggestions
-      .filter((student) => {
-        const nameWords = student.nama
-          .toLowerCase()
-          .split(/\s+/)
-          .filter(Boolean);
-
-        return queryWords.every((queryWord) =>
-          nameWords.some((nameWord) => nameWord.startsWith(queryWord))
-        );
-      })
-      .slice(0, 8);
-  }, [debouncedNameInput, nameInput, studentNameSuggestions, visitorType]);
-
-  const suggestionCheckReady = useMemo(() => {
-    if (visitorType !== "siswa") {
-      return false;
-    }
-
-    return canCheckStudentSuggestions(nameInput, debouncedNameInput);
-  }, [debouncedNameInput, nameInput, visitorType]);
+    return studentNameSuggestions.filter((student) =>
+      [student.nama, student.nisn, student.kelas]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase()
+        .includes(query)
+    );
+  }, [nameInput, studentNameSuggestions, visitorType]);
 
   const asalLabel = useMemo(() => {
     if (visitorType === "siswa") {
@@ -172,7 +158,6 @@ export function PublicAttendanceForm({
     setVisitorType(nextType);
     setSelectedStudentId(null);
     setNameInput("");
-    setDebouncedNameInput("");
     setKelasInput("");
     setTujuanInput("");
   }
@@ -184,7 +169,7 @@ export function PublicAttendanceForm({
       return;
     }
 
-    const matched = studentLookupByName.get(normalizeStudentName(value));
+    const matched = studentLookupByName.get(normalizeStudentText(value));
 
     if (matched) {
       setSelectedStudentId(matched.id_siswa);
@@ -201,15 +186,16 @@ export function PublicAttendanceForm({
 
   const shouldShowSuggestions =
     visitorType === "siswa" &&
-    selectedStudentId === null &&
-    wordBasedSuggestions.length > 0;
+    nameInput.trim().length > 0 &&
+    (!selectedStudent ||
+      normalizeStudentText(nameInput) !== normalizeStudentText(selectedStudent.nama)) &&
+    filteredStudents.length > 0;
 
   const showNotRegisteredWarning =
     visitorType === "siswa" &&
     selectedStudentId === null &&
-    suggestionCheckReady &&
     nameInput.trim().length > 0 &&
-    wordBasedSuggestions.length === 0;
+    filteredStudents.length === 0;
 
   return (
     <form action={formAction} className="space-y-5">
@@ -246,7 +232,11 @@ export function PublicAttendanceForm({
             id="nama"
             name="nama"
             required
-            placeholder="Nama lengkap"
+            placeholder={
+              visitorType === "siswa"
+                ? "Cari nama, NIS, atau kelas..."
+                : "Nama lengkap"
+            }
             disabled={formLocked}
             value={nameInput}
             autoComplete="off"
@@ -256,7 +246,7 @@ export function PublicAttendanceForm({
 
           {shouldShowSuggestions ? (
             <div className="absolute z-10 mt-2 max-h-56 w-full overflow-auto rounded-xl border border-zinc-200 bg-white p-1 shadow-lg">
-              {wordBasedSuggestions.map((student) => (
+              {filteredStudents.slice(0, 8).map((student) => (
                 <button
                   key={student.id_siswa}
                   type="button"
@@ -265,10 +255,19 @@ export function PublicAttendanceForm({
                     setSelectedStudentId(student.id_siswa);
                     setKelasInput(student.kelas ?? "-");
                   }}
-                  className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm text-zinc-700 transition hover:bg-zinc-100"
+                  className="flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2 text-left text-sm text-zinc-700 transition hover:bg-zinc-100"
                 >
-                  <span>{student.nama}</span>
-                  <span className="text-xs text-zinc-500">{student.kelas ?? "-"}</span>
+                  <span className="min-w-0">
+                    <span className="block truncate font-semibold text-zinc-900">
+                      {student.nama}
+                    </span>
+                    <span className="block truncate text-xs text-zinc-500">
+                      {student.nisn ? `NIS ${student.nisn}` : "NIS -"}
+                    </span>
+                  </span>
+                  <span className="shrink-0 text-xs text-zinc-500">
+                    {student.kelas ?? "-"}
+                  </span>
                 </button>
               ))}
             </div>

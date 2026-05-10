@@ -71,13 +71,20 @@ function sanitizeSearchFilter(value: string) {
 }
 
 async function checkExistingSiswa(
+  nama: string,
   nisn: string,
   username: string,
   email: string
 ) {
   const supabase = getServerSupabaseClient();
 
-  const [nisnCheck, usernameCheck, emailCheck] = await Promise.all([
+  const [nameCheck, nisnCheck, usernameCheck, emailCheck] = await Promise.all([
+    supabase
+      .from("siswa")
+      .select("id_siswa")
+      .ilike("nama", nama)
+      .limit(1)
+      .maybeSingle(),
     supabase
       .from("siswa")
       .select("id_siswa")
@@ -98,6 +105,10 @@ async function checkExistingSiswa(
       .maybeSingle(),
   ]);
 
+  if (nameCheck.error) {
+    throw new Error(`Failed to validate nama siswa: ${nameCheck.error.message}`);
+  }
+
   if (nisnCheck.error) {
     throw new Error(`Failed to validate NISN: ${nisnCheck.error.message}`);
   }
@@ -110,6 +121,10 @@ async function checkExistingSiswa(
 
   if (emailCheck.error) {
     throw new Error(`Failed to validate email siswa: ${emailCheck.error.message}`);
+  }
+
+  if (nameCheck.data) {
+    return "Nama lengkap sudah digunakan.";
   }
 
   if (nisnCheck.data) {
@@ -160,7 +175,7 @@ export async function registerSiswaAccount(formData: FormData): Promise<SignupSt
     };
   }
 
-  const duplicateMessage = await checkExistingSiswa(nisn, username, email);
+  const duplicateMessage = await checkExistingSiswa(nama, nisn, username, email);
 
   if (duplicateMessage) {
     return {

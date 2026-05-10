@@ -491,6 +491,7 @@ export async function getSiswaTransactions(idSiswa: number) {
 export type StudentSuggestion = {
   id_siswa: number;
   nama: string;
+  nisn: string | null;
   kelas: string | null;
 };
 
@@ -498,7 +499,7 @@ export async function getStudentNameSuggestions(limit = 250) {
   const supabase = getServerSupabaseClient();
   const { data, error } = await supabase
     .from("siswa")
-    .select("id_siswa, nama, kelas")
+    .select("id_siswa, nama, nisn, kelas")
     .eq("status_keanggotaan", "aktif")
     .not("nama", "is", null)
     .order("nama", { ascending: true })

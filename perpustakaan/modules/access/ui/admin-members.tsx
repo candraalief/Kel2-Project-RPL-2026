@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useActionState, useCallback, useEffect, useRef, useState, useTransition, type ReactNode } from "react";
+import { useActionState, useCallback, useEffect, useRef, useState, useTransition, type ChangeEvent, type ReactNode } from "react";
 import {
   approveSiswaRegistration,
   clearSiswaPassword,
@@ -165,6 +165,7 @@ export function AdminMembers({
   const [deleteNotice, setDeleteNotice] = useState("");
   const [approveNotice, setApproveNotice] = useState(false);
   const [rejectNotice, setRejectNotice] = useState(false);
+  const [updatedSiswa, setUpdatedSiswa] = useState<Record<number, SiswaAccount>>({});
   const [resetPasswordIds, setResetPasswordIds] = useState<Set<number>>(
     () => new Set()
   );
@@ -246,7 +247,9 @@ export function AdminMembers({
     return () => window.clearTimeout(timeout);
   }, [rejectNotice]);
 
-  const filteredSiswa = siswaPage.siswa;
+  const filteredSiswa = siswaPage.siswa.map(
+    (item) => updatedSiswa[item.id_siswa] ?? item
+  );
   const registeredSiswaCount = siswaPage.registeredTotal;
   const pendingSiswaCount = siswaPage.pendingTotal;
 
@@ -318,6 +321,20 @@ export function AdminMembers({
     }
 
     return "Reset password";
+  }
+
+  function handleSiswaUpdated(siswa: SiswaAccount) {
+    setUpdatedSiswa((currentSiswa) => ({
+      ...currentSiswa,
+      [siswa.id_siswa]: siswa,
+    }));
+    setModal((currentModal) =>
+      currentModal &&
+      currentModal.mode !== "add" &&
+      currentModal.siswa.id_siswa === siswa.id_siswa
+        ? { ...currentModal, siswa }
+        : currentModal
+    );
   }
 
   const firstVisibleItem =
@@ -554,7 +571,13 @@ export function AdminMembers({
         </div>
       </div>
 
-      {modal ? <SiswaModal modal={modal} onClose={() => setModal(null)} /> : null}
+      {modal ? (
+        <SiswaModal
+          modal={modal}
+          onClose={() => setModal(null)}
+          onUpdated={handleSiswaUpdated}
+        />
+      ) : null}
       {resetSiswa ? (
         <ResetPasswordModal
           siswa={resetSiswa}
@@ -1174,9 +1197,11 @@ function DeleteSiswaButton({
 function SiswaModal({
   modal,
   onClose,
+  onUpdated,
 }: {
   modal: MemberModal;
   onClose: () => void;
+  onUpdated: (siswa: SiswaAccount) => void;
 }) {
   const title =
     modal.mode === "add"
@@ -1217,7 +1242,12 @@ function SiswaModal({
         {modal.mode === "detail" ? (
           <SiswaDetail siswa={modal.siswa} />
         ) : (
-          <SiswaForm mode={modal.mode} siswa={modal.siswa} onClose={onClose} />
+          <SiswaForm
+            mode={modal.mode}
+            siswa={modal.siswa}
+            onClose={onClose}
+            onUpdated={onUpdated}
+          />
         )}
       </section>
     </div>
@@ -1243,18 +1273,65 @@ function SiswaDetail({ siswa }: { siswa: SiswaAccount }) {
   );
 }
 
+type SiswaFormFields = {
+  nisn: string;
+  kelas: string;
+  nama: string;
+  username: string;
+  email: string;
+  tahunMasuk: string;
+  nomorWhatsapp: string;
+  statusKeanggotaan: string;
+};
+
+function getSiswaFormFields(siswa?: SiswaAccount): SiswaFormFields {
+  return {
+    nisn: siswa?.nisn ?? "",
+    kelas: siswa?.kelas ?? "",
+    nama: siswa?.nama ?? "",
+    username: siswa?.username ?? "",
+    email: siswa?.email ?? "",
+    tahunMasuk: siswa?.tahun_masuk?.toString() ?? "",
+    nomorWhatsapp: siswa?.nomor_whatsapp ?? "",
+    statusKeanggotaan: siswa?.status_keanggotaan ?? "aktif",
+  };
+}
+
 function SiswaForm({
   mode,
   siswa,
   onClose,
+  onUpdated,
 }: {
   mode: Exclude<ModalMode, "detail">;
   siswa?: SiswaAccount;
   onClose: () => void;
+  onUpdated: (siswa: SiswaAccount) => void;
 }) {
   const formRef = useRef<HTMLFormElement>(null);
-  const action = mode === "add" ? createSiswaByAdmin : updateSiswaByAdmin;
-  const [state, formAction, pending] = useActionState(action, initialActionState);
+  const action: (
+    prevState: SiswaAdminActionState | undefined,
+    formData: FormData
+  ) => Promise<SiswaAdminActionState> =
+    mode === "add" ? createSiswaByAdmin : updateSiswaByAdmin;
+  const [fields, setFields] = useState(() => getSiswaFormFields(siswa));
+  const [state, formAction, pending] = useActionState(async (
+    prevState: SiswaAdminActionState | undefined,
+    formData: FormData
+  ) => {
+    const nextState = await action(prevState, formData);
+
+    if (mode === "edit" && nextState.siswa && siswa) {
+      const updated = {
+        ...siswa,
+        ...nextState.siswa,
+      } satisfies SiswaAccount;
+      setFields(getSiswaFormFields(updated));
+      onUpdated(updated);
+    }
+
+    return nextState;
+  }, initialActionState);
 
   useEffect(() => {
     if (state.success && mode === "add") {
@@ -1262,24 +1339,100 @@ function SiswaForm({
     }
   }, [mode, state.success]);
 
+  function updateField(field: keyof SiswaFormFields, value: string) {
+    setFields((currentFields) => ({
+      ...currentFields,
+      [field]: value,
+    }));
+  }
+
+  const isEditMode = mode === "edit";
+
   return (
     <form ref={formRef} action={formAction} className="px-7 py-7">
       {siswa ? <input type="hidden" name="id_siswa" value={siswa.id_siswa} /> : null}
 
       <div className="grid gap-x-5 gap-y-4 sm:grid-cols-2">
-        <Field label="NIS" name="nisn" placeholder="Masukkan NIS" defaultValue={siswa?.nisn ?? ""} required />
-        <Field label="Kelas" name="kelas" placeholder="Contoh: XII IPA 1" defaultValue={siswa?.kelas ?? ""} required />
-        <Field label="Nama Lengkap" name="nama" placeholder="Masukkan nama lengkap" defaultValue={siswa?.nama ?? ""} className="sm:col-span-2" required />
-        <Field label="Username" name="username" placeholder="Masukkan username" defaultValue={siswa?.username ?? ""} className="sm:col-span-2" required />
-        <Field label="Email" name="email" type="email" placeholder="contoh@sekolah.id" defaultValue={siswa?.email ?? ""} className="sm:col-span-2" required />
-        <Field label="Tahun Masuk" name="tahun_masuk" type="number" placeholder="Contoh: 2024" defaultValue={siswa?.tahun_masuk?.toString() ?? ""} required />
-        <Field label="No. Telepon" name="nomor_whatsapp" placeholder="08xxxxxxxxxx" defaultValue={siswa?.nomor_whatsapp ?? ""} required />
+        <Field
+          label="NIS"
+          name="nisn"
+          placeholder="Masukkan NIS"
+          defaultValue={fields.nisn}
+          value={isEditMode ? fields.nisn : undefined}
+          onChange={(value) => updateField("nisn", value)}
+          required
+        />
+        <Field
+          label="Kelas"
+          name="kelas"
+          placeholder="Contoh: XII IPA 1"
+          defaultValue={fields.kelas}
+          value={isEditMode ? fields.kelas : undefined}
+          onChange={(value) => updateField("kelas", value)}
+          required
+        />
+        <Field
+          label="Nama Lengkap"
+          name="nama"
+          placeholder="Masukkan nama lengkap"
+          defaultValue={fields.nama}
+          value={isEditMode ? fields.nama : undefined}
+          onChange={(value) => updateField("nama", value)}
+          className="sm:col-span-2"
+          required
+        />
+        <Field
+          label="Username"
+          name="username"
+          placeholder="Masukkan username"
+          defaultValue={fields.username}
+          value={isEditMode ? fields.username : undefined}
+          onChange={(value) => updateField("username", value)}
+          className="sm:col-span-2"
+          required
+        />
+        <Field
+          label="Email"
+          name="email"
+          type="email"
+          placeholder="contoh@sekolah.id"
+          defaultValue={fields.email}
+          value={isEditMode ? fields.email : undefined}
+          onChange={(value) => updateField("email", value)}
+          className="sm:col-span-2"
+          required
+        />
+        <Field
+          label="Tahun Masuk"
+          name="tahun_masuk"
+          type="number"
+          placeholder="Contoh: 2024"
+          defaultValue={fields.tahunMasuk}
+          value={isEditMode ? fields.tahunMasuk : undefined}
+          onChange={(value) => updateField("tahunMasuk", value)}
+          required
+        />
+        <Field
+          label="No. Telepon"
+          name="nomor_whatsapp"
+          placeholder="08xxxxxxxxxx"
+          defaultValue={fields.nomorWhatsapp}
+          value={isEditMode ? fields.nomorWhatsapp : undefined}
+          onChange={(value) => updateField("nomorWhatsapp", value)}
+          required
+        />
         <label className="block space-y-2 sm:col-span-2">
           <span className="text-sm font-semibold text-black">Status Keanggotaan</span>
           <span className="relative block">
             <select
               name="status_keanggotaan"
-              defaultValue={siswa?.status_keanggotaan ?? "aktif"}
+              {...(isEditMode
+                ? {
+                    value: fields.statusKeanggotaan,
+                    onChange: (event: ChangeEvent<HTMLSelectElement>) =>
+                      updateField("statusKeanggotaan", event.currentTarget.value),
+                  }
+                : { defaultValue: fields.statusKeanggotaan })}
               className="h-11 w-full appearance-none rounded-lg border border-transparent bg-[#f1f1f4] px-4 pr-10 text-sm text-slate-900 outline-none transition focus:border-[#020016]"
               required
             >
@@ -1326,6 +1479,8 @@ function Field({
   type = "text",
   placeholder,
   defaultValue,
+  value,
+  onChange,
   className = "",
   required,
 }: {
@@ -1334,9 +1489,20 @@ function Field({
   type?: string;
   placeholder?: string;
   defaultValue?: string;
+  value?: string;
+  onChange?: (value: string) => void;
   className?: string;
   required?: boolean;
 }) {
+  const controlledProps =
+    value === undefined
+      ? { defaultValue }
+      : {
+          value,
+          onChange: (event: ChangeEvent<HTMLInputElement>) =>
+            onChange?.(event.currentTarget.value),
+        };
+
   return (
     <label className={`block space-y-2 ${className}`}>
       <span className="text-sm font-semibold text-black">{label}</span>
@@ -1344,7 +1510,7 @@ function Field({
         name={name}
         type={type}
         placeholder={placeholder}
-        defaultValue={defaultValue}
+        {...controlledProps}
         required={required}
         className="h-11 w-full rounded-lg border border-transparent bg-[#f1f1f4] px-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-500 focus:border-[#020016]"
       />

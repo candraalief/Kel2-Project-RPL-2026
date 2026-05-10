@@ -32,14 +32,42 @@ export type PasswordResetState = {
 export type UpdateSiswaProfileState = {
   error: string;
   success: string;
+  profile?: {
+    nama: string;
+    username: string;
+    email: string;
+    kelas: string;
+    tahunMasuk: string;
+    nomorWhatsapp: string;
+  };
 };
 export type AdminProfileState = {
   error: string;
   success: string;
+  profile?: {
+    id: number;
+    nama: string;
+    username: string;
+    email: string;
+    nomorTelephone: string;
+    supportsEmail: boolean;
+    supportsNomorTelephone: boolean;
+  };
 };
 export type SiswaAdminActionState = {
   error: string;
   success: string;
+  siswa?: {
+    id_siswa: number;
+    nama: string;
+    nisn: string;
+    username: string;
+    email: string;
+    kelas: string;
+    tahun_masuk: number;
+    nomor_whatsapp: string;
+    status_keanggotaan: string;
+  };
 };
 export type DeleteSiswaActionState = {
   error: string;
@@ -166,11 +194,13 @@ function isForeignKeyConstraintError(error: { code?: string; message?: string })
 }
 
 async function validateUniqueSiswaFields({
+  nama,
   nisn,
   username,
   email,
   currentSiswaId,
 }: {
+  nama: string;
   nisn: string;
   username: string;
   email: string;
@@ -178,7 +208,13 @@ async function validateUniqueSiswaFields({
 }) {
   const supabase = getServerSupabaseClient();
 
-  const [nisnCheck, usernameCheck, emailCheck] = await Promise.all([
+  const [nameCheck, nisnCheck, usernameCheck, emailCheck] = await Promise.all([
+    supabase
+      .from("siswa")
+      .select("id_siswa")
+      .ilike("nama", nama)
+      .limit(1)
+      .maybeSingle<{ id_siswa: number }>(),
     supabase
       .from("siswa")
       .select("id_siswa")
@@ -199,6 +235,10 @@ async function validateUniqueSiswaFields({
       .maybeSingle<{ id_siswa: number }>(),
   ]);
 
+  if (nameCheck.error) {
+    throw new Error(`Gagal memvalidasi nama lengkap: ${nameCheck.error.message}`);
+  }
+
   if (nisnCheck.error) {
     throw new Error(`Gagal memvalidasi NISN: ${nisnCheck.error.message}`);
   }
@@ -209,6 +249,10 @@ async function validateUniqueSiswaFields({
 
   if (emailCheck.error) {
     throw new Error(`Gagal memvalidasi email: ${emailCheck.error.message}`);
+  }
+
+  if (nameCheck.data && nameCheck.data.id_siswa !== currentSiswaId) {
+    return "Nama lengkap sudah digunakan.";
   }
 
   if (nisnCheck.data && nisnCheck.data.id_siswa !== currentSiswaId) {
@@ -276,6 +320,7 @@ export async function createSiswaByAdmin(
 
   try {
     const duplicateMessage = await validateUniqueSiswaFields({
+      nama,
       nisn,
       username,
       email,
@@ -383,6 +428,7 @@ export async function updateSiswaByAdmin(
 
   try {
     const duplicateMessage = await validateUniqueSiswaFields({
+      nama,
       nisn,
       username,
       email,
@@ -423,6 +469,17 @@ export async function updateSiswaByAdmin(
     return {
       error: "",
       success: "Data siswa berhasil diperbarui.",
+      siswa: {
+        id_siswa: siswaId,
+        nama,
+        nisn,
+        username,
+        email,
+        kelas,
+        tahun_masuk: parsedTahunMasuk,
+        nomor_whatsapp: nomorWhatsapp,
+        status_keanggotaan: statusKeanggotaan,
+      },
     };
   } catch (error) {
     return {
@@ -668,7 +725,6 @@ export async function updateOwnSiswaProfile(
     };
   }
 
-  const nama = String(formData.get("nama") ?? "").trim();
   const username = String(formData.get("username") ?? "")
     .trim()
     .toLowerCase();
@@ -676,10 +732,9 @@ export async function updateOwnSiswaProfile(
     .trim()
     .toLowerCase();
   const kelas = String(formData.get("kelas") ?? "").trim();
-  const tahunMasuk = String(formData.get("tahun_masuk") ?? "").trim();
   const nomorWhatsapp = String(formData.get("nomor_whatsapp") ?? "").trim();
 
-  if (!nama || !username || !email || !kelas || !tahunMasuk || !nomorWhatsapp) {
+  if (!username || !email || !kelas || !nomorWhatsapp) {
     return {
       error: "Semua data profil wajib diisi.",
       success: "",
@@ -687,6 +742,33 @@ export async function updateOwnSiswaProfile(
   }
 
   const supabase = getServerSupabaseClient();
+
+  const currentSiswaResult = await supabase
+    .from("siswa")
+    .select("nama, tahun_masuk")
+    .eq("id_siswa", sessionUser.id)
+    .limit(1)
+    .maybeSingle<{ nama: string; tahun_masuk: number | null }>();
+
+  if (currentSiswaResult.error) {
+    return {
+      error: `Gagal membaca profil siswa: ${currentSiswaResult.error.message}`,
+      success: "",
+    };
+  }
+
+  if (!currentSiswaResult.data) {
+    return {
+      error: "Data profil siswa tidak ditemukan.",
+      success: "",
+    };
+  }
+
+  const nama = currentSiswaResult.data.nama;
+  const tahunMasuk =
+    currentSiswaResult.data.tahun_masuk === null
+      ? ""
+      : String(currentSiswaResult.data.tahun_masuk);
 
   const [usernameCheck, emailCheck] = await Promise.all([
     supabase
@@ -740,7 +822,6 @@ export async function updateOwnSiswaProfile(
       username,
       email,
       kelas,
-      tahun_masuk: Number(tahunMasuk),
       nomor_whatsapp: nomorWhatsapp,
     } as never)
     .eq("id_siswa", sessionUser.id);
@@ -765,6 +846,14 @@ export async function updateOwnSiswaProfile(
   return {
     error: "",
     success: "Profil siswa berhasil diperbarui.",
+    profile: {
+      nama,
+      username,
+      email,
+      kelas,
+      tahunMasuk,
+      nomorWhatsapp,
+    },
   };
 }
 
@@ -887,6 +976,15 @@ export async function updateOwnAdminProfile(
     return {
       error: "",
       success: "Profil admin berhasil diperbarui.",
+      profile: {
+        id: sessionUser.id,
+        nama,
+        username,
+        email: schema.supportsEmail ? email : "",
+        nomorTelephone: schema.telephoneColumn ? nomorTelephone : "",
+        supportsEmail: schema.supportsEmail,
+        supportsNomorTelephone: Boolean(schema.telephoneColumn),
+      },
     };
   } catch (error) {
     const message =
@@ -1007,6 +1105,15 @@ export async function updateAdminAccount(
     return {
       error: "",
       success: "Data admin berhasil diperbarui.",
+      profile: {
+        id: adminId,
+        nama,
+        username,
+        email: schema.supportsEmail ? email : "",
+        nomorTelephone: schema.telephoneColumn ? nomorTelephone : "",
+        supportsEmail: schema.supportsEmail,
+        supportsNomorTelephone: Boolean(schema.telephoneColumn),
+      },
     };
   } catch (error) {
     const message =
