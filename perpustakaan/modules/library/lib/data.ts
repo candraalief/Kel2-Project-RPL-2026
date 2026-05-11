@@ -475,7 +475,7 @@ export async function getSiswaTransactions(idSiswa: number) {
   const { data, error } = await supabase
     .from("transaksi")
     .select(
-      "id_transaksi, id_siswa, id_admin, tanggal_pinjam, tanggal_jatuh_tempo, tanggal_kembali, status"
+      "id_transaksi, id_siswa, id_admin, tanggal_pinjam, tanggal_jatuh_tempo, tanggal_kembali, status, catatan"
     )
     .eq("id_siswa", idSiswa)
     .order("id_transaksi", { ascending: false })
@@ -486,6 +486,91 @@ export async function getSiswaTransactions(idSiswa: number) {
   }
 
   return data ?? [];
+}
+
+export type SiswaBorrowingSummary = {
+  transactions: TransaksiRecord[];
+  activeTransactions: TransaksiRecord[];
+  activeBookCount: number;
+};
+
+export async function getSiswaBorrowingSummary(
+  idSiswa: number
+): Promise<SiswaBorrowingSummary> {
+  const transactions = await getSiswaTransactions(idSiswa);
+  const activeTransactions = transactions.filter(
+    (item) => item.tanggal_kembali === null
+  );
+  const activeTransactionIds = activeTransactions.map((item) => item.id_transaksi);
+
+  if (activeTransactionIds.length === 0) {
+    return {
+      transactions,
+      activeTransactions,
+      activeBookCount: 0,
+    };
+  }
+
+  const { rows, config } = await loadTransactionDetailRows(activeTransactionIds);
+  const activeTransactionIdSet = new Set(activeTransactionIds);
+  const quantityKeys = config
+    ? [config.quantityColumn, "jumlah", "jumlah_buku", "qty", "quantity"]
+    : ["jumlah", "jumlah_buku", "qty", "quantity"];
+  const transactionIdKeys = config
+    ? [config.transactionIdColumn, "id_transaksi", "transaction_id"]
+    : ["id_transaksi", "transaction_id"];
+  const detailBookCount = rows.reduce((total, row) => {
+    const transactionId = readNumber(row, transactionIdKeys);
+
+    if (!transactionId || !activeTransactionIdSet.has(transactionId)) {
+      return total;
+    }
+
+    const quantity = readNumber(row, quantityKeys);
+
+    return total + (quantity && quantity > 0 ? quantity : 1);
+  }, 0);
+
+  return {
+    transactions,
+    activeTransactions,
+    activeBookCount: detailBookCount > 0 ? detailBookCount : activeTransactions.length,
+  };
+}
+
+export async function getLatestSiswaAttendance(idSiswa: number) {
+  const supabase = getServerSupabaseClient();
+  const { data: attendanceLinks, error: linkError } = await supabase
+    .from("absensi_siswa")
+    .select("id_absensi")
+    .eq("id_siswa", idSiswa)
+    .order("id_absensi", { ascending: false })
+    .limit(25)
+    .returns<Array<{ id_absensi: number }>>();
+
+  if (linkError) {
+    throw new Error(`Failed to load siswa attendance link: ${linkError.message}`);
+  }
+
+  const attendanceIds = (attendanceLinks ?? []).map((item) => item.id_absensi);
+
+  if (attendanceIds.length === 0) {
+    return null;
+  }
+
+  const { data, error } = await supabase
+    .from("absensi")
+    .select("id_absensi, nama, tujuan, jenis_pengunjung, waktu_kunjungan")
+    .in("id_absensi", attendanceIds)
+    .order("waktu_kunjungan", { ascending: false })
+    .limit(1)
+    .maybeSingle<AbsensiRecord>();
+
+  if (error) {
+    throw new Error(`Failed to load latest siswa attendance: ${error.message}`);
+  }
+
+  return data;
 }
 
 export type StudentSuggestion = {
