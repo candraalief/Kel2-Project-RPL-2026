@@ -189,8 +189,6 @@ export function AdminCatalog({
     });
   }, [availability, books, deferredSearch, selectedGenreIds, yearFrom, yearTo]);
 
-  const totalAvailable = books.reduce((total, book) => total + book.availableCount, 0);
-  const totalBorrowed = books.reduce((total, book) => total + book.borrowedCount, 0);
   const totalPages = Math.max(Math.ceil(filteredBooks.length / pageSize), 1);
   const safePage = Math.min(currentPage, totalPages);
   const pageStart = (safePage - 1) * pageSize;
@@ -390,12 +388,6 @@ export function AdminCatalog({
   return (
     <div className="space-y-5">
       <section className="space-y-3">
-        <section className="grid grid-cols-3 gap-1.5 rounded-lg border border-zinc-200 bg-white p-2 shadow-sm">
-          <MetricCard label="Total Buku" value={books.length} tone="blue" />
-          <MetricCard label="Tersedia" value={totalAvailable} tone="green" />
-          <MetricCard label="Dipinjam" value={totalBorrowed} tone="red" />
-        </section>
-
         <section className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
           <div className="grid gap-3 md:grid-cols-[1fr_auto] md:items-center">
             <label className="relative block w-full">
@@ -561,66 +553,6 @@ export function AdminCatalog({
         <BorrowCheckoutDrawer students={students} adminName={adminName} />
       ) : null}
     </div>
-  );
-}
-
-function MetricCard({
-  label,
-  value,
-  tone,
-}: {
-  label: string;
-  value: number;
-  tone: "blue" | "green" | "red";
-}) {
-  const toneClass = {
-    blue: "bg-[#edf5ff] text-[#1768d8]",
-    green: "bg-emerald-50 text-emerald-600",
-    red: "bg-red-50 text-red-500",
-  }[tone];
-
-  return (
-    <div className="flex min-w-0 flex-col items-center justify-center rounded-md px-1 py-0.5 text-center">
-      <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md ${toneClass}`}>
-        <MetricIcon tone={tone} />
-      </div>
-      <div className="mt-0.5 min-w-0">
-        <p className="truncate text-[9px] font-semibold leading-3 text-slate-600">
-          {label}
-        </p>
-        <p className="mt-0.5 text-[15px] font-semibold leading-none text-black">{value}</p>
-      </div>
-    </div>
-  );
-}
-
-function MetricIcon({ tone }: { tone: "blue" | "green" | "red" }) {
-  if (tone === "green") {
-    return (
-      <svg viewBox="0 0 24 24" fill="none" className="h-3.5 w-3.5" aria-hidden>
-        <rect x="5" y="3" width="14" height="18" rx="2" stroke="currentColor" strokeWidth="1.8" />
-        <path d="M9 12l2 2 4-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-        <path d="M8 18h8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-      </svg>
-    );
-  }
-
-  if (tone === "red") {
-    return (
-      <svg viewBox="0 0 24 24" fill="none" className="h-3.5 w-3.5" aria-hidden>
-        <rect x="5" y="3" width="14" height="18" rx="2" stroke="currentColor" strokeWidth="1.8" />
-        <path d="M9.5 9.5l5 5m0-5l-5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-        <path d="M8 18h8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-      </svg>
-    );
-  }
-
-  return (
-    <svg viewBox="0 0 24 24" fill="none" className="h-3.5 w-3.5" aria-hidden>
-      <path d="M4 5.5A2.5 2.5 0 016.5 3H20v15H6.5A2.5 2.5 0 004 20.5V5.5z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
-      <path d="M4 5.5A2.5 2.5 0 016.5 3H20" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-      <path d="M8 7h7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-    </svg>
   );
 }
 

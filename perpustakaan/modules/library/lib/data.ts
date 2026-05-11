@@ -491,7 +491,18 @@ export async function getSiswaTransactions(idSiswa: number) {
 export type SiswaBorrowingSummary = {
   transactions: TransaksiRecord[];
   activeTransactions: TransaksiRecord[];
+  activeItems: SiswaActiveBorrowingItem[];
   activeBookCount: number;
+};
+
+export type SiswaActiveBorrowingItem = {
+  key: string;
+  transactionId: number;
+  title: string;
+  quantity: number;
+  dueDate: string;
+  borrowedAt: string;
+  status: string | null;
 };
 
 export async function getSiswaBorrowingSummary(
@@ -507,45 +518,97 @@ export async function getSiswaBorrowingSummary(
     return {
       transactions,
       activeTransactions,
+      activeItems: [],
       activeBookCount: 0,
     };
   }
 
   const { rows, config } = await loadTransactionDetailRows(activeTransactionIds);
   const activeTransactionIdSet = new Set(activeTransactionIds);
+  const activeTransactionMap = new Map(
+    activeTransactions.map((transaction) => [transaction.id_transaksi, transaction])
+  );
+  const bookIdKeys = config
+    ? [config.bookIdColumn, "id_buku", "book_id"]
+    : ["id_buku", "book_id"];
   const quantityKeys = config
     ? [config.quantityColumn, "jumlah", "jumlah_buku", "qty", "quantity"]
     : ["jumlah", "jumlah_buku", "qty", "quantity"];
   const transactionIdKeys = config
     ? [config.transactionIdColumn, "id_transaksi", "transaction_id"]
     : ["id_transaksi", "transaction_id"];
-  const detailBookCount = rows.reduce((total, row) => {
-    const transactionId = readNumber(row, transactionIdKeys);
+  const bookIds = rows
+    .map((row) => readNumber(row, bookIdKeys))
+    .filter((id): id is number => typeof id === "number");
+  const bookMap = await loadBookMap([...new Set(bookIds)]);
+  const itemMap = new Map<string, SiswaActiveBorrowingItem>();
 
-    if (!transactionId || !activeTransactionIdSet.has(transactionId)) {
-      return total;
+  rows.forEach((row, rowIndex) => {
+    const transactionId = readNumber(row, transactionIdKeys);
+    const transaction = transactionId ? activeTransactionMap.get(transactionId) : null;
+
+    if (!transactionId || !transaction || !activeTransactionIdSet.has(transactionId)) {
+      return;
     }
 
+    const bookId = readNumber(row, bookIdKeys);
     const quantity = readNumber(row, quantityKeys);
+    const title =
+      readString(row, ["judul", "judul_buku", "title"]) ??
+      (bookId ? bookMap.get(bookId)?.judul : null) ??
+      `Buku transaksi #${transactionId}`;
+    const key = `${transactionId}:${bookId ?? title}:${rowIndex}`;
+    const groupedKey = bookId ? `${transactionId}:book:${bookId}` : key;
+    const current = itemMap.get(groupedKey) ?? {
+      key: groupedKey,
+      transactionId,
+      title,
+      quantity: 0,
+      dueDate: transaction.tanggal_jatuh_tempo,
+      borrowedAt: transaction.tanggal_pinjam,
+      status: transaction.status,
+    };
 
-    return total + (quantity && quantity > 0 ? quantity : 1);
-  }, 0);
+    current.quantity += quantity && quantity > 0 ? quantity : 1;
+    itemMap.set(groupedKey, current);
+  });
+
+  const activeItems = Array.from(itemMap.values()).sort((first, second) => {
+    const firstTime = new Date(first.dueDate).getTime();
+    const secondTime = new Date(second.dueDate).getTime();
+
+    return firstTime - secondTime;
+  });
+  const fallbackItems =
+    activeItems.length > 0
+      ? activeItems
+      : activeTransactions.map((transaction) => ({
+          key: `transaction:${transaction.id_transaksi}`,
+          transactionId: transaction.id_transaksi,
+          title: `Detail buku transaksi #${transaction.id_transaksi}`,
+          quantity: 1,
+          dueDate: transaction.tanggal_jatuh_tempo,
+          borrowedAt: transaction.tanggal_pinjam,
+          status: transaction.status,
+        }));
 
   return {
     transactions,
     activeTransactions,
-    activeBookCount: detailBookCount > 0 ? detailBookCount : activeTransactions.length,
+    activeItems: fallbackItems,
+    activeBookCount: fallbackItems.reduce((total, item) => total + item.quantity, 0),
   };
 }
 
-export async function getLatestSiswaAttendance(idSiswa: number) {
+export async function getRecentSiswaAttendances(idSiswa: number, limit = 2) {
   const supabase = getServerSupabaseClient();
+  const safeLimit = Math.max(1, Math.min(limit, 10));
   const { data: attendanceLinks, error: linkError } = await supabase
     .from("absensi_siswa")
     .select("id_absensi")
     .eq("id_siswa", idSiswa)
     .order("id_absensi", { ascending: false })
-    .limit(25)
+    .limit(safeLimit * 5)
     .returns<Array<{ id_absensi: number }>>();
 
   if (linkError) {
@@ -555,7 +618,7 @@ export async function getLatestSiswaAttendance(idSiswa: number) {
   const attendanceIds = (attendanceLinks ?? []).map((item) => item.id_absensi);
 
   if (attendanceIds.length === 0) {
-    return null;
+    return [];
   }
 
   const { data, error } = await supabase
@@ -563,14 +626,20 @@ export async function getLatestSiswaAttendance(idSiswa: number) {
     .select("id_absensi, nama, tujuan, jenis_pengunjung, waktu_kunjungan")
     .in("id_absensi", attendanceIds)
     .order("waktu_kunjungan", { ascending: false })
-    .limit(1)
-    .maybeSingle<AbsensiRecord>();
+    .limit(safeLimit)
+    .returns<AbsensiRecord[]>();
 
   if (error) {
-    throw new Error(`Failed to load latest siswa attendance: ${error.message}`);
+    throw new Error(`Failed to load recent siswa attendance: ${error.message}`);
   }
 
-  return data;
+  return data ?? [];
+}
+
+export async function getLatestSiswaAttendance(idSiswa: number) {
+  const [latestAttendance] = await getRecentSiswaAttendances(idSiswa, 1);
+
+  return latestAttendance ?? null;
 }
 
 export type StudentSuggestion = {
