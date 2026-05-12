@@ -458,14 +458,6 @@ export function AdminCatalog({
         </div>
       ) : (
         <section className="space-y-3">
-          <CatalogPaginationControls
-            currentPage={safePage}
-            pageSize={pageSize}
-            totalItems={filteredBooks.length}
-            totalPages={totalPages}
-            onPageChange={setCurrentPage}
-            onPageSizeChange={updatePageSize}
-          />
           <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
             {paginatedBooks.map((book) => (
               <BookCard

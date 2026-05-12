@@ -11,7 +11,7 @@ export default async function SiswaAttendancePage() {
       role="siswa"
       user={user}
       title="Absensi Siswa"
-      description="Catat kehadiran siswa perpustakaan menggunakan akun yang sedang login."
+      description="Catat kehadiran siswa dengan cepat dan praktis."
       activeNav="Absensi"
     >
       <SectionCard title="Absensi" subtitle="Catat kehadiran hari ini">

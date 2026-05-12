@@ -1,24 +1,27 @@
 import { requireRole } from "@/modules/access/lib/guards";
 import { DashboardShell } from "@/modules/access/ui/dashboard-shell";
-import { getSiswaTransactions } from "@/modules/library/lib/data";
-import { SectionCard, TransactionsTable } from "@/modules/library/ui/library-cards";
+import { getDetailedSiswaTransactions } from "@/modules/library/lib/data";
+import { SiswaBorrowingHistory } from "@/modules/library/ui/siswa-borrowing-history";
 
 export default async function SiswaBorrowingPage() {
   const user = await requireRole("siswa");
-  const transactions = await getSiswaTransactions(user.id);
-  const activeTransactions = transactions.filter((item) => item.tanggal_kembali === null);
+  const transactions = await getDetailedSiswaTransactions(user.id);
+  const todayDate = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Jakarta",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
 
   return (
     <DashboardShell
       role="siswa"
       user={user}
-      title="Peminjaman Saya"
-      description="Daftar buku yang sedang kamu pinjam dan status jatuh temponya."
-      activeNav="Peminjaman"
+      title="Peminjaman & Riwayat"
+      description="Pantau buku yang sedang dipinjam, deadline pengembalian, dan riwayat transaksi akunmu."
+      activeNav="Peminjaman & Riwayat"
     >
-      <SectionCard title="Peminjaman aktif" subtitle="Transaksi yang masih berjalan">
-        <TransactionsTable transactions={activeTransactions} />
-      </SectionCard>
+      <SiswaBorrowingHistory transactions={transactions} todayDate={todayDate} />
     </DashboardShell>
   );
 }

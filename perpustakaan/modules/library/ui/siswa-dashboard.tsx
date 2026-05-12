@@ -328,15 +328,9 @@ export function SiswaDashboard({
     },
     {
       href: "/siswa/peminjaman",
-      title: "Peminjaman",
-      description: "Pantau peminjaman aktif.",
+      title: "Peminjaman & Riwayat",
+      description: "Pantau deadline dan riwayat.",
       label: "Peminjaman",
-    },
-    {
-      href: "/siswa/riwayat",
-      title: "Riwayat",
-      description: "Lihat riwayat peminjaman.",
-      label: "Riwayat",
     },
     {
       href: "/siswa/profil",
@@ -363,7 +357,7 @@ export function SiswaDashboard({
             Fitur utama siswa
           </h2>
         </div>
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
           {quickActions.map((action) => (
             <QuickActionCard
               key={action.href}

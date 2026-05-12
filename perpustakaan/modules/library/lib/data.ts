@@ -76,6 +76,10 @@ export type DetailedTransactionRecord = TransaksiRecord & {
   items: TransactionBookItem[];
 };
 
+export type SiswaDetailedTransactionRecord = TransaksiRecord & {
+  items: TransactionBookItem[];
+};
+
 export type AbsensiRecord = {
   id_absensi: number;
   nama: string;
@@ -486,6 +490,91 @@ export async function getSiswaTransactions(idSiswa: number) {
   }
 
   return data ?? [];
+}
+
+export async function getDetailedSiswaTransactions(
+  idSiswa: number
+): Promise<SiswaDetailedTransactionRecord[]> {
+  const transactions = await getSiswaTransactions(idSiswa);
+  const transactionIds = transactions.map((item) => item.id_transaksi);
+  const { rows, config } = await loadTransactionDetailRows(transactionIds);
+  const bookIdKeys = config
+    ? [config.bookIdColumn, "id_buku", "book_id"]
+    : ["id_buku", "book_id"];
+  const copyIdKeys = config
+    ? [
+        config.copyIdColumn,
+        "id_copy_buku",
+        "id_copy",
+        "copy_id",
+        "id_eksemplar",
+      ]
+    : ["id_copy_buku", "id_copy", "copy_id", "id_eksemplar"];
+  const bookIds = rows
+    .map((row) => readNumber(row, bookIdKeys))
+    .filter((id): id is number => typeof id === "number");
+  const bookMap = await loadBookMap([...new Set(bookIds)]);
+  const transactionIdSet = new Set(transactionIds);
+  const itemMap = new Map<number, Map<string, TransactionBookItem>>();
+
+  if (config) {
+    rows.forEach((row, rowIndex) => {
+      const transactionId = readNumber(row, [
+        config.transactionIdColumn,
+        "id_transaksi",
+        "transaction_id",
+      ]);
+
+      if (!transactionId || !transactionIdSet.has(transactionId)) {
+        return;
+      }
+
+      const bookId = readNumber(row, bookIdKeys);
+      const copyId = readNumber(row, copyIdKeys);
+      const quantity = readNumber(row, [
+        config.quantityColumn,
+        "jumlah",
+        "jumlah_buku",
+        "qty",
+        "quantity",
+      ]);
+      const book = bookId ? bookMap.get(bookId) : null;
+      const key = bookId
+        ? `book:${bookId}`
+        : copyId
+          ? `copy:${copyId}`
+          : `row:${rowIndex}`;
+      const transactionItems =
+        itemMap.get(transactionId) ?? new Map<string, TransactionBookItem>();
+      const current = transactionItems.get(key) ?? {
+        key,
+        transactionId,
+        bookId,
+        copyIds: [],
+        title:
+          readString(row, ["judul", "judul_buku", "title"]) ??
+          book?.judul ??
+          "Buku tidak diketahui",
+        author: readString(row, ["penulis", "author"]) ?? book?.penulis ?? null,
+        code: readString(row, ["kode", "kode_buku", "isbn"]) ?? null,
+        category: readString(row, ["kategori", "genre", "nama_genre"]) ?? null,
+        quantity: 0,
+      };
+
+      if (copyId && !current.copyIds.includes(copyId)) {
+        current.copyIds.push(copyId);
+      }
+
+      current.quantity += quantity && quantity > 0 ? quantity : 1;
+      transactionItems.set(key, current);
+      itemMap.set(transactionId, transactionItems);
+    });
+  }
+
+  return transactions.map((transaction) => ({
+    ...transaction,
+    items: Array.from(itemMap.get(transaction.id_transaksi)?.values() ?? []),
+  }));
 }
 
 export type SiswaBorrowingSummary = {
