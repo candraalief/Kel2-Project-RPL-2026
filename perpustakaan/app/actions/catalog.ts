@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { getServerSupabaseClient } from "@/lib/supabase-server";
 import { getSessionUser } from "@/modules/access/lib/session";
-import { isCatalogShelfLocation } from "@/modules/library/lib/shelf-locations";
+import { normalizeCatalogShelfLocation } from "@/modules/library/lib/shelf-locations";
 import {
   getBookGenreTableConfigs,
   getCatalogBookCopySummary,
@@ -578,7 +578,9 @@ export async function createCatalogBook(
   const author = readTrimmed(formData, "penulis");
   const publisher = readTrimmed(formData, "penerbit");
   const isbn = readTrimmed(formData, "isbn");
-  const shelfLocation = readTrimmed(formData, "lokasi_rak");
+  const shelfLocation = normalizeCatalogShelfLocation(
+    readTrimmed(formData, "lokasi_rak")
+  );
   const description = readTrimmed(formData, "deskripsi");
   const year = parseYear(readTrimmed(formData, "tahun_terbit"));
   const initialCopies = parseInitialCopies(readTrimmed(formData, "jumlah_copy"));
@@ -593,10 +595,6 @@ export async function createCatalogBook(
 
   if (!author) {
     return { error: "Penulis wajib diisi.", success: "" };
-  }
-
-  if (shelfLocation && !isCatalogShelfLocation(shelfLocation)) {
-    return { error: "Lokasi rak harus dipilih dari daftar rak yang tersedia.", success: "" };
   }
 
   if (readTrimmed(formData, "tahun_terbit") && year === null) {
@@ -685,7 +683,9 @@ export async function updateCatalogBook(
   const author = readTrimmed(formData, "penulis");
   const publisher = readTrimmed(formData, "penerbit");
   const isbn = readTrimmed(formData, "isbn");
-  const shelfLocation = readTrimmed(formData, "lokasi_rak");
+  const shelfLocation = normalizeCatalogShelfLocation(
+    readTrimmed(formData, "lokasi_rak")
+  );
   const description = readTrimmed(formData, "deskripsi");
   const year = parseYear(readTrimmed(formData, "tahun_terbit"));
 
@@ -695,10 +695,6 @@ export async function updateCatalogBook(
 
   if (!title || !author) {
     return { error: "Judul dan penulis wajib diisi.", success: "" };
-  }
-
-  if (shelfLocation && !isCatalogShelfLocation(shelfLocation)) {
-    return { error: "Lokasi rak harus dipilih dari daftar rak yang tersedia.", success: "" };
   }
 
   if (readTrimmed(formData, "tahun_terbit") && year === null) {

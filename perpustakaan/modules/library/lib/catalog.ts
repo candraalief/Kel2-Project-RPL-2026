@@ -69,7 +69,6 @@ export type AdminCatalogBook = {
   isbn: string | null;
   publishedYear: number | null;
   shelfLocation: string | null;
-  shelfMapUrl: string | null;
   coverUrl: string | null;
   description: string | null;
   genres: CatalogGenre[];
@@ -377,7 +376,6 @@ export async function getAdminCatalogData(): Promise<AdminCatalogData> {
       isbn: readString(row, ["isbn", "ISBN"]),
       publishedYear: readNumber(row, ["tahun_terbit", "published_year", "tahun"]),
       shelfLocation: readString(row, ["lokasi_rak", "rak", "shelf_location"]),
-      shelfMapUrl: readString(row, ["denah_rak", "denah_url", "shelf_map_url"]),
       coverUrl: readString(row, ["foto_buku", "foto_url", "cover_url", "gambar"]),
       description: readString(row, ["deskripsi", "description", "sinopsis"]),
       genres: relatedGenres,

@@ -17,9 +17,6 @@ const initialActionState: CatalogActionState = {
 };
 
 type ActiveTab = "book" | "genre";
-const SHELF_LETTERS = Array.from({ length: 10 }, (_, index) =>
-  String.fromCharCode(65 + index)
-);
 
 export function AdminCatalogCreatePage({ genres }: { genres: CatalogGenre[] }) {
   const [activeTab, setActiveTab] = useState<ActiveTab>("book");
@@ -88,7 +85,7 @@ function AddBookForm({ genres }: { genres: CatalogGenre[] }) {
     tahun_terbit: "",
     jumlah_copy: "1",
     deskripsi: "",
-    lokasi_rak: "Rak A1",
+    lokasi_rak: "",
   });
   const [selectedGenreIds, setSelectedGenreIds] = useState<string[]>([]);
   const [showAllGenres, setShowAllGenres] = useState(false);
@@ -107,7 +104,7 @@ function AddBookForm({ genres }: { genres: CatalogGenre[] }) {
         tahun_terbit: "",
         jumlah_copy: "1",
         deskripsi: "",
-        lokasi_rak: "Rak A1",
+        lokasi_rak: "",
       });
       setSelectedGenreIds([]);
       setShowAllGenres(false);
@@ -261,7 +258,7 @@ function AddBookForm({ genres }: { genres: CatalogGenre[] }) {
           />
         </label>
 
-        <ShelfLocationPicker
+        <ShelfLocationInput
           value={bookFields.lokasi_rak}
           onChange={(value) => updateBookField("lokasi_rak", value)}
         />
@@ -672,107 +669,38 @@ function SearchIcon() {
   );
 }
 
-function parseShelfLocation(value: string) {
-  const match = /^Rak ([A-J])([1-6])$/.exec(value);
-
-  return {
-    letter: match?.[1] ?? "A",
-    number: Number(match?.[2] ?? "1"),
-  };
+function shelfCodeValue(value: string) {
+  return value.trim().replace(/^rak\b/i, "").trim().toUpperCase();
 }
 
-function ShelfLocationPicker({
+function ShelfLocationInput({
   value,
   onChange,
 }: {
   value: string;
   onChange: (value: string) => void;
 }) {
-  const { letter, number } = parseShelfLocation(value);
-
-  function updateShelfLocation(nextLetter: string, nextNumber: number) {
-    onChange(`Rak ${nextLetter}${nextNumber}`);
-  }
-
-  function previousNumber() {
-    updateShelfLocation(letter, number === 1 ? 6 : number - 1);
-  }
-
-  function nextNumber() {
-    updateShelfLocation(letter, number === 6 ? 1 : number + 1);
-  }
+  const code = shelfCodeValue(value);
 
   return (
-    <section className="space-y-3 md:col-span-2">
-      <input type="hidden" name="lokasi_rak" value={value} />
-
-      <div className="rounded-2xl border border-zinc-200 bg-white p-4">
-        <div className="grid gap-3 md:grid-cols-[1fr_auto] md:items-end">
-          <label className="block space-y-2">
-            <span className="text-sm font-semibold text-zinc-900">
-              Kode Rak
-            </span>
-            <select
-              value={letter}
-              onChange={(event) =>
-                updateShelfLocation(event.currentTarget.value, number)
-              }
-              className="h-11 w-full rounded-xl border border-zinc-300 bg-white px-3 text-sm font-semibold text-zinc-900 outline-none transition focus:border-[#1d66d6]"
-            >
-              {SHELF_LETTERS.map((item) => (
-                <option key={item} value={item}>
-                  Rak {item}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <div className="space-y-2">
-            <span className="block text-sm font-semibold text-zinc-900">
-              Nomor Rak
-            </span>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={previousNumber}
-                className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-zinc-200 bg-white text-lg font-semibold text-[#1768d8] transition hover:bg-blue-50"
-                aria-label="Nomor rak sebelumnya"
-              >
-                &lt;
-              </button>
-              <div className="inline-flex h-11 min-w-20 items-center justify-center rounded-xl bg-[#2f7eea] px-4 text-lg font-semibold text-white">
-                {number}
-              </div>
-              <button
-                type="button"
-                onClick={nextNumber}
-                className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-zinc-200 bg-white text-lg font-semibold text-[#1768d8] transition hover:bg-blue-50"
-                aria-label="Nomor rak berikutnya"
-              >
-                &gt;
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div className="mt-4 overflow-hidden rounded-2xl border border-zinc-200 bg-zinc-100">
-          <div className="grid gap-0 md:grid-cols-[1fr_minmax(180px,0.42fr)]">
-            <div className="flex min-h-80 items-center justify-center bg-zinc-200 p-5">
-              <div className="flex h-full min-h-72 w-full items-center justify-center rounded-2xl border border-dashed border-zinc-400 bg-zinc-100 px-4 text-center text-sm font-semibold text-zinc-500">
-                Placeholder gambar denah utama {value}
-              </div>
-            </div>
-
-            <div className="flex min-h-80 items-center justify-center bg-zinc-200 p-4">
-              <div className="flex aspect-square h-full max-h-72 w-auto max-w-full items-center justify-center rounded-2xl border border-dashed border-zinc-400 bg-zinc-100 px-4 text-center text-sm font-semibold text-zinc-500">
-                Placeholder gambar undak {letter}
-                {number}
-              </div>
-            </div>
-          </div>
-        </div>
+    <label className="block space-y-2 md:col-span-2">
+      <span className="text-sm font-semibold text-zinc-900">Lokasi Rak</span>
+      <input type="hidden" name="lokasi_rak" value={code} />
+      <div className="flex overflow-hidden rounded-xl border border-zinc-300 bg-white focus-within:border-[#1d66d6]">
+        <span className="inline-flex items-center border-r border-zinc-200 bg-zinc-50 px-3 text-sm font-semibold text-zinc-700">
+          Rak
+        </span>
+        <input
+          value={code}
+          onChange={(event) => onChange(event.currentTarget.value)}
+          placeholder="A1"
+          className="min-w-0 flex-1 px-3 py-2.5 text-sm text-zinc-900 outline-none"
+        />
       </div>
-    </section>
+      <p className="text-xs text-zinc-500">
+        Cukup isi kode rak, misalnya A1 atau B2. Sistem akan menyimpan sebagai Rak A1.
+      </p>
+    </label>
   );
 }
 

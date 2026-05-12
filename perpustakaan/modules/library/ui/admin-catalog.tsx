@@ -24,7 +24,6 @@ import type {
   CatalogCopySummary,
   CatalogGenre,
 } from "@/modules/library/lib/catalog";
-import { CATALOG_SHELF_LOCATIONS } from "@/modules/library/lib/shelf-locations";
 import {
   BorrowCheckoutDrawer,
   type BorrowStudentOption,
@@ -1280,11 +1279,6 @@ function BookDetailModal({
             <DetailItem label="Tahun terbit" value={book.publishedYear?.toString() ?? null} />
             <DetailItem label="Genre" value={genreText(book)} />
             <DetailItem
-              label="Total Eksemplar Aktif"
-              value={countLabel(counts.totalCopies)}
-              helper="Semua eksemplar yang masih masuk koleksi: tersedia atau dipinjam; tidak termasuk hilang/dikeluarkan."
-            />
-            <DetailItem
               label="Eksemplar Tersedia"
               value={countLabel(counts.availableCount)}
               helper="Eksemplar yang bisa dipinjam saat ini dengan status tersedia."
@@ -1293,6 +1287,11 @@ function BookDetailModal({
               label="Eksemplar Dipinjam"
               value={countLabel(counts.borrowedCount)}
               helper="Eksemplar yang sedang dipinjam siswa dengan status dipinjam."
+            />
+            <DetailItem
+              label="Total Eksemplar Aktif"
+              value={countLabel(counts.totalCopies)}
+              helper="Semua eksemplar yang masih masuk koleksi: tersedia atau dipinjam; tidak termasuk hilang/dikeluarkan."
             />
             <DetailItem
               label="Eksemplar Hilang/Dikeluarkan"
@@ -1309,20 +1308,6 @@ function BookDetailModal({
             </div>
             <div className="md:col-span-2">
               <DetailItem label="Lokasi rak" value={book.shelfLocation} />
-            </div>
-            <div className="md:col-span-2">
-              {book.shelfMapUrl ? (
-                <div
-                  role="img"
-                  aria-label={`Denah rak ${book.shelfLocation ?? book.title}`}
-                  className="h-40 w-full rounded-xl bg-cover bg-center"
-                  style={{ backgroundImage: `url("${book.shelfMapUrl}")` }}
-                />
-              ) : (
-                <div className="flex h-40 items-center justify-center rounded-xl bg-zinc-100 px-4 text-center text-sm font-semibold text-zinc-500">
-                  Denah rak belum tersedia.
-                </div>
-              )}
             </div>
           </div>
         </div>
@@ -1843,12 +1828,8 @@ function EditBookModal({
           <Field label="Penerbit" name="penerbit" defaultValue={book.publisher ?? ""} />
           <Field label="ISBN" name="isbn" defaultValue={book.isbn ?? ""} />
           <Field label="Tahun Terbit" name="tahun_terbit" type="number" defaultValue={book.publishedYear?.toString() ?? ""} />
-          <SelectField
-            label="Lokasi Rak"
-            name="lokasi_rak"
-            options={CATALOG_SHELF_LOCATIONS}
+          <ShelfLocationInput
             defaultValue={book.shelfLocation ?? ""}
-            placeholder="Pilih rak"
           />
           <label className="space-y-2 md:col-span-2">
             <span className="text-sm font-semibold text-zinc-900">
@@ -1938,40 +1919,25 @@ function Field({
   );
 }
 
-function SelectField({
-  label,
-  name,
-  options,
-  defaultValue = "",
-  placeholder = "Pilih",
-  required,
-}: {
-  label: string;
-  name: string;
-  options: string[];
-  defaultValue?: string;
-  placeholder?: string;
-  required?: boolean;
-}) {
+function shelfCodeValue(value: string) {
+  return value.trim().replace(/^rak\b/i, "").trim().toUpperCase();
+}
+
+function ShelfLocationInput({ defaultValue = "" }: { defaultValue?: string }) {
   return (
     <label className="block space-y-2">
-      <span className="text-sm font-semibold text-zinc-900">
-        {label}
-        {required ? <span className="text-red-500"> *</span> : null}
-      </span>
-      <select
-        name={name}
-        defaultValue={defaultValue}
-        required={required}
-        className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2.5 text-sm text-zinc-900 outline-none transition focus:border-[#1d66d6]"
-      >
-        <option value="">{placeholder}</option>
-        {options.map((option) => (
-          <option key={option} value={option}>
-            {option}
-          </option>
-        ))}
-      </select>
+      <span className="text-sm font-semibold text-zinc-900">Lokasi Rak</span>
+      <div className="flex overflow-hidden rounded-xl border border-zinc-300 bg-white focus-within:border-[#1d66d6]">
+        <span className="inline-flex items-center border-r border-zinc-200 bg-zinc-50 px-3 text-sm font-semibold text-zinc-700">
+          Rak
+        </span>
+        <input
+          name="lokasi_rak"
+          defaultValue={shelfCodeValue(defaultValue)}
+          placeholder="A1"
+          className="min-w-0 flex-1 px-3 py-2.5 text-sm text-zinc-900 outline-none"
+        />
+      </div>
     </label>
   );
 }
