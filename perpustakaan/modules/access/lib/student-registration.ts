@@ -150,6 +150,7 @@ export async function registerSiswaAccount(formData: FormData): Promise<SignupSt
   const email = normalizeValue(String(formData.get("email") ?? "")).toLowerCase();
   const username = normalizeValue(String(formData.get("username") ?? "")).toLowerCase();
   const password = String(formData.get("password") ?? "");
+  const confirmPassword = String(formData.get("confirm_password") ?? "");
   const kelas = normalizeValue(String(formData.get("kelas") ?? ""));
 
   if (
@@ -160,6 +161,7 @@ export async function registerSiswaAccount(formData: FormData): Promise<SignupSt
     !email ||
     !username ||
     !password ||
+    !confirmPassword ||
     !kelas
   ) {
     return {
@@ -171,6 +173,13 @@ export async function registerSiswaAccount(formData: FormData): Promise<SignupSt
   if (password.length < 8) {
     return {
       error: "Password minimal 8 karakter.",
+      success: "",
+    };
+  }
+
+  if (password !== confirmPassword) {
+    return {
+      error: "Konfirmasi password belum sama.",
       success: "",
     };
   }

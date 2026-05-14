@@ -6,6 +6,7 @@ import {
   resetSiswaPassword,
   type PasswordResetState,
 } from "@/app/actions/auth";
+import { PasswordInput } from "@/modules/access/ui/password-input";
 
 const initialState: PasswordResetState = {
   error: "",
@@ -62,58 +63,28 @@ export function ResetSiswaPasswordForm() {
           />
         </div>
 
-        <div className="space-y-2">
-          <label
-            htmlFor="current_password"
-            className="text-sm font-medium text-zinc-800"
-          >
-            Password lama
-          </label>
-          <input
-            id="current_password"
-            name="current_password"
-            type="password"
-            placeholder="Kosongkan jika admin sudah mereset password akunmu"
-            className="w-full rounded-md border border-zinc-300 bg-white px-3 py-2.5 text-zinc-950 outline-none transition focus:border-[#145da0]"
-          />
-        </div>
+        <PasswordInput
+          id="current_password"
+          label="Password lama"
+          placeholder="Kosongkan jika admin sudah mereset password akunmu"
+        />
 
         <div className="grid gap-4 sm:grid-cols-2">
-          <div className="space-y-2">
-            <label
-              htmlFor="new_password"
-              className="text-sm font-medium text-zinc-800"
-            >
-              Password baru
-            </label>
-            <input
-              id="new_password"
-              name="new_password"
-              type="password"
-              minLength={8}
-              required
-              placeholder="Minimal 8 karakter"
-              className="w-full rounded-md border border-zinc-300 bg-white px-3 py-2.5 text-zinc-950 outline-none transition focus:border-[#145da0]"
-            />
-          </div>
+          <PasswordInput
+            id="new_password"
+            label="Password baru"
+            minLength={8}
+            required
+            placeholder="Minimal 8 karakter"
+          />
 
-          <div className="space-y-2">
-            <label
-              htmlFor="confirm_password"
-              className="text-sm font-medium text-zinc-800"
-            >
-              Konfirmasi password baru
-            </label>
-            <input
-              id="confirm_password"
-              name="confirm_password"
-              type="password"
-              minLength={8}
-              required
-              placeholder="Ulangi password baru"
-              className="w-full rounded-md border border-zinc-300 bg-white px-3 py-2.5 text-zinc-950 outline-none transition focus:border-[#145da0]"
-            />
-          </div>
+          <PasswordInput
+            id="confirm_password"
+            label="Konfirmasi password baru"
+            minLength={8}
+            required
+            placeholder="Ulangi password baru"
+          />
         </div>
 
         {state.error ? (

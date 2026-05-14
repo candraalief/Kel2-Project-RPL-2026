@@ -7,6 +7,7 @@ import {
   loginFromHome,
   type LoginState,
 } from "@/app/actions/auth";
+import { PasswordInput } from "@/modules/access/ui/password-input";
 
 type LoginFormProps = {
   title: string;
@@ -63,19 +64,13 @@ export function LoginForm({ title, description }: LoginFormProps) {
         </div>
 
         <div className="space-y-1">
-          <label
-            htmlFor="password"
-            className="text-sm font-medium text-zinc-800"
-          >
-            Kata sandi
-          </label>
-          <input
+          <PasswordInput
             id="password"
-            name="password"
-            type="password"
+            label="Kata sandi"
             required
             placeholder="Masukkan kata sandi"
-            className="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-950 outline-none transition focus:border-[#145da0]"
+            className="space-y-1"
+            inputClassName="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 pr-12 text-sm text-zinc-950 outline-none transition focus:border-[#145da0]"
           />
           <div className="flex justify-end">
             <Link

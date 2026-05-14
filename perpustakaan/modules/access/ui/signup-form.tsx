@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useActionState, useState } from "react";
 import { signupSiswa, type SignupFormState } from "@/app/actions/auth";
+import { PasswordInput } from "@/modules/access/ui/password-input";
 
 const initialState: SignupFormState = {
   error: "",
@@ -18,6 +19,7 @@ type SignupFields = {
   tahun_masuk: string;
   nomor_whatsapp: string;
   password: string;
+  confirm_password: string;
 };
 
 const initialFields: SignupFields = {
@@ -29,6 +31,7 @@ const initialFields: SignupFields = {
   tahun_masuk: "",
   nomor_whatsapp: "",
   password: "",
+  confirm_password: "",
 };
 
 export function SignupForm() {
@@ -132,13 +135,25 @@ export function SignupForm() {
           label="Nomor WhatsApp"
           value={fields.nomor_whatsapp}
           onChange={(value) => updateField("nomor_whatsapp", value)}
+          className="md:col-span-2"
         />
-        <Field
+        <PasswordInput
           id="password"
           label="Password"
-          type="password"
           value={fields.password}
           onChange={(value) => updateField("password", value)}
+          minLength={8}
+          required
+          inputClassName="w-full rounded-2xl border border-zinc-300 bg-zinc-50 px-4 py-3 pr-12 text-zinc-950 outline-none transition focus:border-[#145da0]"
+        />
+        <PasswordInput
+          id="confirm_password"
+          label="Konfirmasi password"
+          value={fields.confirm_password}
+          onChange={(value) => updateField("confirm_password", value)}
+          minLength={8}
+          required
+          inputClassName="w-full rounded-2xl border border-zinc-300 bg-zinc-50 px-4 py-3 pr-12 text-zinc-950 outline-none transition focus:border-[#145da0]"
         />
 
         <div className="md:col-span-2">
@@ -175,15 +190,17 @@ function Field({
   value,
   onChange,
   type = "text",
+  className = "",
 }: {
   id: keyof SignupFields;
   label: string;
   value: string;
   onChange: (value: string) => void;
   type?: string;
+  className?: string;
 }) {
   return (
-    <div className="space-y-2">
+    <div className={`space-y-2 ${className}`}>
       <label htmlFor={id} className="text-sm font-medium text-zinc-800">
         {label}
       </label>
