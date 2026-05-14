@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
+  useEffect,
   useMemo,
   useState,
   type ReactNode,
@@ -18,6 +19,10 @@ import type {
   TransactionReportData,
   TransactionReportTab,
 } from "@/modules/library/lib/reports";
+import {
+  ButtonLoadingSpinner,
+  useButtonPressLoading,
+} from "@/modules/shared/ui/button-loading";
 
 const reportTypeLabels: Record<ReportType, string> = {
   absensi: "Absensi",
@@ -473,6 +478,17 @@ function ReportSection({
   }>;
   children: ReactNode;
 }) {
+  const {
+    loadingKey: loadingHref,
+    startLoading: startTabLoading,
+    clearLoading: clearTabLoading,
+  } = useButtonPressLoading<string>(4000);
+  const activeHref = tabs.find((tab) => tab.isActive)?.href ?? "";
+
+  useEffect(() => {
+    clearTabLoading();
+  }, [activeHref, clearTabLoading]);
+
   return (
     <section className="rounded-[1.75rem] border border-zinc-200 bg-white p-5 shadow-sm lg:p-6">
       <div>
@@ -486,29 +502,50 @@ function ReportSection({
       </div>
 
       <nav className="mt-5 flex flex-wrap gap-2" aria-label={`${eyebrow} tab`}>
-        {tabs.map((tab) => (
-          <Link
-            key={tab.label}
-            href={tab.href}
-            aria-current={tab.isActive ? "page" : undefined}
-            className={`inline-flex h-10 items-center gap-2 rounded-xl border px-4 text-sm font-semibold transition ${
-              tab.isActive
-                ? "border-[#1d66d6] bg-[#1d66d6] text-white"
-                : "border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50"
-            }`}
-          >
-            {tab.label}
-            <span
-              className={`inline-flex h-6 min-w-6 items-center justify-center rounded-full px-2 text-xs ${
-                tab.isActive
-                  ? "bg-white/20 text-white"
-                  : "bg-[#e6f0ff] text-[#1d66d6]"
+        {tabs.map((tab) => {
+          const isLoading = loadingHref === tab.href && !tab.isActive;
+          const isHighlighted = tab.isActive || isLoading;
+
+          return (
+            <Link
+              key={tab.label}
+              href={tab.href}
+              aria-current={tab.isActive ? "page" : undefined}
+              aria-busy={isLoading}
+              onClick={(event) => {
+                if (
+                  tab.isActive ||
+                  event.button !== 0 ||
+                  event.metaKey ||
+                  event.ctrlKey ||
+                  event.shiftKey ||
+                  event.altKey
+                ) {
+                  return;
+                }
+
+                startTabLoading(tab.href);
+              }}
+              className={`inline-flex h-10 items-center gap-2 rounded-xl border px-4 text-sm font-semibold transition ${
+                isHighlighted
+                  ? "border-[#1d66d6] bg-[#1d66d6] text-white"
+                  : "border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50"
               }`}
             >
-              {tab.count}
-            </span>
-          </Link>
-        ))}
+              {isLoading ? <ButtonLoadingSpinner /> : null}
+              {tab.label}
+              <span
+                className={`inline-flex h-6 min-w-6 items-center justify-center rounded-full px-2 text-xs ${
+                  isHighlighted
+                    ? "bg-white/20 text-white"
+                    : "bg-[#e6f0ff] text-[#1d66d6]"
+                }`}
+              >
+                {tab.count}
+              </span>
+            </Link>
+          );
+        })}
       </nav>
 
       <div className="mt-5">{children}</div>

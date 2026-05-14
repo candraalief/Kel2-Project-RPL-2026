@@ -19,6 +19,10 @@ import {
   type SiswaAccountPage,
   type SiswaAccountStatusFilter,
 } from "@/modules/access/lib/student-registration";
+import {
+  ButtonLoadingSpinner,
+  useButtonPressLoading,
+} from "@/modules/shared/ui/button-loading";
 
 type ActiveTab = "registered" | "pending";
 type ModalMode = "add" | "detail" | "edit";
@@ -169,6 +173,11 @@ export function AdminMembers({
   const [resetPasswordIds, setResetPasswordIds] = useState<Set<number>>(
     () => new Set()
   );
+  const {
+    loadingKey: loadingTab,
+    startLoading: startTabLoading,
+    clearLoading: clearTabLoading,
+  } = useButtonPressLoading<ActiveTab>(4000);
 
   const updateQuery = useCallback(
     (updates: Record<string, string | number | null>) => {
@@ -247,6 +256,10 @@ export function AdminMembers({
     return () => window.clearTimeout(timeout);
   }, [rejectNotice]);
 
+  useEffect(() => {
+    clearTabLoading();
+  }, [activeTab, clearTabLoading]);
+
   const filteredSiswa = siswaPage.siswa.map(
     (item) => updatedSiswa[item.id_siswa] ?? item
   );
@@ -291,6 +304,10 @@ export function AdminMembers({
   }
 
   function changeTab(tab: ActiveTab) {
+    if (tab !== activeTab) {
+      startTabLoading(tab);
+    }
+
     updateQuery({ tab: tab === "registered" ? null : tab, status: null, page: 1 });
   }
 
@@ -352,20 +369,28 @@ export function AdminMembers({
             <button
               type="button"
               onClick={() => changeTab("registered")}
-              className={`rounded-2xl text-sm font-semibold transition ${
-                activeTab === "registered" ? "bg-white text-black shadow-sm" : "text-black"
+              aria-busy={loadingTab === "registered"}
+              className={`inline-flex items-center justify-center gap-2 rounded-2xl text-sm font-semibold transition ${
+                activeTab === "registered" || loadingTab === "registered"
+                  ? "bg-white text-black shadow-sm"
+                  : "text-black"
               }`}
             >
-              Siswa Terdaftar ({registeredSiswaCount})
+              {loadingTab === "registered" ? <ButtonLoadingSpinner /> : null}
+              <span>Siswa Terdaftar ({registeredSiswaCount})</span>
             </button>
             <button
               type="button"
               onClick={() => changeTab("pending")}
-              className={`rounded-2xl text-sm font-semibold transition ${
-                activeTab === "pending" ? "bg-white text-black shadow-sm" : "text-black"
+              aria-busy={loadingTab === "pending"}
+              className={`inline-flex items-center justify-center gap-2 rounded-2xl text-sm font-semibold transition ${
+                activeTab === "pending" || loadingTab === "pending"
+                  ? "bg-white text-black shadow-sm"
+                  : "text-black"
               }`}
             >
-              Menunggu Verifikasi ({pendingSiswaCount})
+              {loadingTab === "pending" ? <ButtonLoadingSpinner /> : null}
+              <span>Menunggu Verifikasi ({pendingSiswaCount})</span>
             </button>
           </div>
 

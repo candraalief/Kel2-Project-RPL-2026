@@ -2,6 +2,10 @@
 
 import { useMemo, useState } from "react";
 import type { SiswaDetailedTransactionRecord } from "@/modules/library/lib/data";
+import {
+  ButtonLoadingSpinner,
+  useButtonPressLoading,
+} from "@/modules/shared/ui/button-loading";
 
 type BorrowingHistoryView = "active" | "history";
 
@@ -232,6 +236,8 @@ export function SiswaBorrowingHistory({
   const [expandedTransactionIds, setExpandedTransactionIds] = useState<Set<number>>(
     () => new Set()
   );
+  const { loadingKey: loadingView, startLoading: startViewLoading } =
+    useButtonPressLoading<BorrowingHistoryView>();
 
   const activeTransactions = useMemo(
     () =>
@@ -284,13 +290,18 @@ export function SiswaBorrowingHistory({
         <div className="mt-4 grid gap-3 rounded-2xl bg-zinc-100 p-1.5 md:grid-cols-2">
           <button
             type="button"
-            onClick={() => setView("active")}
+            onClick={() => {
+              startViewLoading("active");
+              setView("active");
+            }}
+            aria-busy={loadingView === "active"}
             className={`inline-flex h-16 items-center justify-center gap-3 rounded-2xl text-base font-semibold transition ${
               view === "active"
                 ? "bg-[#2567d8] text-white shadow-sm"
                 : "bg-white text-zinc-950 hover:bg-zinc-50"
             }`}
           >
+            {loadingView === "active" ? <ButtonLoadingSpinner /> : null}
             Peminjaman Aktif
             <span
               className={`inline-flex h-7 min-w-7 items-center justify-center rounded-full px-2 text-sm font-semibold ${
@@ -304,13 +315,18 @@ export function SiswaBorrowingHistory({
           </button>
           <button
             type="button"
-            onClick={() => setView("history")}
+            onClick={() => {
+              startViewLoading("history");
+              setView("history");
+            }}
+            aria-busy={loadingView === "history"}
             className={`inline-flex h-16 items-center justify-center gap-3 rounded-2xl text-base font-semibold transition ${
               view === "history"
                 ? "bg-[#2567d8] text-white shadow-sm"
                 : "bg-white text-zinc-950 hover:bg-zinc-50"
             }`}
           >
+            {loadingView === "history" ? <ButtonLoadingSpinner /> : null}
             Riwayat Peminjaman
             <span
               className={`inline-flex h-7 min-w-7 items-center justify-center rounded-full px-2 text-sm font-semibold ${

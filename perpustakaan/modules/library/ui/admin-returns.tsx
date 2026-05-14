@@ -16,6 +16,10 @@ import type {
   DetailedTransactionRecord,
   TransactionBookItem,
 } from "@/modules/library/lib/data";
+import {
+  ButtonLoadingSpinner,
+  useButtonPressLoading,
+} from "@/modules/shared/ui/button-loading";
 
 type ConditionCounts = {
   damaged: number;
@@ -212,6 +216,8 @@ export function AdminReturns({
   const [statusFilter, setStatusFilter] =
     useState<TransactionStatusFilter>("all");
   const [toast, setToast] = useState("");
+  const { loadingKey: loadingTab, startLoading: startTabLoading } =
+    useButtonPressLoading<ReturnTab>();
 
   const visibleActiveTransactions = useMemo(() => {
     const query = appliedSearch.trim().toLowerCase();
@@ -293,9 +299,11 @@ export function AdminReturns({
         <div className="grid grid-cols-2 gap-2 rounded-2xl bg-zinc-100 p-2">
           <ReturnTabButton
             active={activeTab === "active"}
+            loading={loadingTab === "active"}
             label="Perlu Dikembalikan"
             count={transactions.length}
             onClick={() => {
+              startTabLoading("active");
               setActiveTab("active");
               setStatusFilter("all");
               setAppliedSearch(searchInput);
@@ -303,9 +311,11 @@ export function AdminReturns({
           />
           <ReturnTabButton
             active={activeTab === "history"}
+            loading={loadingTab === "history"}
             label="History Pengembalian"
             count={history.length}
             onClick={() => {
+              startTabLoading("history");
               setActiveTab("history");
               setStatusFilter("all");
               setAppliedSearch(searchInput);
@@ -391,11 +401,13 @@ export function AdminReturns({
 
 function ReturnTabButton({
   active,
+  loading,
   label,
   count,
   onClick,
 }: {
   active: boolean;
+  loading: boolean;
   label: string;
   count: number;
   onClick: () => void;
@@ -404,12 +416,14 @@ function ReturnTabButton({
     <button
       type="button"
       onClick={onClick}
+      aria-busy={loading}
       className={`inline-flex h-12 items-center justify-center gap-2 rounded-xl text-sm font-semibold transition ${
         active
           ? "bg-[#1d66d6] text-white shadow-sm"
           : "bg-white text-zinc-900 hover:bg-zinc-50"
       }`}
     >
+      {loading ? <ButtonLoadingSpinner /> : null}
       <span>{label}</span>
       <span
         className={`inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[10px] ${

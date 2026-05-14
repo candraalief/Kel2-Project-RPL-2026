@@ -11,6 +11,10 @@ import {
   type CatalogActionState,
 } from "@/app/actions/catalog";
 import type { CatalogGenre } from "@/modules/library/lib/catalog";
+import {
+  ButtonLoadingSpinner,
+  useButtonPressLoading,
+} from "@/modules/shared/ui/button-loading";
 const initialActionState: CatalogActionState = {
   error: "",
   success: "",
@@ -20,6 +24,13 @@ type ActiveTab = "book" | "genre";
 
 export function AdminCatalogCreatePage({ genres }: { genres: CatalogGenre[] }) {
   const [activeTab, setActiveTab] = useState<ActiveTab>("book");
+  const { loadingKey: loadingTab, startLoading: startTabLoading } =
+    useButtonPressLoading<ActiveTab>();
+
+  function selectTab(tab: ActiveTab) {
+    startTabLoading(tab);
+    setActiveTab(tab);
+  }
 
   return (
     <div className="space-y-6">
@@ -41,24 +52,28 @@ export function AdminCatalogCreatePage({ genres }: { genres: CatalogGenre[] }) {
       <div className="inline-flex rounded-2xl border border-zinc-200 bg-white p-1 shadow-sm">
         <button
           type="button"
-          onClick={() => setActiveTab("book")}
-          className={`rounded-xl px-5 py-2.5 text-sm font-semibold transition ${
+          onClick={() => selectTab("book")}
+          aria-busy={loadingTab === "book"}
+          className={`inline-flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold transition ${
             activeTab === "book"
               ? "bg-[#1d66d6] text-white"
               : "text-zinc-600 hover:bg-zinc-50"
           }`}
         >
+          {loadingTab === "book" ? <ButtonLoadingSpinner /> : null}
           Tambah Buku
         </button>
         <button
           type="button"
-          onClick={() => setActiveTab("genre")}
-          className={`rounded-xl px-5 py-2.5 text-sm font-semibold transition ${
+          onClick={() => selectTab("genre")}
+          aria-busy={loadingTab === "genre"}
+          className={`inline-flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold transition ${
             activeTab === "genre"
               ? "bg-[#1d66d6] text-white"
               : "text-zinc-600 hover:bg-zinc-50"
           }`}
         >
+          {loadingTab === "genre" ? <ButtonLoadingSpinner /> : null}
           Tambah Genre
         </button>
       </div>

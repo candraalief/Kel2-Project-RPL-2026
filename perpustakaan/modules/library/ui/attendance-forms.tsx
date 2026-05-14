@@ -8,6 +8,10 @@ import {
   type AttendanceState,
 } from "@/app/actions/attendance";
 import type { StudentSuggestion } from "@/modules/library/lib/data";
+import {
+  ButtonLoadingSpinner,
+  useButtonPressLoading,
+} from "@/modules/shared/ui/button-loading";
 
 const initialState: AttendanceState = {
   error: "",
@@ -46,6 +50,8 @@ export function PublicAttendanceForm({
     submitPublicAttendance,
     initialState
   );
+  const { loadingKey: loadingVisitorType, startLoading: startVisitorTypeLoading } =
+    useButtonPressLoading<VisitorType>();
   const wasPendingRef = useRef(false);
 
   function resetFormFields() {
@@ -154,6 +160,7 @@ export function PublicAttendanceForm({
   const formLocked = visitorType === null;
 
   function handleVisitorTypeChange(nextType: VisitorType) {
+    startVisitorTypeLoading(nextType);
     setHideSuccessNotice(true);
     setVisitorType(nextType);
     setSelectedStudentId(null);
@@ -210,13 +217,15 @@ export function PublicAttendanceForm({
               key={type}
               type="button"
               onClick={() => handleVisitorTypeChange(type)}
-              className={`rounded-lg px-4 py-2 text-sm font-medium transition ${
+              aria-busy={loadingVisitorType === type}
+              className={`inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition ${
                 visitorType === type
                   ? "bg-[#1d66d6] text-white"
                   : "text-zinc-600 hover:bg-zinc-100"
               }`}
               aria-pressed={visitorType === type}
             >
+              {loadingVisitorType === type ? <ButtonLoadingSpinner /> : null}
               {type === "siswa" ? "Siswa SMAN 10" : "Umum"}
             </button>
           ))}
