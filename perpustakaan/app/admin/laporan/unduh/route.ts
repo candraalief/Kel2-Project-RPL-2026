@@ -1,18 +1,28 @@
 import { requireRole } from "@/modules/access/lib/guards";
+import { getAdminCatalogData } from "@/modules/library/lib/catalog";
 import {
   getAttendanceRecords,
   getDetailedTransactions,
 } from "@/modules/library/lib/data";
+import { createPdfReport } from "@/modules/library/lib/pdf";
 import {
   buildAttendanceReport,
+  buildCollectionReport,
   buildTransactionReport,
-  getDefaultReportStartDate,
+  getDefaultReportMonth,
+  getDefaultReportYear,
+  getReportPeriodRange,
   getTodayDateKey,
-  normalizeReportDate,
+  normalizeReportMonth,
+  normalizeReportYear,
   type AttendanceReportTab,
+  type CollectionReportData,
+  type CollectionReportPeriod,
+  type CollectionReportTab,
   type ReportFilters,
   type ReportFormat,
   type ReportType,
+  type TransactionReportData,
   type TransactionReportTab,
 } from "@/modules/library/lib/reports";
 import { createXlsxWorkbook, type XlsxSheet } from "@/modules/library/lib/xlsx";
@@ -20,7 +30,7 @@ import { createXlsxWorkbook, type XlsxSheet } from "@/modules/library/lib/xlsx";
 export const runtime = "nodejs";
 
 function parseReportType(value: string | null): ReportType {
-  if (value === "absensi") {
+  if (value === "absensi" || value === "koleksi") {
     return value;
   }
 
@@ -32,11 +42,23 @@ function parseReportFormat(value: string | null): ReportFormat {
 }
 
 function parseTransactionTab(value: string | null): TransactionReportTab {
-  if (value === "siswa" || value === "buku") {
+  if (value === "siswa") {
     return value;
   }
 
   return "transaksi";
+}
+
+function parseCollectionTab(value: string | null): CollectionReportTab {
+  return value === "populer" ? "populer" : "inventaris";
+}
+
+function parseCollectionPeriod(value: string | null): CollectionReportPeriod {
+  if (value === "yearly" || value === "all") {
+    return value;
+  }
+
+  return "monthly";
 }
 
 function parseAttendanceTab(value: string | null): AttendanceReportTab {
@@ -45,20 +67,35 @@ function parseAttendanceTab(value: string | null): AttendanceReportTab {
 
 function getReportFilters(searchParams: URLSearchParams): ReportFilters {
   const today = getTodayDateKey();
-  const defaultStartDate = getDefaultReportStartDate(today);
-  let startDate = normalizeReportDate(searchParams.get("mulai") ?? "", defaultStartDate);
-  let endDate = normalizeReportDate(searchParams.get("sampai") ?? "", today);
-
-  if (startDate > endDate) {
-    [startDate, endDate] = [endDate, startDate];
-  }
+  const defaultMonth = getDefaultReportMonth(today);
+  const defaultYear = getDefaultReportYear(today);
+  const collectionPeriod = parseCollectionPeriod(
+    searchParams.get("periode") ?? searchParams.get("periode_koleksi")
+  );
+  const collectionMonth = normalizeReportMonth(
+    searchParams.get("bulan") ?? searchParams.get("bulan_koleksi") ?? "",
+    defaultMonth
+  );
+  const collectionYear = normalizeReportYear(
+    searchParams.get("tahun") ?? searchParams.get("tahun_koleksi") ?? "",
+    defaultYear
+  );
+  const periodRange = getReportPeriodRange({
+    collectionPeriod,
+    collectionMonth,
+    collectionYear,
+  });
 
   return {
     type: parseReportType(searchParams.get("jenis")),
     format: parseReportFormat(searchParams.get("format")),
-    startDate,
-    endDate,
+    startDate: periodRange.startDate,
+    endDate: periodRange.endDate,
     tab: parseTransactionTab(searchParams.get("tab")),
+    collectionTab: parseCollectionTab(searchParams.get("tab")),
+    collectionPeriod,
+    collectionMonth,
+    collectionYear,
     attendanceTab: parseAttendanceTab(searchParams.get("tab")),
   };
 }
@@ -68,118 +105,159 @@ export async function GET(request: Request) {
 
   const url = new URL(request.url);
   const filters = getReportFilters(url.searchParams);
+  const payload = await buildDownloadPayload(filters);
+  const body =
+    filters.format === "pdf"
+      ? createPdfReport({
+          title: payload.title,
+          subtitle: payload.subtitle,
+          sheets: payload.sheets,
+        })
+      : createXlsxWorkbook(payload.sheets);
+  const extension = filters.format === "pdf" ? "pdf" : "xlsx";
+  const contentType =
+    filters.format === "pdf"
+      ? "application/pdf"
+      : "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
-  if (filters.format !== "excel") {
-    return Response.json(
-      {
-        error: "Pilih format Excel untuk mengunduh laporan.",
-      },
-      { status: 400 }
-    );
-  }
-
-  const workbook =
-    filters.type === "absensi"
-      ? await buildAttendanceWorkbook(filters)
-      : await buildBorrowingWorkbook(filters);
-  const filename = `laporan-${filters.type === "absensi" ? "absensi" : "peminjaman"}-${filters.startDate}-sampai-${filters.endDate}.xlsx`;
-
-  return new Response(workbook, {
+  return new Response(body, {
     headers: {
-      "Content-Disposition": `attachment; filename="${filename}"`,
-      "Content-Type":
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "Content-Disposition": `attachment; filename="${payload.filenameBase}.${extension}"`,
+      "Content-Type": contentType,
       "Cache-Control": "no-store",
     },
   });
 }
 
-async function buildBorrowingWorkbook(filters: ReportFilters) {
+async function buildDownloadPayload(filters: ReportFilters) {
+  if (filters.type === "absensi") {
+    const attendance = await getAttendanceRecords({
+      startDate: filters.startDate,
+      endDate: filters.endDate,
+    });
+    const reportData = buildAttendanceReport(attendance, filters);
+
+    return {
+      title: "Laporan Absensi Perpustakaan",
+      subtitle: `Periode ${reportData.periodLabel}`,
+      filenameBase: `laporan-absensi-${getReportPeriodSlug(filters)}`,
+      sheets: buildAttendanceReportSheets(reportData),
+    };
+  }
+
+  if (filters.type === "koleksi") {
+    const [catalogData, transactions] = await Promise.all([
+      getAdminCatalogData(),
+      getDetailedTransactions(),
+    ]);
+    const reportData = buildCollectionReport(
+      catalogData.books,
+      transactions,
+      filters
+    );
+    return {
+      title: "Laporan Koleksi Buku",
+      subtitle: `Periode popularitas ${reportData.periodLabel}`,
+      filenameBase: `laporan-koleksi-${getReportPeriodSlug(filters)}`,
+      sheets: buildCollectionReportSheets(reportData),
+    };
+  }
+
   const transactions = await getDetailedTransactions();
   const reportData = buildTransactionReport(transactions, filters);
 
-  return createXlsxWorkbook(buildBorrowingReportSheets(reportData));
+  return {
+    title: "Laporan Peminjaman Buku",
+    subtitle: `Periode ${reportData.periodLabel}`,
+    filenameBase: `laporan-peminjaman-${getReportPeriodSlug(filters)}`,
+    sheets: buildBorrowingReportSheets(reportData),
+  };
 }
 
-async function buildAttendanceWorkbook(filters: ReportFilters) {
-  const attendance = await getAttendanceRecords({
-    startDate: filters.startDate,
-    endDate: filters.endDate,
-  });
-  const reportData = buildAttendanceReport(attendance, filters);
+function getReportPeriodSlug(filters: ReportFilters) {
+  if (filters.collectionPeriod === "all") {
+    return "sepanjang-waktu";
+  }
 
-  return createXlsxWorkbook(buildAttendanceReportSheets(reportData));
+  if (filters.collectionPeriod === "yearly") {
+    return filters.collectionYear;
+  }
+
+  return filters.collectionMonth;
 }
 
-function buildBorrowingReportSheets(
-  reportData: ReturnType<typeof buildTransactionReport>
-): XlsxSheet[] {
+function buildBorrowingReportSheets(reportData: TransactionReportData): XlsxSheet[] {
   return [
     {
       name: "Semua Peminjaman",
       columns: [
-        "ID Peminjaman",
+        "ID Transaksi",
         "Nama Siswa",
-        "NISN",
-        "Kelas/Jurusan",
+        "Kelas",
+        "Judul Buku",
         "Tanggal Pinjam",
-        "Deadline Kembali",
+        "Tanggal Jatuh Tempo",
         "Tanggal Kembali",
-        "Total Buku",
         "Status",
-        "Info Deadline",
-        "Buku",
-        "Catatan",
       ],
       rows: reportData.transactions.map((row) => [
         row.id,
         row.studentName,
-        row.nisn,
         row.className,
+        row.bookTitle,
         row.borrowedAt,
         row.dueAt,
         row.returnedAt,
-        row.totalBooks,
         row.statusLabel,
-        row.deadlineLabel,
-        row.booksText,
-        row.note,
       ]),
     },
     {
       name: "Rekap Per Siswa",
       columns: [
-        "Siswa",
-        "NISN",
-        "Kelas/Jurusan",
-        "Banyak Peminjaman",
-        "Peminjaman Aktif",
+        "Nama Siswa",
+        "Kelas",
+        "Total Transaksi",
+        "Sedang Dipinjam",
         "Dikembalikan Tepat Waktu",
-        "Dikembalikan Terlambat",
+        "Terlambat",
       ],
       rows: reportData.students.map((row) => [
         row.studentName,
-        row.nisn,
         row.className,
         row.totalTransactions,
         row.activeTransactions,
         row.returnedOnTimeTransactions,
-        row.returnedLateTransactions,
+        row.lateTransactions,
       ]),
     },
+  ];
+}
+
+function buildCollectionReportSheets(reportData: CollectionReportData): XlsxSheet[] {
+  return [
     {
-      name: "Rekap Buku",
+      name: "Inventaris Buku",
       columns: [
         "Judul Buku",
         "Penulis",
-        "Total Eksemplar Dipinjam Dalam Periode Ini",
-        "Eksemplar Hilang Dalam Periode Ini",
+        "Total Eksemplar Aktif",
+        "Total Eksemplar Dikeluarkan",
       ],
-      rows: reportData.books.map((row) => [
+      rows: reportData.inventory.map((row) => [
+        row.title,
+        row.author,
+        row.activeCopies,
+        row.removedCopies,
+      ]),
+    },
+    {
+      name: "Buku Terpopuler",
+      columns: ["Ranking", "Judul Buku", "Penulis", "Total Dipinjam"],
+      rows: reportData.popular.map((row) => [
+        row.rank,
         row.title,
         row.author,
         row.totalBorrowed,
-        row.lostCopies,
       ]),
     },
   ];
@@ -191,22 +269,22 @@ function buildAttendanceReportSheets(
   return [
     {
       name: "Absensi Siswa",
-      columns: ["Nama", "Tanggal", "Waktu", "Tujuan"],
+      columns: ["Nama", "Kelas Saat Absen", "Tujuan Kunjungan", "Waktu"],
       rows: reportData.students.map((row) => [
         row.name,
-        row.date,
-        row.time,
+        row.className,
         row.purpose,
+        row.visitedAt,
       ]),
     },
     {
       name: "Absensi Umum",
-      columns: ["Nama", "Tanggal", "Waktu", "Tujuan"],
+      columns: ["Nama", "Instansi Asal", "Tujuan Kunjungan", "Waktu"],
       rows: reportData.publicVisitors.map((row) => [
         row.name,
-        row.date,
-        row.time,
+        row.institution,
         row.purpose,
+        row.visitedAt,
       ]),
     },
   ];

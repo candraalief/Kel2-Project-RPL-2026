@@ -1,8 +1,11 @@
+import type { AdminCatalogBook } from "./catalog";
 import type { AbsensiRecord, DetailedTransactionRecord } from "./data";
 
-export type ReportType = "transaksi" | "absensi";
+export type ReportType = "transaksi" | "koleksi" | "absensi";
 export type ReportFormat = "pdf" | "excel";
-export type TransactionReportTab = "transaksi" | "siswa" | "buku";
+export type TransactionReportTab = "transaksi" | "siswa";
+export type CollectionReportTab = "inventaris" | "populer";
+export type CollectionReportPeriod = "monthly" | "yearly" | "all";
 export type AttendanceReportTab = "siswa" | "umum";
 
 export type ReportFilters = {
@@ -11,6 +14,10 @@ export type ReportFilters = {
   startDate: string;
   endDate: string;
   tab: TransactionReportTab;
+  collectionTab: CollectionReportTab;
+  collectionPeriod: CollectionReportPeriod;
+  collectionMonth: string;
+  collectionYear: string;
   attendanceTab: AttendanceReportTab;
 };
 
@@ -25,36 +32,23 @@ export type TransactionReportSummary = {
 export type TransactionReportRow = {
   id: number;
   studentName: string;
-  nisn: string;
   className: string;
+  bookTitle: string;
   borrowedAt: string;
   dueAt: string;
   returnedAt: string;
-  totalBooks: number;
-  booksText: string;
-  statusLabel: string;
+  statusLabel: "Dipinjam" | "Dikembalikan" | "Terlambat";
   statusTone: "blue" | "green" | "red" | "amber";
-  deadlineLabel: string;
-  note: string;
 };
 
 export type StudentTransactionReportRow = {
   id: number;
   studentName: string;
-  nisn: string;
   className: string;
   totalTransactions: number;
   activeTransactions: number;
   returnedOnTimeTransactions: number;
-  returnedLateTransactions: number;
-};
-
-export type BorrowedBookReportRow = {
-  key: string;
-  title: string;
-  author: string;
-  totalBorrowed: number;
-  lostCopies: number;
+  lateTransactions: number;
 };
 
 export type TransactionReportData = {
@@ -62,15 +56,37 @@ export type TransactionReportData = {
   summary: TransactionReportSummary;
   transactions: TransactionReportRow[];
   students: StudentTransactionReportRow[];
-  books: BorrowedBookReportRow[];
+};
+
+export type CollectionInventoryReportRow = {
+  id: number;
+  title: string;
+  author: string;
+  activeCopies: number;
+  removedCopies: number;
+};
+
+export type PopularBookReportRow = {
+  key: string;
+  rank: number;
+  title: string;
+  author: string;
+  totalBorrowed: number;
+};
+
+export type CollectionReportData = {
+  periodLabel: string;
+  inventory: CollectionInventoryReportRow[];
+  popular: PopularBookReportRow[];
 };
 
 export type AttendanceReportRow = {
   id: number;
   name: string;
+  className: string;
+  institution: string;
   purpose: string;
-  date: string;
-  time: string;
+  visitedAt: string;
 };
 
 export type AttendanceReportData = {
@@ -82,21 +98,11 @@ export type AttendanceReportData = {
 type StudentAccumulator = {
   id: number;
   studentName: string;
-  nisn: string;
   className: string;
   totalTransactions: number;
   activeTransactions: number;
   returnedOnTimeTransactions: number;
-  returnedLateTransactions: number;
-};
-
-type BookAccumulator = {
-  key: string;
-  bookId: number | null;
-  title: string;
-  author: string;
-  totalBorrowed: number;
-  lostCopies: number;
+  lateTransactions: number;
 };
 
 const dayInMs = 86_400_000;
@@ -119,12 +125,36 @@ export function getDefaultReportStartDate(today = getTodayDateKey()) {
   return `${today.slice(0, 8)}01`;
 }
 
+export function getDefaultReportMonth(today = getTodayDateKey()) {
+  return today.slice(0, 7);
+}
+
+export function getDefaultReportYear(today = getTodayDateKey()) {
+  return today.slice(0, 4);
+}
+
 export function isDateKey(value: string) {
   return /^\d{4}-\d{2}-\d{2}$/.test(value);
 }
 
+export function isMonthKey(value: string) {
+  return /^\d{4}-\d{2}$/.test(value);
+}
+
+export function isYearKey(value: string) {
+  return /^\d{4}$/.test(value);
+}
+
 export function normalizeReportDate(value: string, fallback: string) {
   return isDateKey(value) ? value : fallback;
+}
+
+export function normalizeReportMonth(value: string, fallback: string) {
+  return isMonthKey(value) ? value : fallback;
+}
+
+export function normalizeReportYear(value: string, fallback: string) {
+  return isYearKey(value) ? value : fallback;
 }
 
 export function formatReportDate(value: string | null) {
@@ -146,7 +176,14 @@ export function formatReportDate(value: string | null) {
 
 export function buildTransactionReport(
   transactions: DetailedTransactionRecord[],
-  filters: Pick<ReportFilters, "startDate" | "endDate">
+  filters: Pick<
+    ReportFilters,
+    | "startDate"
+    | "endDate"
+    | "collectionPeriod"
+    | "collectionMonth"
+    | "collectionYear"
+  >
 ): TransactionReportData {
   const todayKey = getTodayDateKey();
   const filteredTransactions = transactions.filter((transaction) => {
@@ -159,17 +196,17 @@ export function buildTransactionReport(
     return borrowedKey >= filters.startDate && borrowedKey <= filters.endDate;
   });
   const studentMap = new Map<number, StudentAccumulator>();
-  const bookMap = new Map<string, BookAccumulator>();
+  const rows: TransactionReportRow[] = [];
   let activeTransactions = 0;
   let completedTransactions = 0;
   let lateTransactions = 0;
   let totalBorrowedBooks = 0;
 
-  const rows = filteredTransactions.map((transaction) => {
+  filteredTransactions.forEach((transaction) => {
     const totalBooks = getTotalBooks(transaction);
     const status = getTransactionStatus(transaction, todayKey);
     const isActive = !transaction.tanggal_kembali;
-    const isLate = status.isLate;
+    const items = getReportItems(transaction);
 
     totalBorrowedBooks += totalBooks;
 
@@ -179,41 +216,31 @@ export function buildTransactionReport(
       completedTransactions += 1;
     }
 
-    if (isLate) {
+    if (status.isLate) {
       lateTransactions += 1;
     }
 
-    collectStudentSummary(
-      studentMap,
-      transaction,
-      isActive,
-      isLate
-    );
-    collectBookSummary(bookMap, transaction);
+    collectStudentSummary(studentMap, transaction, isActive, status.isLate);
 
-    return {
-      id: transaction.id_transaksi,
-      studentName: transaction.siswa?.nama ?? "Siswa tidak diketahui",
-      nisn: transaction.siswa?.nisn ?? "-",
-      className: transaction.siswa?.kelas ?? "-",
-      borrowedAt: formatReportDate(transaction.tanggal_pinjam),
-      dueAt: formatReportDate(transaction.tanggal_jatuh_tempo),
-      returnedAt: formatReportDate(transaction.tanggal_kembali),
-      totalBooks,
-      booksText: transaction.items.length
-        ? transaction.items
-            .map((item) => `${item.title} (${item.quantity})`)
-            .join(", ")
-        : "-",
-      statusLabel: status.label,
-      statusTone: status.tone,
-      deadlineLabel: getDeadlineLabel(transaction, todayKey),
-      note: transaction.catatan?.trim() || "-",
-    };
+    items.forEach((item) => {
+      const bookTitle = formatBookTitle(item.title, item.quantity);
+
+      rows.push({
+        id: transaction.id_transaksi,
+        studentName: transaction.siswa?.nama ?? "Siswa tidak diketahui",
+        className: transaction.siswa?.kelas ?? "-",
+        bookTitle,
+        borrowedAt: formatReportDate(transaction.tanggal_pinjam),
+        dueAt: formatReportDate(transaction.tanggal_jatuh_tempo),
+        returnedAt: formatReportDate(transaction.tanggal_kembali),
+        statusLabel: status.label,
+        statusTone: status.tone,
+      });
+    });
   });
 
   return {
-    periodLabel: `${formatReportDate(filters.startDate)} - ${formatReportDate(filters.endDate)}`,
+    periodLabel: getReportPeriodRange(filters).label,
     summary: {
       totalTransactions: filteredTransactions.length,
       activeTransactions,
@@ -226,35 +253,82 @@ export function buildTransactionReport(
       .map((item) => ({
         id: item.id,
         studentName: item.studentName,
-        nisn: item.nisn,
         className: item.className,
         totalTransactions: item.totalTransactions,
         activeTransactions: item.activeTransactions,
         returnedOnTimeTransactions: item.returnedOnTimeTransactions,
-        returnedLateTransactions: item.returnedLateTransactions,
+        lateTransactions: item.lateTransactions,
       }))
       .sort((a, b) => b.totalTransactions - a.totalTransactions),
-    books: Array.from(
-      collectLostBookSummaries(
-        bookMap,
-        transactions,
-        filters
-      ).values()
-    )
-      .map((item) => ({
-        key: item.key,
+  };
+}
+
+export function buildCollectionReport(
+  books: AdminCatalogBook[],
+  transactions: DetailedTransactionRecord[],
+  filters: Pick<
+    ReportFilters,
+    "collectionPeriod" | "collectionMonth" | "collectionYear"
+  >
+): CollectionReportData {
+  const inventory = books
+    .map((book) => ({
+      id: book.id,
+      title: book.title,
+      author: book.author ?? "-",
+      activeCopies: book.totalCopies,
+      removedCopies: book.removedCount,
+    }))
+    .sort((first, second) => first.title.localeCompare(second.title, "id-ID"));
+  const period = getReportPeriodRange(filters);
+  const popularMap = new Map<string, PopularBookReportRow>();
+
+  transactions.forEach((transaction) => {
+    const borrowedKey = toDateKey(transaction.tanggal_pinjam);
+
+    if (!isInsideOptionalRange(borrowedKey, period.startDate, period.endDate)) {
+      return;
+    }
+
+    transaction.items.forEach((item) => {
+      const key = item.bookId ? `book:${item.bookId}` : item.title.toLowerCase();
+      const current = popularMap.get(key) ?? {
+        key,
+        rank: 0,
         title: item.title,
-        author: item.author,
-        totalBorrowed: item.totalBorrowed,
-        lostCopies: item.lostCopies,
-      }))
-      .sort((a, b) => b.totalBorrowed - a.totalBorrowed || b.lostCopies - a.lostCopies),
+        author: item.author ?? "-",
+        totalBorrowed: 0,
+      };
+
+      current.totalBorrowed += item.quantity;
+      popularMap.set(key, current);
+    });
+  });
+
+  const popular = Array.from(popularMap.values())
+    .sort((a, b) => b.totalBorrowed - a.totalBorrowed)
+    .map((row, index) => ({
+      ...row,
+      rank: index + 1,
+    }));
+
+  return {
+    periodLabel: period.label,
+    inventory,
+    popular,
   };
 }
 
 export function buildAttendanceReport(
   records: AbsensiRecord[],
-  filters: Pick<ReportFilters, "startDate" | "endDate">
+  filters: Pick<
+    ReportFilters,
+    | "startDate"
+    | "endDate"
+    | "collectionPeriod"
+    | "collectionMonth"
+    | "collectionYear"
+  >
 ): AttendanceReportData {
   const filteredRecords = records.filter((record) => {
     const visitedKey = toDateKey(record.waktu_kunjungan);
@@ -279,7 +353,7 @@ export function buildAttendanceReport(
   });
 
   return {
-    periodLabel: `${formatReportDate(filters.startDate)} - ${formatReportDate(filters.endDate)}`,
+    periodLabel: getReportPeriodRange(filters).label,
     students: studentRows,
     publicVisitors: publicRows,
   };
@@ -289,14 +363,43 @@ function toAttendanceReportRow(record: AbsensiRecord): AttendanceReportRow {
   return {
     id: record.id_absensi,
     name: record.nama,
+    className: record.kelas_saat_absen?.trim() || "-",
+    institution: record.instansi_asal?.trim() || "-",
     purpose: record.tujuan ?? "-",
-    date: formatReportDate(record.waktu_kunjungan),
-    time: formatReportTime(record.waktu_kunjungan),
+    visitedAt: formatReportDateTime(record.waktu_kunjungan),
   };
 }
 
 function getTotalBooks(transaction: DetailedTransactionRecord) {
   return transaction.items.reduce((total, item) => total + item.quantity, 0);
+}
+
+function getReportItems(transaction: DetailedTransactionRecord) {
+  if (transaction.items.length > 0) {
+    return transaction.items;
+  }
+
+  return [
+    {
+      key: `transaction:${transaction.id_transaksi}`,
+      bookId: null,
+      copyIds: [],
+      title: "-",
+      author: null,
+      code: null,
+      category: null,
+      quantity: 0,
+      transactionId: transaction.id_transaksi,
+    },
+  ];
+}
+
+function formatBookTitle(title: string, quantity: number) {
+  if (quantity > 1) {
+    return `${title} (${quantity} eksemplar)`;
+  }
+
+  return title;
 }
 
 function toDateKey(value: string | null) {
@@ -337,6 +440,14 @@ function formatReportTime(value: string | null) {
   }).format(date);
 }
 
+function formatReportDateTime(value: string | null) {
+  if (!value) {
+    return "-";
+  }
+
+  return `${formatReportDate(value)}, ${formatReportTime(value)}`;
+}
+
 function normalizeVisitorType(value: string | null | undefined) {
   return (value ?? "").trim().toLowerCase();
 }
@@ -349,7 +460,8 @@ function dateFromDateKey(value: string) {
 
 function daysBetween(startDateKey: string, endDateKey: string) {
   return Math.round(
-    (dateFromDateKey(endDateKey).getTime() - dateFromDateKey(startDateKey).getTime()) /
+    (dateFromDateKey(endDateKey).getTime() -
+      dateFromDateKey(startDateKey).getTime()) /
       dayInMs
   );
 }
@@ -362,70 +474,44 @@ function getTransactionStatus(
   const returnedKey = toDateKey(transaction.tanggal_kembali);
 
   if (returnedKey) {
-    const lateDays = dueKey ? daysBetween(dueKey, returnedKey) : 0;
+    const daysLate = dueKey ? daysBetween(dueKey, returnedKey) : 0;
 
-    if (lateDays > 0) {
+    if (daysLate > 0) {
       return {
+        daysLate,
         isLate: true,
-        label: "Dikembalikan terlambat",
+        label: "Terlambat" as const,
         tone: "amber" as const,
       };
     }
 
     return {
+      daysLate: 0,
       isLate: false,
-      label: "Dikembalikan",
+      label: "Dikembalikan" as const,
       tone: "green" as const,
     };
   }
 
-  if (dueKey && daysBetween(dueKey, todayKey) > 0) {
-    return {
-      isLate: true,
-      label: "Terlambat",
-      tone: "red" as const,
-    };
+  if (dueKey) {
+    const daysLate = daysBetween(dueKey, todayKey);
+
+    if (daysLate > 0) {
+      return {
+        daysLate,
+        isLate: true,
+        label: "Terlambat" as const,
+        tone: "red" as const,
+      };
+    }
   }
 
   return {
+    daysLate: 0,
     isLate: false,
-    label: "Aktif",
+    label: "Dipinjam" as const,
     tone: "blue" as const,
   };
-}
-
-function getDeadlineLabel(
-  transaction: DetailedTransactionRecord,
-  todayKey: string
-) {
-  const dueKey = toDateKey(transaction.tanggal_jatuh_tempo);
-  const returnedKey = toDateKey(transaction.tanggal_kembali);
-
-  if (!dueKey) {
-    return "-";
-  }
-
-  if (returnedKey) {
-    const lateDays = daysBetween(dueKey, returnedKey);
-
-    if (lateDays > 0) {
-      return `Dikembalikan terlambat ${lateDays} hari`;
-    }
-
-    return "Dikembalikan tepat waktu";
-  }
-
-  const distance = daysBetween(todayKey, dueKey);
-
-  if (distance === 0) {
-    return `Kembali hari ini, ${formatReportDate(dueKey)}`;
-  }
-
-  if (distance > 0) {
-    return `Kembali ${formatReportDate(dueKey)} - ${distance} hari lagi`;
-  }
-
-  return `Lewat ${Math.abs(distance)} hari dari ${formatReportDate(dueKey)}`;
 }
 
 function collectStudentSummary(
@@ -438,109 +524,78 @@ function collectStudentSummary(
   const current = studentMap.get(id) ?? {
     id,
     studentName: transaction.siswa?.nama ?? "Siswa tidak diketahui",
-    nisn: transaction.siswa?.nisn ?? "-",
     className: transaction.siswa?.kelas ?? "-",
     totalTransactions: 0,
     activeTransactions: 0,
     returnedOnTimeTransactions: 0,
-    returnedLateTransactions: 0,
+    lateTransactions: 0,
   };
 
   current.totalTransactions += 1;
 
   if (isActive) {
     current.activeTransactions += 1;
-  } else if (isLate) {
-    current.returnedLateTransactions += 1;
-  } else {
+  } else if (!isLate) {
     current.returnedOnTimeTransactions += 1;
+  }
+
+  if (isLate) {
+    current.lateTransactions += 1;
   }
 
   studentMap.set(id, current);
 }
 
-function collectBookSummary(
-  bookMap: Map<string, BookAccumulator>,
-  transaction: DetailedTransactionRecord
+export function getReportPeriodRange(
+  filters: Pick<
+    ReportFilters,
+    "collectionPeriod" | "collectionMonth" | "collectionYear"
+  >
 ) {
-  transaction.items.forEach((item) => {
-    const current = getBookAccumulator(bookMap, item);
-
-    current.totalBorrowed += item.quantity;
-  });
-}
-
-function collectLostBookSummaries(
-  bookMap: Map<string, BookAccumulator>,
-  transactions: DetailedTransactionRecord[],
-  filters: Pick<ReportFilters, "startDate" | "endDate">
-) {
-  transactions.forEach((transaction) => {
-    const returnedKey = toDateKey(transaction.tanggal_kembali);
-
-    if (
-      !returnedKey ||
-      returnedKey < filters.startDate ||
-      returnedKey > filters.endDate
-    ) {
-      return;
-    }
-
-    transaction.items.forEach((item) => {
-      const lostCopies = getLostCopiesForItem(transaction, item.title);
-
-      if (lostCopies <= 0) {
-        return;
-      }
-
-      const current = getBookAccumulator(bookMap, item);
-      current.lostCopies += lostCopies;
-    });
-  });
-
-  return bookMap;
-}
-
-function getBookAccumulator(
-  bookMap: Map<string, BookAccumulator>,
-  item: DetailedTransactionRecord["items"][number]
-) {
-  const key = item.bookId ? `book:${item.bookId}` : item.title.toLowerCase();
-  const current = bookMap.get(key) ?? {
-    key,
-    bookId: item.bookId,
-    title: item.title,
-    author: item.author ?? "-",
-    totalBorrowed: 0,
-    lostCopies: 0,
-  };
-
-  bookMap.set(key, current);
-
-  return current;
-}
-
-function getLostCopiesForItem(
-  transaction: DetailedTransactionRecord,
-  title: string
-) {
-  const note = transaction.catatan ?? "";
-  const segments = note
-    .split(/[|;]/)
-    .map((segment) => segment.trim())
-    .filter(Boolean);
-  const normalizedTitle = title.toLowerCase();
-  const itemSegment = segments.find((segment) =>
-    segment.toLowerCase().startsWith(`${normalizedTitle}:`)
-  );
-
-  if (!itemSegment) {
-    return 0;
+  if (filters.collectionPeriod === "all") {
+    return {
+      label: "Sepanjang waktu",
+      startDate: "0001-01-01",
+      endDate: "9999-12-31",
+    };
   }
 
-  const lostMatch =
-    itemSegment.match(/hilang\s*:\s*(\d+)/i) ??
-    itemSegment.match(/(\d+)\s+hilang/i);
+  if (filters.collectionPeriod === "yearly") {
+    return {
+      label: filters.collectionYear,
+      startDate: `${filters.collectionYear}-01-01`,
+      endDate: `${filters.collectionYear}-12-31`,
+    };
+  }
 
-  return lostMatch?.[1] ? Number(lostMatch[1]) : 0;
+  const [year, month] = filters.collectionMonth.split("-").map(Number);
+  const endDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
+
+  return {
+    label: formatMonthLabel(filters.collectionMonth),
+    startDate: `${filters.collectionMonth}-01`,
+    endDate: `${filters.collectionMonth}-${String(endDay).padStart(2, "0")}`,
+  };
+}
+
+function formatMonthLabel(value: string) {
+  const [year, month] = value.split("-").map(Number);
+
+  return new Intl.DateTimeFormat("id-ID", {
+    month: "long",
+    timeZone: "Asia/Jakarta",
+    year: "numeric",
+  }).format(new Date(Date.UTC(year, month - 1, 1)));
+}
+
+function isInsideOptionalRange(
+  value: string | null,
+  startDate: string,
+  endDate: string
+) {
+  if (!value) {
+    return false;
+  }
+
+  return value >= startDate && value <= endDate;
 }

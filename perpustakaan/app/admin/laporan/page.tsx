@@ -4,13 +4,20 @@ import {
   getAttendanceRecords,
   getDetailedTransactions,
 } from "@/modules/library/lib/data";
+import { getAdminCatalogData } from "@/modules/library/lib/catalog";
 import {
   buildAttendanceReport,
+  buildCollectionReport,
   buildTransactionReport,
-  getDefaultReportStartDate,
+  getDefaultReportMonth,
+  getDefaultReportYear,
+  getReportPeriodRange,
   getTodayDateKey,
-  normalizeReportDate,
+  normalizeReportMonth,
+  normalizeReportYear,
   type AttendanceReportTab,
+  type CollectionReportPeriod,
+  type CollectionReportTab,
   type ReportFilters,
   type ReportFormat,
   type ReportType,
@@ -36,7 +43,7 @@ function readSearchParam(
 }
 
 function parseReportType(value: string): ReportType {
-  if (value === "absensi") {
+  if (value === "absensi" || value === "koleksi") {
     return value;
   }
 
@@ -48,11 +55,23 @@ function parseReportFormat(value: string): ReportFormat {
 }
 
 function parseTransactionTab(value: string): TransactionReportTab {
-  if (value === "siswa" || value === "buku") {
+  if (value === "siswa") {
     return value;
   }
 
   return "transaksi";
+}
+
+function parseCollectionTab(value: string): CollectionReportTab {
+  return value === "populer" ? "populer" : "inventaris";
+}
+
+function parseCollectionPeriod(value: string): CollectionReportPeriod {
+  if (value === "yearly" || value === "all") {
+    return value;
+  }
+
+  return "monthly";
 }
 
 function parseAttendanceTab(value: string): AttendanceReportTab {
@@ -63,23 +82,38 @@ function getReportFilters(
   searchParams: Record<string, string | string[] | undefined>
 ): ReportFilters {
   const today = getTodayDateKey();
-  const defaultStartDate = getDefaultReportStartDate(today);
-  let startDate = normalizeReportDate(
-    readSearchParam(searchParams, "mulai"),
-    defaultStartDate
+  const defaultMonth = getDefaultReportMonth(today);
+  const defaultYear = getDefaultReportYear(today);
+  const collectionPeriod = parseCollectionPeriod(
+    readSearchParam(searchParams, "periode") ||
+      readSearchParam(searchParams, "periode_koleksi")
   );
-  let endDate = normalizeReportDate(readSearchParam(searchParams, "sampai"), today);
-
-  if (startDate > endDate) {
-    [startDate, endDate] = [endDate, startDate];
-  }
+  const collectionMonth = normalizeReportMonth(
+    readSearchParam(searchParams, "bulan") ||
+      readSearchParam(searchParams, "bulan_koleksi"),
+    defaultMonth
+  );
+  const collectionYear = normalizeReportYear(
+    readSearchParam(searchParams, "tahun") ||
+      readSearchParam(searchParams, "tahun_koleksi"),
+    defaultYear
+  );
+  const periodRange = getReportPeriodRange({
+    collectionPeriod,
+    collectionMonth,
+    collectionYear,
+  });
 
   return {
     type: parseReportType(readSearchParam(searchParams, "jenis")),
     format: parseReportFormat(readSearchParam(searchParams, "format")),
-    startDate,
-    endDate,
+    startDate: periodRange.startDate,
+    endDate: periodRange.endDate,
     tab: parseTransactionTab(readSearchParam(searchParams, "tab")),
+    collectionTab: parseCollectionTab(readSearchParam(searchParams, "tab")),
+    collectionPeriod,
+    collectionMonth,
+    collectionYear,
     attendanceTab: parseAttendanceTab(readSearchParam(searchParams, "tab")),
   };
 }
@@ -93,6 +127,8 @@ export default async function AdminReportsPage({
   const confirmDownload = readSearchParam(resolvedSearchParams, "unduh") === "1";
   const transactionReportData =
     filters.type === "transaksi" ? await buildTransactionReports(filters) : null;
+  const collectionReportData =
+    filters.type === "koleksi" ? await buildCollectionReports(filters) : null;
   const attendanceReportData =
     filters.type === "absensi" ? await buildAttendanceReports(filters) : null;
 
@@ -107,6 +143,7 @@ export default async function AdminReportsPage({
       <AdminReports
         filters={filters}
         transactionReportData={transactionReportData}
+        collectionReportData={collectionReportData}
         attendanceReportData={attendanceReportData}
         confirmDownload={confirmDownload}
       />
@@ -127,4 +164,13 @@ async function buildAttendanceReports(filters: ReportFilters) {
   });
 
   return buildAttendanceReport(attendance, filters);
+}
+
+async function buildCollectionReports(filters: ReportFilters) {
+  const [catalogData, transactions] = await Promise.all([
+    getAdminCatalogData(),
+    getDetailedTransactions(),
+  ]);
+
+  return buildCollectionReport(catalogData.books, transactions, filters);
 }

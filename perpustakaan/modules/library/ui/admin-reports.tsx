@@ -2,10 +2,17 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import type { ReactNode } from "react";
+import {
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 import type {
-  AttendanceReportTab,
   AttendanceReportData,
+  AttendanceReportTab,
+  CollectionReportData,
+  CollectionReportPeriod,
+  CollectionReportTab,
   ReportFilters,
   ReportType,
   TransactionReportData,
@@ -14,6 +21,7 @@ import type {
 
 const reportTypeLabels: Record<ReportType, string> = {
   absensi: "Absensi",
+  koleksi: "Koleksi Buku",
   transaksi: "Peminjaman",
 };
 
@@ -32,10 +40,22 @@ const transactionTabs: {
     label: "Rekap Per Siswa",
     getCount: (data) => data.students.length,
   },
+];
+
+const collectionTabs: {
+  id: CollectionReportTab;
+  label: string;
+  getCount: (data: CollectionReportData) => number;
+}[] = [
   {
-    id: "buku",
-    label: "Rekap Buku",
-    getCount: (data) => data.books.length,
+    id: "inventaris",
+    label: "Inventaris Buku",
+    getCount: (data) => data.inventory.length,
+  },
+  {
+    id: "populer",
+    label: "Buku Terpopuler",
+    getCount: (data) => data.popular.length,
   },
 ];
 
@@ -63,26 +83,28 @@ const statusToneClasses = {
   red: "bg-red-50 text-red-600",
 };
 
+const previewPageSize = 10;
+
 export function AdminReports({
   filters,
   transactionReportData,
+  collectionReportData,
   attendanceReportData,
   confirmDownload,
 }: {
   filters: ReportFilters;
   transactionReportData: TransactionReportData | null;
+  collectionReportData: CollectionReportData | null;
   attendanceReportData: AttendanceReportData | null;
   confirmDownload: boolean;
 }) {
   return (
     <div className="space-y-6">
       <section className="rounded-[1.75rem] border border-zinc-200 bg-white p-5 shadow-sm lg:p-6">
-        <div>
-          <ReportControlForm
-            filters={filters}
-            confirmDownload={confirmDownload}
-          />
-        </div>
+        <ReportControlForm
+          filters={filters}
+          confirmDownload={confirmDownload}
+        />
       </section>
 
       {filters.type === "transaksi" && transactionReportData ? (
@@ -92,18 +114,16 @@ export function AdminReports({
         />
       ) : null}
 
+      {filters.type === "koleksi" && collectionReportData ? (
+        <CollectionReportView filters={filters} reportData={collectionReportData} />
+      ) : null}
+
       {filters.type === "absensi" && attendanceReportData ? (
         <AttendanceReportView
           filters={filters}
           reportData={attendanceReportData}
         />
       ) : null}
-
-      {!transactionReportData && !attendanceReportData ? (
-        <ReportPlaceholder type={filters.type} />
-      ) : (
-        null
-      )}
     </div>
   );
 }
@@ -116,52 +136,90 @@ function ReportControlForm({
   confirmDownload: boolean;
 }) {
   const router = useRouter();
+  const [selectedType, setSelectedType] = useState<ReportType>(filters.type);
+  const [selectedCollectionPeriod, setSelectedCollectionPeriod] =
+    useState<CollectionReportPeriod>(filters.collectionPeriod);
 
   function closeDownloadConfirm() {
     router.replace(buildReportHref(filters, {}), { scroll: false });
   }
+
+  const hiddenTab =
+    selectedType === "absensi"
+      ? filters.attendanceTab
+      : selectedType === "koleksi"
+        ? filters.collectionTab
+        : filters.tab;
 
   return (
     <>
       <form
         action="/admin/laporan"
         method="get"
-        className="grid gap-4 xl:grid-cols-[1fr_1.7fr_1fr_auto_auto] xl:items-end"
+        className="grid gap-4 xl:grid-cols-[1fr_2fr_1fr_auto_auto] xl:items-end"
       >
-        <input
-          type="hidden"
-          name="tab"
-          value={filters.type === "absensi" ? filters.attendanceTab : filters.tab}
-        />
+        <input type="hidden" name="tab" value={hiddenTab} />
 
         <ControlField label="Jenis">
           <select
             name="jenis"
-            defaultValue={filters.type}
+            value={selectedType}
+            onChange={(event) => setSelectedType(event.target.value as ReportType)}
             className="h-[42px] w-full rounded-xl border border-zinc-300 bg-white px-3 text-sm font-semibold text-zinc-900 outline-none transition focus:border-[#1d66d6]"
           >
             <option value="transaksi">Peminjaman</option>
+            <option value="koleksi">Koleksi Buku</option>
             <option value="absensi">Absensi</option>
           </select>
         </ControlField>
 
         <div className="grid gap-3 sm:grid-cols-2">
-          <ControlField label="Dari tanggal">
-            <input
-              type="date"
-              name="mulai"
-              defaultValue={filters.startDate}
+          <ControlField label="Periode">
+            <select
+              name="periode"
+              value={selectedCollectionPeriod}
+              onChange={(event) =>
+                setSelectedCollectionPeriod(
+                  event.target.value as CollectionReportPeriod
+                )
+              }
               className="h-[42px] w-full rounded-xl border border-zinc-300 bg-white px-3 text-sm font-semibold text-zinc-900 outline-none transition focus:border-[#1d66d6]"
-            />
+            >
+              <option value="monthly">Bulanan</option>
+              <option value="yearly">Tahunan</option>
+              <option value="all">Sepanjang waktu</option>
+            </select>
           </ControlField>
 
-          <ControlField label="Sampai tanggal">
-            <input
-              type="date"
-              name="sampai"
-              defaultValue={filters.endDate}
-              className="h-[42px] w-full rounded-xl border border-zinc-300 bg-white px-3 text-sm font-semibold text-zinc-900 outline-none transition focus:border-[#1d66d6]"
-            />
+          <ControlField
+            label={
+              selectedCollectionPeriod === "yearly"
+                ? "Tahun"
+                : selectedCollectionPeriod === "monthly"
+                  ? "Bulan"
+                  : "Waktu"
+            }
+          >
+            {selectedCollectionPeriod === "yearly" ? (
+              <input
+                type="number"
+                name="tahun"
+                min="1900"
+                defaultValue={filters.collectionYear}
+                className="h-[42px] w-full rounded-xl border border-zinc-300 bg-white px-3 text-sm font-semibold text-zinc-900 outline-none transition focus:border-[#1d66d6]"
+              />
+            ) : selectedCollectionPeriod === "monthly" ? (
+              <input
+                type="month"
+                name="bulan"
+                defaultValue={filters.collectionMonth}
+                className="h-[42px] w-full rounded-xl border border-zinc-300 bg-white px-3 text-sm font-semibold text-zinc-900 outline-none transition focus:border-[#1d66d6]"
+              />
+            ) : (
+              <div className="flex h-[42px] items-center rounded-xl border border-zinc-200 bg-zinc-50 px-3 text-sm font-semibold text-zinc-500">
+                Semua data
+              </div>
+            )}
           </ControlField>
         </div>
 
@@ -225,8 +283,6 @@ function DownloadConfirmModal({
   filters: ReportFilters;
   onClose: () => void;
 }) {
-  const canDownloadExcel = filters.format === "excel";
-
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/50 p-4"
@@ -276,8 +332,7 @@ function DownloadConfirmModal({
             <p>
               Periode:{" "}
               <span className="font-semibold text-zinc-950">
-                {formatDisplayDate(filters.startDate)} -{" "}
-                {formatDisplayDate(filters.endDate)}
+                {formatCollectionPeriod(filters)}
               </span>
             </p>
             <p>
@@ -297,24 +352,13 @@ function DownloadConfirmModal({
           >
             Kembali
           </button>
-          {canDownloadExcel ? (
-            <a
-              href={buildReportDownloadHref(filters)}
-              className="inline-flex min-w-28 items-center justify-center gap-2 rounded-xl bg-[#1d66d6] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#1553b2]"
-            >
-              <DownloadIcon />
-              Unduh Excel
-            </a>
-          ) : (
-            <button
-              type="button"
-              disabled
-              className="inline-flex min-w-28 items-center justify-center gap-2 rounded-xl bg-zinc-300 px-4 py-2.5 text-sm font-semibold text-white"
-            >
-              <DownloadIcon />
-              Belum tersedia
-            </button>
-          )}
+          <a
+            href={buildReportDownloadHref(filters)}
+            className="inline-flex min-w-28 items-center justify-center gap-2 rounded-xl bg-[#1d66d6] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#1553b2]"
+          >
+            <DownloadIcon />
+            Unduh {filters.format === "excel" ? "Excel" : "PDF"}
+          </a>
         </div>
       </article>
     </div>
@@ -329,63 +373,56 @@ function TransactionReportView({
   reportData: TransactionReportData;
 }) {
   return (
-    <div className="space-y-6">
-      <section className="rounded-[1.75rem] border border-zinc-200 bg-white p-5 shadow-sm lg:p-6">
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">
-              Laporan Peminjaman
-            </p>
-            <h3 className="mt-2 text-2xl font-semibold text-zinc-950">
-              {transactionTabs.find((tab) => tab.id === filters.tab)?.label}
-            </h3>
-            <p className="mt-1 text-sm text-zinc-500">
-              Periode {reportData.periodLabel}
-            </p>
-          </div>
+    <ReportSection
+      eyebrow="Laporan Peminjaman"
+      title={transactionTabs.find((tab) => tab.id === filters.tab)?.label}
+      description={`Periode ${reportData.periodLabel}`}
+      tabs={transactionTabs.map((tab) => ({
+        href: buildReportHref(filters, { tab: tab.id }),
+        isActive: tab.id === filters.tab,
+        label: tab.label,
+        count: tab.getCount(reportData),
+      }))}
+    >
+      {filters.tab === "transaksi" ? (
+        <TransactionsReportTable rows={reportData.transactions} />
+      ) : null}
+      {filters.tab === "siswa" ? (
+        <StudentReportTable rows={reportData.students} />
+      ) : null}
+    </ReportSection>
+  );
+}
 
-          <div className="flex flex-wrap gap-2">
-            {transactionTabs.map((tab) => {
-              const isActive = tab.id === filters.tab;
-
-              return (
-                <Link
-                  key={tab.id}
-                  href={buildReportHref(filters, { tab: tab.id })}
-                  aria-current={isActive ? "page" : undefined}
-                  className={`inline-flex h-10 items-center gap-2 rounded-xl border px-4 text-sm font-semibold transition ${
-                    isActive
-                      ? "border-[#1d66d6] bg-[#1d66d6] text-white"
-                      : "border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50"
-                  }`}
-                >
-                  {tab.label}
-                  <span
-                    className={`inline-flex h-6 min-w-6 items-center justify-center rounded-full px-2 text-xs ${
-                      isActive
-                        ? "bg-white/20 text-white"
-                        : "bg-[#e6f0ff] text-[#1d66d6]"
-                    }`}
-                  >
-                    {tab.getCount(reportData)}
-                  </span>
-                </Link>
-              );
-            })}
-          </div>
-        </div>
-
-        <div className="mt-5">
-          {filters.tab === "transaksi" ? (
-            <TransactionsReportTable rows={reportData.transactions} />
-          ) : null}
-          {filters.tab === "siswa" ? (
-            <StudentReportTable rows={reportData.students} />
-          ) : null}
-          {filters.tab === "buku" ? <BookReportTable rows={reportData.books} /> : null}
-        </div>
-      </section>
-    </div>
+function CollectionReportView({
+  filters,
+  reportData,
+}: {
+  filters: ReportFilters;
+  reportData: CollectionReportData;
+}) {
+  return (
+    <ReportSection
+      eyebrow="Laporan Koleksi"
+      title={collectionTabs.find((tab) => tab.id === filters.collectionTab)?.label}
+      description={
+        filters.collectionTab === "inventaris"
+          ? "Snapshot kondisi koleksi saat ini"
+          : `Periode ${reportData.periodLabel}`
+      }
+      tabs={collectionTabs.map((tab) => ({
+        href: buildReportHref(filters, { collectionTab: tab.id }),
+        isActive: tab.id === filters.collectionTab,
+        label: tab.label,
+        count: tab.getCount(reportData),
+      }))}
+    >
+      {filters.collectionTab === "inventaris" ? (
+        <InventoryReportTable rows={reportData.inventory} />
+      ) : (
+        <PopularBooksReportTable rows={reportData.popular} />
+      )}
+    </ReportSection>
   );
 }
 
@@ -396,106 +433,86 @@ function AttendanceReportView({
   filters: ReportFilters;
   reportData: AttendanceReportData;
 }) {
-  const router = useRouter();
   const rows =
     filters.attendanceTab === "umum"
       ? reportData.publicVisitors
       : reportData.students;
-  const activeLabel =
-    attendanceTabs.find((tab) => tab.id === filters.attendanceTab)?.label ??
-    "Absensi Siswa";
 
   return (
-    <div className="space-y-6">
-      <section className="rounded-[1.75rem] border border-zinc-200 bg-white p-5 shadow-sm lg:p-6">
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">
-              Laporan Absensi
-            </p>
-            <h3 className="mt-2 text-2xl font-semibold text-zinc-950">
-              {activeLabel}
-            </h3>
-            <p className="mt-1 text-sm text-zinc-500">
-              Periode {reportData.periodLabel}
-            </p>
-          </div>
-
-          <div className="flex flex-wrap gap-2">
-            {attendanceTabs.map((tab) => {
-              const isActive = tab.id === filters.attendanceTab;
-
-              return (
-                <button
-                  type="button"
-                  key={tab.id}
-                  onClick={() => {
-                    router.replace(
-                      buildReportHref(filters, { attendanceTab: tab.id }),
-                      { scroll: false }
-                    );
-                  }}
-                  aria-current={isActive ? "page" : undefined}
-                  className={`inline-flex h-10 items-center gap-2 rounded-xl border px-4 text-sm font-semibold transition ${
-                    isActive
-                      ? "border-[#1d66d6] bg-[#1d66d6] text-white"
-                      : "border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50"
-                  }`}
-                >
-                  {tab.label}
-                  <span
-                    className={`inline-flex h-6 min-w-6 items-center justify-center rounded-full px-2 text-xs ${
-                      isActive
-                        ? "bg-white/20 text-white"
-                        : "bg-[#e6f0ff] text-[#1d66d6]"
-                    }`}
-                  >
-                    {tab.getCount(reportData)}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        <div className="mt-5">
-          <AttendanceReportTable rows={rows} />
-        </div>
-      </section>
-    </div>
+    <ReportSection
+      eyebrow="Laporan Absensi"
+      title={attendanceTabs.find((tab) => tab.id === filters.attendanceTab)?.label}
+      description={`Periode ${reportData.periodLabel}`}
+      tabs={attendanceTabs.map((tab) => ({
+        href: buildReportHref(filters, { attendanceTab: tab.id }),
+        isActive: tab.id === filters.attendanceTab,
+        label: tab.label,
+        count: tab.getCount(reportData),
+      }))}
+    >
+      <AttendanceReportTable tab={filters.attendanceTab} rows={rows} />
+    </ReportSection>
   );
 }
 
-function AttendanceReportTable({
-  rows,
+function ReportSection({
+  eyebrow,
+  title,
+  description,
+  tabs,
+  children,
 }: {
-  rows: AttendanceReportData["students"];
+  eyebrow: string;
+  title?: string;
+  description: string;
+  tabs: Array<{
+    href: string;
+    isActive: boolean;
+    label: string;
+    count: number;
+  }>;
+  children: ReactNode;
 }) {
-  if (rows.length === 0) {
-    return <EmptyReportState text="Belum ada absensi pada periode ini." />;
-  }
-
   return (
-    <ReportTable minWidth="620px">
-      <thead>
-        <tr>
-          <ReportHeader>Nama</ReportHeader>
-          <ReportHeader>Tanggal</ReportHeader>
-          <ReportHeader>Waktu</ReportHeader>
-          <ReportHeader>Tujuan</ReportHeader>
-        </tr>
-      </thead>
-      <tbody>
-        {rows.map((row) => (
-          <tr key={row.id} className="border-t border-zinc-200">
-            <ReportCell className="font-semibold text-zinc-950">{row.name}</ReportCell>
-            <ReportCell>{row.date}</ReportCell>
-            <ReportCell>{row.time}</ReportCell>
-            <ReportCell>{row.purpose}</ReportCell>
-          </tr>
+    <section className="rounded-[1.75rem] border border-zinc-200 bg-white p-5 shadow-sm lg:p-6">
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">
+          {eyebrow}
+        </p>
+        <h3 className="mt-2 text-2xl font-semibold text-zinc-950">
+          {title}
+        </h3>
+        <p className="mt-1 text-sm text-zinc-500">{description}</p>
+      </div>
+
+      <nav className="mt-5 flex flex-wrap gap-2" aria-label={`${eyebrow} tab`}>
+        {tabs.map((tab) => (
+          <Link
+            key={tab.label}
+            href={tab.href}
+            aria-current={tab.isActive ? "page" : undefined}
+            className={`inline-flex h-10 items-center gap-2 rounded-xl border px-4 text-sm font-semibold transition ${
+              tab.isActive
+                ? "border-[#1d66d6] bg-[#1d66d6] text-white"
+                : "border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50"
+            }`}
+          >
+            {tab.label}
+            <span
+              className={`inline-flex h-6 min-w-6 items-center justify-center rounded-full px-2 text-xs ${
+                tab.isActive
+                  ? "bg-white/20 text-white"
+                  : "bg-[#e6f0ff] text-[#1d66d6]"
+              }`}
+            >
+              {tab.count}
+            </span>
+          </Link>
         ))}
-      </tbody>
-    </ReportTable>
+      </nav>
+
+      <div className="mt-5">{children}</div>
+    </section>
   );
 }
 
@@ -504,48 +521,45 @@ function TransactionsReportTable({
 }: {
   rows: TransactionReportData["transactions"];
 }) {
-  if (rows.length === 0) {
-    return <EmptyReportState text="Belum ada peminjaman pada periode ini." />;
-  }
-
   return (
-    <ReportTable minWidth="1180px">
-      <thead>
-        <tr>
-          <ReportHeader>ID</ReportHeader>
-          <ReportHeader>Siswa</ReportHeader>
-          <ReportHeader>Pinjam</ReportHeader>
-          <ReportHeader>Deadline</ReportHeader>
-          <ReportHeader>Kembali</ReportHeader>
-          <ReportHeader>Total</ReportHeader>
+    <PaginatedReportTable
+      rows={rows}
+      emptyText="Belum ada peminjaman pada periode ini."
+      minWidth="980px"
+      columns={
+        <>
+          <ReportHeader>ID Transaksi</ReportHeader>
+          <ReportHeader>Nama Siswa</ReportHeader>
+          <ReportHeader>Kelas</ReportHeader>
+          <ReportHeader>Judul Buku</ReportHeader>
+          <ReportHeader>Tanggal Pinjam</ReportHeader>
+          <ReportHeader>Jatuh Tempo</ReportHeader>
+          <ReportHeader>Tanggal Kembali</ReportHeader>
           <ReportHeader>Status</ReportHeader>
-          <ReportHeader>Info Deadline</ReportHeader>
-          <ReportHeader>Buku</ReportHeader>
-        </tr>
-      </thead>
-      <tbody>
-        {rows.map((row) => (
-          <tr key={row.id} className="border-t border-zinc-200">
-            <ReportCell className="font-semibold text-zinc-950">#{row.id}</ReportCell>
-            <ReportCell>
-              <span className="block font-semibold text-zinc-950">{row.studentName}</span>
-              <span className="block text-xs text-zinc-500">
-                {row.nisn} / {row.className}
-              </span>
-            </ReportCell>
-            <ReportCell>{row.borrowedAt}</ReportCell>
-            <ReportCell>{row.dueAt}</ReportCell>
-            <ReportCell>{row.returnedAt}</ReportCell>
-            <ReportCell>{row.totalBooks}</ReportCell>
-            <ReportCell>
-              <StatusBadge tone={row.statusTone}>{row.statusLabel}</StatusBadge>
-            </ReportCell>
-            <ReportCell>{row.deadlineLabel}</ReportCell>
-            <ReportCell className="max-w-[320px] text-zinc-600">{row.booksText}</ReportCell>
-          </tr>
-        ))}
-      </tbody>
-    </ReportTable>
+        </>
+      }
+      rowKey={(row, index) => `${row.id}:${row.bookTitle}:${index}`}
+      renderRow={(row) => (
+        <>
+          <ReportCell className="font-semibold text-zinc-950">
+            #{row.id}
+          </ReportCell>
+          <ReportCell className="font-semibold text-zinc-950">
+            {row.studentName}
+          </ReportCell>
+          <ReportCell>{row.className}</ReportCell>
+          <ReportCell className="max-w-[280px] text-zinc-600">
+            {row.bookTitle}
+          </ReportCell>
+          <ReportCell>{row.borrowedAt}</ReportCell>
+          <ReportCell>{row.dueAt}</ReportCell>
+          <ReportCell>{row.returnedAt}</ReportCell>
+          <ReportCell>
+            <StatusBadge tone={row.statusTone}>{row.statusLabel}</StatusBadge>
+          </ReportCell>
+        </>
+      )}
+    />
   );
 }
 
@@ -554,84 +568,237 @@ function StudentReportTable({
 }: {
   rows: TransactionReportData["students"];
 }) {
-  if (rows.length === 0) {
-    return <EmptyReportState text="Belum ada rekap siswa pada periode ini." />;
-  }
-
   return (
-    <ReportTable minWidth="780px">
-      <thead>
-        <tr>
-          <ReportHeader>Siswa</ReportHeader>
-          <ReportHeader>Banyak Peminjaman</ReportHeader>
-          <ReportHeader>Peminjaman Aktif</ReportHeader>
+    <PaginatedReportTable
+      rows={rows}
+      emptyText="Belum ada rekap siswa pada periode ini."
+      minWidth="820px"
+      columns={
+        <>
+          <ReportHeader>Nama Siswa</ReportHeader>
+          <ReportHeader>Kelas</ReportHeader>
+          <ReportHeader>Total Transaksi</ReportHeader>
+          <ReportHeader>Sedang Dipinjam</ReportHeader>
           <ReportHeader>Dikembalikan Tepat Waktu</ReportHeader>
-          <ReportHeader>Dikembalikan Terlambat</ReportHeader>
-        </tr>
-      </thead>
-      <tbody>
-        {rows.map((row) => (
-          <tr key={row.id} className="border-t border-zinc-200">
-            <ReportCell>
-              <span className="block font-semibold text-zinc-950">{row.studentName}</span>
-              <span className="block text-xs text-zinc-500">
-                {row.nisn} / {row.className}
-              </span>
-            </ReportCell>
-            <ReportCell>{row.totalTransactions}</ReportCell>
-            <ReportCell>{row.activeTransactions}</ReportCell>
-            <ReportCell>{row.returnedOnTimeTransactions}</ReportCell>
-            <ReportCell>{row.returnedLateTransactions}</ReportCell>
-          </tr>
-        ))}
-      </tbody>
-    </ReportTable>
+          <ReportHeader>Terlambat</ReportHeader>
+        </>
+      }
+      rowKey={(row) => row.id}
+      renderRow={(row) => (
+        <>
+          <ReportCell className="font-semibold text-zinc-950">
+            {row.studentName}
+          </ReportCell>
+          <ReportCell>{row.className}</ReportCell>
+          <ReportCell>{row.totalTransactions}</ReportCell>
+          <ReportCell>{row.activeTransactions}</ReportCell>
+          <ReportCell>{row.returnedOnTimeTransactions}</ReportCell>
+          <ReportCell>{row.lateTransactions}</ReportCell>
+        </>
+      )}
+    />
   );
 }
 
-function BookReportTable({ rows }: { rows: TransactionReportData["books"] }) {
-  if (rows.length === 0) {
-    return <EmptyReportState text="Belum ada buku yang dipinjam pada periode ini." />;
-  }
-
+function InventoryReportTable({
+  rows,
+}: {
+  rows: CollectionReportData["inventory"];
+}) {
   return (
-    <ReportTable minWidth="860px">
-      <thead>
-        <tr>
+    <PaginatedReportTable
+      rows={rows}
+      emptyText="Belum ada data inventaris buku."
+      minWidth="760px"
+      columns={
+        <>
           <ReportHeader>Judul Buku</ReportHeader>
           <ReportHeader>Penulis</ReportHeader>
-          <ReportHeader>Total Eksemplar Dipinjam Dalam Periode Ini</ReportHeader>
-          <ReportHeader>Eksemplar Hilang Dalam Periode Ini</ReportHeader>
-        </tr>
-      </thead>
-      <tbody>
-        {rows.map((row) => (
-          <tr key={row.key} className="border-t border-zinc-200">
-            <ReportCell className="font-semibold text-zinc-950">{row.title}</ReportCell>
-            <ReportCell>{row.author}</ReportCell>
-            <ReportCell>{row.totalBorrowed}</ReportCell>
-            <ReportCell>{row.lostCopies}</ReportCell>
-          </tr>
-        ))}
-      </tbody>
-    </ReportTable>
+          <ReportHeader>Eksemplar Aktif</ReportHeader>
+          <ReportHeader>Eksemplar Dikeluarkan</ReportHeader>
+        </>
+      }
+      rowKey={(row) => row.id}
+      renderRow={(row) => (
+        <>
+          <ReportCell className="font-semibold text-zinc-950">
+            {row.title}
+          </ReportCell>
+          <ReportCell>{row.author}</ReportCell>
+          <ReportCell>{row.activeCopies}</ReportCell>
+          <ReportCell>{row.removedCopies}</ReportCell>
+        </>
+      )}
+    />
   );
 }
 
-function ReportPlaceholder({ type }: { type: ReportType }) {
+function PopularBooksReportTable({
+  rows,
+}: {
+  rows: CollectionReportData["popular"];
+}) {
   return (
-    <section className="rounded-[1.75rem] border border-dashed border-zinc-300 bg-white p-8 text-center shadow-sm">
-      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">
-        {reportTypeLabels[type]}
-      </p>
-      <h3 className="mt-2 text-2xl font-semibold text-zinc-950">
-        Laporan ini belum dibuka
-      </h3>
-      <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-zinc-500">
-        Jenis laporan sudah tersedia di dropdown. Untuk sekarang, data yang
-        ditampilkan baru laporan peminjaman.
-      </p>
-    </section>
+    <PaginatedReportTable
+      rows={rows}
+      emptyText="Belum ada buku yang dipinjam pada periode popularitas ini."
+      minWidth="700px"
+      columns={
+        <>
+          <ReportHeader>Ranking</ReportHeader>
+          <ReportHeader>Judul Buku</ReportHeader>
+          <ReportHeader>Penulis</ReportHeader>
+          <ReportHeader>Total Dipinjam</ReportHeader>
+        </>
+      }
+      rowKey={(row) => row.key}
+      renderRow={(row) => (
+        <>
+          <ReportCell className="font-semibold text-zinc-950">
+            #{row.rank}
+          </ReportCell>
+          <ReportCell className="font-semibold text-zinc-950">
+            {row.title}
+          </ReportCell>
+          <ReportCell>{row.author}</ReportCell>
+          <ReportCell>{row.totalBorrowed}</ReportCell>
+        </>
+      )}
+    />
+  );
+}
+
+function AttendanceReportTable({
+  tab,
+  rows,
+}: {
+  tab: AttendanceReportTab;
+  rows: AttendanceReportData["students"];
+}) {
+  return (
+    <PaginatedReportTable
+      rows={rows}
+      emptyText="Belum ada absensi pada periode ini."
+      minWidth="720px"
+      columns={
+        tab === "siswa" ? (
+          <>
+            <ReportHeader>Nama</ReportHeader>
+            <ReportHeader>Kelas Saat Absen</ReportHeader>
+            <ReportHeader>Tujuan Kunjungan</ReportHeader>
+            <ReportHeader>Waktu</ReportHeader>
+          </>
+        ) : (
+          <>
+            <ReportHeader>Nama</ReportHeader>
+            <ReportHeader>Instansi Asal</ReportHeader>
+            <ReportHeader>Tujuan Kunjungan</ReportHeader>
+            <ReportHeader>Waktu</ReportHeader>
+          </>
+        )
+      }
+      rowKey={(row) => row.id}
+      renderRow={(row) =>
+        tab === "siswa" ? (
+          <>
+            <ReportCell className="font-semibold text-zinc-950">
+              {row.name}
+            </ReportCell>
+            <ReportCell>{row.className}</ReportCell>
+            <ReportCell>{row.purpose}</ReportCell>
+            <ReportCell>{row.visitedAt}</ReportCell>
+          </>
+        ) : (
+          <>
+            <ReportCell className="font-semibold text-zinc-950">
+              {row.name}
+            </ReportCell>
+            <ReportCell>{row.institution}</ReportCell>
+            <ReportCell>{row.purpose}</ReportCell>
+            <ReportCell>{row.visitedAt}</ReportCell>
+          </>
+        )
+      }
+    />
+  );
+}
+
+function PaginatedReportTable<T>({
+  rows,
+  emptyText,
+  minWidth,
+  columns,
+  rowKey,
+  renderRow,
+}: {
+  rows: T[];
+  emptyText: string;
+  minWidth: string;
+  columns: ReactNode;
+  rowKey: (row: T, index: number) => string | number;
+  renderRow: (row: T, index: number) => ReactNode;
+}) {
+  const [page, setPage] = useState(1);
+  const totalPages = Math.max(1, Math.ceil(rows.length / previewPageSize));
+  const safePage = Math.min(page, totalPages);
+  const startIndex = (safePage - 1) * previewPageSize;
+  const visibleRows = useMemo(
+    () => rows.slice(startIndex, startIndex + previewPageSize),
+    [rows, startIndex]
+  );
+
+  if (rows.length === 0) {
+    return <EmptyReportState text={emptyText} />;
+  }
+
+  return (
+    <div className="space-y-3">
+      <ReportTable minWidth={minWidth}>
+        <thead>
+          <tr>{columns}</tr>
+        </thead>
+        <tbody>
+          {visibleRows.map((row, index) => (
+            <tr
+              key={rowKey(row, startIndex + index)}
+              className="border-t border-zinc-200"
+            >
+              {renderRow(row, startIndex + index)}
+            </tr>
+          ))}
+        </tbody>
+      </ReportTable>
+
+      <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-zinc-600">
+        <span>
+          Menampilkan {startIndex + 1}-{Math.min(startIndex + visibleRows.length, rows.length)} dari{" "}
+          {rows.length} data
+        </span>
+        <div className="inline-flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setPage((current) => Math.max(1, current - 1))}
+            disabled={safePage <= 1}
+            className="inline-flex h-9 items-center rounded-lg border border-zinc-300 px-3 font-semibold text-zinc-700 transition hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            Sebelumnya
+          </button>
+          <span className="min-w-16 text-center font-semibold text-zinc-900">
+            {safePage} / {totalPages}
+          </span>
+          <button
+            type="button"
+            onClick={() =>
+              setPage((current) => Math.min(totalPages, current + 1))
+            }
+            disabled={safePage >= totalPages}
+            className="inline-flex h-9 items-center rounded-lg border border-zinc-300 px-3 font-semibold text-zinc-700 transition hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            Berikutnya
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -650,17 +817,22 @@ function ControlField({
   );
 }
 
-function formatDisplayDate(value: string) {
-  const date = new Date(`${value}T00:00:00`);
-
-  if (Number.isNaN(date.getTime())) {
-    return value;
+function formatCollectionPeriod(filters: ReportFilters) {
+  if (filters.collectionPeriod === "all") {
+    return "Sepanjang waktu";
   }
 
+  if (filters.collectionPeriod === "yearly") {
+    return filters.collectionYear;
+  }
+
+  const [year, month] = filters.collectionMonth.split("-").map(Number);
+
   return new Intl.DateTimeFormat("id-ID", {
-    dateStyle: "medium",
+    month: "long",
     timeZone: "Asia/Jakarta",
-  }).format(date);
+    year: "numeric",
+  }).format(new Date(Date.UTC(year, month - 1, 1)));
 }
 
 function ReportTable({
@@ -749,10 +921,18 @@ function buildReportHref(
   const params = new URLSearchParams();
 
   params.set("jenis", next.type);
-  params.set("mulai", next.startDate);
-  params.set("sampai", next.endDate);
   params.set("format", next.format);
-  params.set("tab", next.type === "absensi" ? next.attendanceTab : next.tab);
+  params.set("periode", next.collectionPeriod);
+  params.set("bulan", next.collectionMonth);
+  params.set("tahun", next.collectionYear);
+  params.set(
+    "tab",
+    next.type === "absensi"
+      ? next.attendanceTab
+      : next.type === "koleksi"
+        ? next.collectionTab
+        : next.tab
+  );
 
   return `/admin/laporan?${params.toString()}`;
 }
@@ -761,12 +941,17 @@ function buildReportDownloadHref(filters: ReportFilters) {
   const params = new URLSearchParams();
 
   params.set("jenis", filters.type);
-  params.set("mulai", filters.startDate);
-  params.set("sampai", filters.endDate);
   params.set("format", filters.format);
+  params.set("periode", filters.collectionPeriod);
+  params.set("bulan", filters.collectionMonth);
+  params.set("tahun", filters.collectionYear);
   params.set(
     "tab",
-    filters.type === "absensi" ? filters.attendanceTab : filters.tab
+    filters.type === "absensi"
+      ? filters.attendanceTab
+      : filters.type === "koleksi"
+        ? filters.collectionTab
+        : filters.tab
   );
 
   return `/admin/laporan/unduh?${params.toString()}`;

@@ -86,6 +86,8 @@ export type AbsensiRecord = {
   tujuan: string | null;
   jenis_pengunjung: string | null;
   waktu_kunjungan: string | null;
+  kelas_saat_absen?: string | null;
+  instansi_asal?: string | null;
 };
 
 export type AttendanceRecordFilters = {
@@ -387,7 +389,51 @@ export async function getAttendanceRecords(
     throw new Error(`Failed to load attendance: ${error.message}`);
   }
 
-  return data ?? [];
+  return enrichAttendanceRecords(data ?? []);
+}
+
+async function enrichAttendanceRecords(records: AbsensiRecord[]) {
+  const attendanceIds = records.map((record) => record.id_absensi);
+
+  if (attendanceIds.length === 0) {
+    return records;
+  }
+
+  const supabase = getServerSupabaseClient();
+  const [studentDetails, publicDetails] = await Promise.all([
+    supabase
+      .from("absensi_siswa")
+      .select("id_absensi, kelas_saat_absen")
+      .in("id_absensi", attendanceIds)
+      .returns<Array<{ id_absensi: number; kelas_saat_absen: string | null }>>(),
+    supabase
+      .from("absensi_umum")
+      .select("id_absensi, instansi_asal")
+      .in("id_absensi", attendanceIds)
+      .returns<Array<{ id_absensi: number; instansi_asal: string | null }>>(),
+  ]);
+  const studentDetailMap = new Map(
+    studentDetails.error
+      ? []
+      : (studentDetails.data ?? []).map((detail) => [
+          detail.id_absensi,
+          detail.kelas_saat_absen,
+        ])
+  );
+  const publicDetailMap = new Map(
+    publicDetails.error
+      ? []
+      : (publicDetails.data ?? []).map((detail) => [
+          detail.id_absensi,
+          detail.instansi_asal,
+        ])
+  );
+
+  return records.map((record) => ({
+    ...record,
+    kelas_saat_absen: studentDetailMap.get(record.id_absensi) ?? null,
+    instansi_asal: publicDetailMap.get(record.id_absensi) ?? null,
+  }));
 }
 
 export async function getAttendanceRecordPage(
@@ -465,8 +511,10 @@ export async function getAttendanceRecordPage(
     throw new Error(`Failed to load attendance page: ${error.message}`);
   }
 
+  const records = await enrichAttendanceRecords(data ?? []);
+
   return {
-    records: data ?? [],
+    records,
     total,
     currentPage,
     totalPages,
