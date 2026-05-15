@@ -171,12 +171,13 @@ async function uploadBookCover(
   const file = formData.get("foto_buku");
 
   if (!(file instanceof File) || file.size === 0) {
-    return { coverUrl: null, error: "" };
+    return { coverUrl: null, coverPath: null, error: "" };
   }
 
   if (file.size > maxBookCoverSize) {
     return {
       coverUrl: null,
+      coverPath: null,
       error: "Ukuran cover buku maksimal 10 MB.",
     };
   }
@@ -193,6 +194,7 @@ async function uploadBookCover(
   if (!isPng && !isJpg && !isWebp) {
     return {
       coverUrl: null,
+      coverPath: null,
       error: "Cover buku harus berformat JPG, PNG, atau WebP.",
     };
   }
@@ -211,6 +213,7 @@ async function uploadBookCover(
   if (error) {
     return {
       coverUrl: null,
+      coverPath: null,
       error: `Gagal mengunggah cover buku: ${error.message}`,
     };
   }
@@ -218,13 +221,14 @@ async function uploadBookCover(
   return {
     coverUrl: supabase.storage.from(bookCoverBucket).getPublicUrl(path).data
       .publicUrl,
+    coverPath: path,
     error: "",
   };
 }
 
 function parseBookCoverUrl(value: string) {
   if (!value) {
-    return { coverUrl: null, error: "" };
+    return { coverUrl: null, coverPath: null, error: "" };
   }
 
   try {
@@ -233,14 +237,109 @@ function parseBookCoverUrl(value: string) {
     if (url.protocol !== "http:" && url.protocol !== "https:") {
       return {
         coverUrl: null,
+        coverPath: null,
         error: "Link gambar harus diawali http:// atau https://.",
       };
     }
 
-    return { coverUrl: url.toString(), error: "" };
+    return { coverUrl: url.toString(), coverPath: null, error: "" };
   } catch {
-    return { coverUrl: null, error: "Link gambar tidak valid." };
+    return { coverUrl: null, coverPath: null, error: "Link gambar tidak valid." };
   }
+}
+
+function readRowString(row: Record<string, unknown> | null | undefined, keys: string[]) {
+  if (!row) {
+    return null;
+  }
+
+  for (const key of keys) {
+    const value = row[key];
+
+    if (typeof value === "string" && value.trim()) {
+      return value.trim();
+    }
+  }
+
+  return null;
+}
+
+function getBookCoverPath(value: string | null) {
+  if (!value) {
+    return null;
+  }
+
+  try {
+    const url = new URL(value);
+    const prefixes = [
+      `/storage/v1/object/public/${bookCoverBucket}/`,
+      `/storage/v1/object/sign/${bookCoverBucket}/`,
+      `/storage/v1/object/${bookCoverBucket}/`,
+    ];
+
+    for (const prefix of prefixes) {
+      const index = url.pathname.indexOf(prefix);
+
+      if (index >= 0) {
+        return decodeURIComponent(url.pathname.slice(index + prefix.length));
+      }
+    }
+  } catch {
+    // Legacy data may store only the storage object path.
+  }
+
+  if (/^covers\//i.test(value)) {
+    return value;
+  }
+
+  return null;
+}
+
+function hasDifferentStoredCover(previousUrl: string | null, nextUrl: string | null) {
+  const previousPath = getBookCoverPath(previousUrl);
+  const nextPath = getBookCoverPath(nextUrl);
+
+  if (previousPath && nextPath) {
+    return previousPath !== nextPath;
+  }
+
+  return previousUrl !== nextUrl;
+}
+
+async function removeBookCoverPath(
+  supabase: ReturnType<typeof getServerSupabaseClient>,
+  path: string | null
+) {
+  if (!path) {
+    return;
+  }
+
+  await supabase.storage.from(bookCoverBucket).remove([path]);
+}
+
+async function removeStoredBookCover(
+  supabase: ReturnType<typeof getServerSupabaseClient>,
+  coverUrl: string | null
+) {
+  await removeBookCoverPath(supabase, getBookCoverPath(coverUrl));
+}
+
+async function getExistingBookCoverUrl(
+  supabase: ReturnType<typeof getServerSupabaseClient>,
+  bookId: number
+) {
+  const { data, error } = await supabase
+    .from("buku")
+    .select("*")
+    .eq("id_buku", bookId)
+    .limit(1)
+    .maybeSingle<Record<string, unknown>>();
+
+  if (error) {
+    return null;
+  }
+
+  return readRowString(data, ["foto_url", "foto_buku", "cover_url", "gambar"]);
 }
 
 async function resolveBookCoverUrl(
@@ -762,10 +861,23 @@ export async function createCatalogBook(
   }
 
   if (insertBook.error || !insertBook.data) {
+    await removeBookCoverPath(supabase, cover.coverPath);
+
     return {
       error: `Gagal menambahkan buku: ${insertBook.error?.message ?? "data tidak kembali"}`,
       success: "",
     };
+  }
+
+  const storedCoverUrl = readRowString(insertBook.data, [
+    "foto_url",
+    "foto_buku",
+    "cover_url",
+    "gambar",
+  ]);
+
+  if (cover.coverPath && !storedCoverUrl) {
+    await removeBookCoverPath(supabase, cover.coverPath);
   }
 
   const bookId = Number(insertBook.data.id_buku ?? insertBook.data.id);
@@ -818,6 +930,7 @@ export async function updateCatalogBook(
   }
 
   const supabase = getServerSupabaseClient();
+  const previousCoverUrl = await getExistingBookCoverUrl(supabase, bookId);
   const cover = await resolveBookCoverUrl(supabase, formData);
 
   if (cover.error) {
@@ -838,6 +951,7 @@ export async function updateCatalogBook(
       foto_url: cover.coverUrl,
     } as never)
     .eq("id_buku", bookId);
+  let coverSaved = !error;
 
   if (error) {
     const fallbackWithBookDescription = await supabase
@@ -855,6 +969,10 @@ export async function updateCatalogBook(
       .eq("id_buku", bookId);
 
     if (!fallbackWithBookDescription.error) {
+      if (hasDifferentStoredCover(previousCoverUrl, cover.coverUrl)) {
+        await removeStoredBookCover(supabase, previousCoverUrl);
+      }
+
       revalidatePath("/admin/buku");
       revalidatePath("/admin/buku/tambah");
       revalidatePath("/public/katalog");
@@ -877,6 +995,10 @@ export async function updateCatalogBook(
       .eq("id_buku", bookId);
 
     if (!fallbackWithCover.error) {
+      if (hasDifferentStoredCover(previousCoverUrl, cover.coverUrl)) {
+        await removeStoredBookCover(supabase, previousCoverUrl);
+      }
+
       revalidatePath("/admin/buku");
       revalidatePath("/admin/buku/tambah");
       revalidatePath("/public/katalog");
@@ -898,8 +1020,20 @@ export async function updateCatalogBook(
       .eq("id_buku", bookId);
 
     if (fallback.error) {
+      await removeBookCoverPath(supabase, cover.coverPath);
+
       return { error: `Gagal memperbarui buku: ${fallback.error.message}`, success: "" };
     }
+
+    coverSaved = false;
+  }
+
+  if (coverSaved && hasDifferentStoredCover(previousCoverUrl, cover.coverUrl)) {
+    await removeStoredBookCover(supabase, previousCoverUrl);
+  }
+
+  if (!coverSaved) {
+    await removeBookCoverPath(supabase, cover.coverPath);
   }
 
   revalidatePath("/admin/buku");
@@ -1023,9 +1157,11 @@ export async function deleteCatalogBook(bookId: number): Promise<CatalogActionSt
     };
   }
 
+  const supabase = getServerSupabaseClient();
+  const existingCoverUrl = await getExistingBookCoverUrl(supabase, bookId);
+
   await Promise.all([removeBookCopies(bookId), removeBookGenres(bookId)]);
 
-  const supabase = getServerSupabaseClient();
   const { error } = await supabase.from("buku").delete().eq("id_buku", bookId);
 
   if (error) {
@@ -1045,6 +1181,8 @@ export async function deleteCatalogBook(bookId: number): Promise<CatalogActionSt
 
     return { error: `Gagal menghapus buku: ${error.message}`, success: "" };
   }
+
+  await removeStoredBookCover(supabase, existingCoverUrl);
 
   revalidatePath("/admin/buku");
   revalidatePath("/admin/buku/tambah");

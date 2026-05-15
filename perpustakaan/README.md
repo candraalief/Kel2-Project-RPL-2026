@@ -198,6 +198,8 @@ File utama:
 - Form juga mendukung input URL gambar internet ke `foto_url`.
 - Menu edit menampilkan cover aktif sebagai background area upload.
 - Saat admin memilih file cover baru di edit modal, preview langsung berubah sebelum disimpan.
+- Jika cover bucket diganti, dikosongkan, atau buku dihapus, file lama di bucket `foto_buku` ikut dibersihkan setelah database berhasil disimpan.
+- Jika upload cover baru berhasil tetapi penyimpanan database gagal, file baru yang telanjur masuk bucket akan dihapus kembali.
 - Setelah tambah/edit berhasil, halaman katalog di-refresh.
 
 File utama:
@@ -379,6 +381,7 @@ Catatan:
 - Upload dilakukan dari server action memakai kredensial server.
 - URL hasil upload disimpan ke `buku.foto_url`.
 - Katalog membuat signed URL untuk object dari bucket `foto_buku` agar cover tetap tampil jika bucket tidak public.
+- File di bucket `foto_buku` otomatis dibersihkan saat cover diganti/dihapus atau saat buku dihapus.
 - Link gambar eksternal tetap boleh digunakan selama berupa URL `http://` atau `https://`.
 
 ## Konfigurasi Environment

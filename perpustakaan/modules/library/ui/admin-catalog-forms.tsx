@@ -105,6 +105,8 @@ function AddBookForm({ genres }: { genres: CatalogGenre[] }) {
   });
   const [selectedGenreIds, setSelectedGenreIds] = useState<string[]>([]);
   const [showAllGenres, setShowAllGenres] = useState(false);
+  const [coverPreview, setCoverPreview] = useState("");
+  const [temporaryCoverUrl, setTemporaryCoverUrl] = useState("");
   const [state, formAction, pending] = useActionState(async (
     prevState: CatalogActionState | undefined,
     formData: FormData
@@ -125,6 +127,11 @@ function AddBookForm({ genres }: { genres: CatalogGenre[] }) {
       });
       setSelectedGenreIds([]);
       setShowAllGenres(false);
+      if (temporaryCoverUrl) {
+        URL.revokeObjectURL(temporaryCoverUrl);
+      }
+      setTemporaryCoverUrl("");
+      setCoverPreview("");
     }
 
     return nextState;
@@ -151,26 +158,69 @@ function AddBookForm({ genres }: { genres: CatalogGenre[] }) {
     }));
   }
 
+  useEffect(() => {
+    return () => {
+      if (temporaryCoverUrl) {
+        URL.revokeObjectURL(temporaryCoverUrl);
+      }
+    };
+  }, [temporaryCoverUrl]);
+
+  function previewSelectedCover(file: File | null) {
+    if (temporaryCoverUrl) {
+      URL.revokeObjectURL(temporaryCoverUrl);
+    }
+
+    if (!file) {
+      setTemporaryCoverUrl("");
+      setCoverPreview("");
+      return;
+    }
+
+    const objectUrl = URL.createObjectURL(file);
+    setTemporaryCoverUrl(objectUrl);
+    setCoverPreview(objectUrl);
+  }
+
   return (
     <form action={formAction} className="space-y-5">
       <div className="grid gap-4 md:grid-cols-2">
-        <label className="flex min-h-40 cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed border-zinc-400 bg-zinc-100 p-6 text-center transition hover:bg-zinc-50">
+        <label
+          className={`relative flex min-h-40 cursor-pointer flex-col items-center justify-center overflow-hidden rounded-2xl border border-dashed border-zinc-400 bg-zinc-100 bg-cover bg-center p-6 text-center transition hover:bg-zinc-50 ${
+            coverPreview ? "text-white" : "text-zinc-900"
+          }`}
+          style={
+            coverPreview
+              ? { backgroundImage: `url("${coverPreview}")` }
+              : undefined
+          }
+        >
+          {coverPreview ? (
+            <span className="absolute inset-0 bg-zinc-950/45" aria-hidden />
+          ) : null}
           <input
             type="file"
             name="foto_buku"
             accept=".jpg,.jpeg,.png,.webp,image/jpg,image/jpeg,image/png,image/webp"
             className="sr-only"
+            onChange={(event) =>
+              previewSelectedCover(event.currentTarget.files?.[0] ?? null)
+            }
           />
-          <svg viewBox="0 0 24 24" fill="none" className="h-10 w-10 text-zinc-700" aria-hidden>
-            <path d="M4 5h16v14H4z" stroke="currentColor" strokeWidth="1.8" />
-            <path d="M8 13l2.5-3 3 4 1.5-2 3 4H6l2-3z" fill="currentColor" />
-            <circle cx="16" cy="8" r="1.5" fill="currentColor" />
-          </svg>
-          <span className="mt-3 text-sm font-semibold text-zinc-900">
-            Upload Foto Buku
+          {coverPreview ? null : (
+            <svg viewBox="0 0 24 24" fill="none" className="h-10 w-10 text-zinc-700" aria-hidden>
+              <path d="M4 5h16v14H4z" stroke="currentColor" strokeWidth="1.8" />
+              <path d="M8 13l2.5-3 3 4 1.5-2 3 4H6l2-3z" fill="currentColor" />
+              <circle cx="16" cy="8" r="1.5" fill="currentColor" />
+            </svg>
+          )}
+          <span className={`relative text-sm font-semibold ${coverPreview ? "" : "mt-3"}`}>
+            {coverPreview ? "Foto Terpilih" : "Upload Foto Buku"}
           </span>
-          <span className="mt-1 text-xs text-zinc-500">
-            Pilih file JPG, PNG, atau WebP, maksimal 10 MB.
+          <span className={`relative mt-1 text-xs ${coverPreview ? "text-white/85" : "text-zinc-500"}`}>
+            {coverPreview
+              ? "Klik area ini untuk mengganti foto sebelum disimpan."
+              : "Pilih file JPG, PNG, atau WebP, maksimal 10 MB."}
           </span>
         </label>
 

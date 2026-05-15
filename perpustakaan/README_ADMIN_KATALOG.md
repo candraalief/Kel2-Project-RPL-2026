@@ -67,6 +67,8 @@ Catatan cover:
 - Form edit menampilkan cover yang tersimpan sebagai background area upload.
 - Saat memilih file baru di modal edit, preview langsung berubah sebelum disimpan.
 - Katalog membuat signed URL display untuk cover dari bucket `foto_buku`.
+- Cover lama dari bucket `foto_buku` otomatis dihapus saat diganti, dikosongkan, atau buku berhasil dihapus.
+- Jika upload cover baru berhasil tetapi simpan database gagal, file baru yang telanjur terunggah ikut dibersihkan.
 
 Catatan deskripsi:
 
