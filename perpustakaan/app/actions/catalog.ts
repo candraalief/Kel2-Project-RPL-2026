@@ -34,6 +34,8 @@ const emptyState: CatalogActionState = {
   error: "",
   success: "",
 };
+const bookCoverBucket = "foto_buku";
+const maxBookCoverSize = 10 * 1024 * 1024;
 
 async function requireAdminAction() {
   const sessionUser = await getSessionUser();
@@ -169,23 +171,55 @@ async function uploadBookCover(
   const file = formData.get("foto_buku");
 
   if (!(file instanceof File) || file.size === 0) {
-    return null;
+    return { coverUrl: null, error: "" };
   }
 
-  const extension = file.name.split(".").pop()?.toLowerCase() || "jpg";
+  if (file.size > maxBookCoverSize) {
+    return {
+      coverUrl: null,
+      error: "Ukuran cover buku maksimal 10 MB.",
+    };
+  }
+
+  const rawExtension = file.name.split(".").pop()?.toLowerCase() || "";
+  const isPng = file.type === "image/png" || rawExtension === "png";
+  const isWebp = file.type === "image/webp" || rawExtension === "webp";
+  const isJpg =
+    file.type === "image/jpg" ||
+    file.type === "image/jpeg" ||
+    rawExtension === "jpg" ||
+    rawExtension === "jpeg";
+
+  if (!isPng && !isJpg && !isWebp) {
+    return {
+      coverUrl: null,
+      error: "Cover buku harus berformat JPG, PNG, atau WebP.",
+    };
+  }
+
+  const extension = isPng ? "png" : isWebp ? "webp" : "jpg";
+  const contentType = isPng ? "image/png" : isWebp ? "image/webp" : "image/jpeg";
   const path = `covers/${crypto.randomUUID()}.${extension}`;
+  const bytes = await file.arrayBuffer();
   const { error } = await supabase.storage
-    .from("book-covers")
-    .upload(path, file, {
-      contentType: file.type || "image/jpeg",
+    .from(bookCoverBucket)
+    .upload(path, bytes, {
+      contentType,
       upsert: false,
     });
 
   if (error) {
-    return null;
+    return {
+      coverUrl: null,
+      error: `Gagal mengunggah cover buku: ${error.message}`,
+    };
   }
 
-  return supabase.storage.from("book-covers").getPublicUrl(path).data.publicUrl;
+  return {
+    coverUrl: supabase.storage.from(bookCoverBucket).getPublicUrl(path).data
+      .publicUrl,
+    error: "",
+  };
 }
 
 function parseBookCoverUrl(value: string) {
@@ -213,10 +247,10 @@ async function resolveBookCoverUrl(
   supabase: ReturnType<typeof getServerSupabaseClient>,
   formData: FormData
 ) {
-  const uploadedCoverUrl = await uploadBookCover(supabase, formData);
+  const uploadedCover = await uploadBookCover(supabase, formData);
 
-  if (uploadedCoverUrl) {
-    return { coverUrl: uploadedCoverUrl, error: "" };
+  if (uploadedCover.error || uploadedCover.coverUrl) {
+    return uploadedCover;
   }
 
   return parseBookCoverUrl(readTrimmed(formData, "foto_url"));

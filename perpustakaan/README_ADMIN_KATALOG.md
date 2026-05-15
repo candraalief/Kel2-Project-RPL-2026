@@ -1,154 +1,125 @@
-# Admin Katalog Refactor
+# Admin Katalog
 
-Dokumen ini merangkum refactor halaman Admin Katalog.
+Dokumen ini merangkum implementasi teknis halaman katalog admin.
 
 ## Route
 
 - Daftar katalog admin: `/admin/buku`
 - Tambah katalog: `/admin/buku/tambah`
-
-Sidebar dan shell dashboard tetap memakai implementasi lama dari `DashboardShell`.
+- Katalog siswa: `/siswa/katalog`
+- Katalog publik: `/public/katalog`
 
 ## Halaman Daftar Katalog
 
-Halaman `/admin/buku` sekarang fokus untuk daftar, pencarian, filter, dan detail buku.
-
 Fitur utama:
 
-- Card besar `+ Tambah Buku Baru` mengarah ke `/admin/buku/tambah`.
-- Search berdasarkan judul, penulis, penerbit, atau kategori/genre.
-- Filter genre yang diurutkan alfabetis.
-- Filter status ketersediaan: semua, tersedia, tidak tersedia.
-- Filter tahun terbit dari dan sampai tahun.
+- Card buku dengan cover, judul, penulis, genre, lokasi rak, dan jumlah tersedia.
+- Search judul, penulis, penerbit, ISBN, dan genre.
+- Filter genre.
+- Filter status ketersediaan.
+- Filter tahun terbit.
 - Reset filter.
-- Empty state saat tidak ada buku ditemukan.
-- Card buku hanya menampilkan foto, judul, penulis, genre singkat, lokasi rak, jumlah tersedia, tombol Edit, dan tombol Hapus.
-- Klik card membuka modal detail.
-- Klik Edit atau Hapus tidak membuka modal detail.
-- Hapus buku memakai konfirmasi browser sebelum submit.
+- Pagination 5, 10, atau 25 buku per halaman.
+- Detail buku via modal.
+- Edit buku via modal.
+- Hapus buku via confirmation card.
+- Tambah ke keranjang peminjaman dari card.
+- Tambah dan keluarkan eksemplar dari modal edit.
+
+Mode siswa dan publik memakai UI katalog yang sama tetapi `readOnly`, sehingga action admin disembunyikan.
+
+## Detail Buku
 
 Modal detail menampilkan:
 
-- Foto buku
-- Judul
-- Penulis
-- Penerbit
-- ISBN
-- Tahun terbit
-- Genre
-- Deskripsi
-- Lokasi rak
-- Denah rak
-- Total copy
-- Jumlah tersedia
-- Jumlah dipinjam / tidak tersedia
+- Cover buku.
+- Judul, penulis, penerbit, ISBN, tahun terbit, genre, deskripsi, dan lokasi rak.
+- Ringkasan eksemplar: total aktif, tersedia, dipinjam, dikeluarkan.
+- Jadwal jatuh tempo peminjaman aktif untuk buku tersebut.
 
-## Halaman Tambah Katalog
+Jadwal jatuh tempo:
 
-Halaman `/admin/buku/tambah` berisi dua tab:
+- Admin melihat ID transaksi, nama siswa, kelas, tanggal, jam, menit, dan jumlah.
+- Siswa/publik hanya melihat tanggal, jam, menit, dan jumlah.
 
-- Tambah Buku
-- Tambah Genre
+## Tambah dan Edit Buku
 
-Form Tambah Buku:
+Form buku mendukung:
 
-- Foto buku / upload gambar
-- Judul buku
-- Penulis
-- Penerbit
-- ISBN
-- Tahun terbit
-- Lokasi rak
-- Genre multi-select
-- Deskripsi buku
-- Jumlah copy awal
+- Judul buku.
+- Penulis.
+- Penerbit.
+- ISBN.
+- Tahun terbit.
+- Lokasi rak.
+- Deskripsi buku.
+- Jumlah copy awal.
+- Multi-genre.
+- Upload cover.
+- URL gambar cover dari internet.
 
-Form Tambah Genre:
+Catatan cover:
 
-- Nama genre
-- Deskripsi genre
+- Upload cover memakai Supabase Storage bucket `foto_buku`.
+- MIME yang didukung: `image/jpeg`, `image/jpg`, `image/png`, `image/webp`.
+- Batas file: 10 MB.
+- URL cover disimpan ke kolom `buku.foto_url`.
+- Form edit menampilkan cover yang tersimpan sebagai background area upload.
+- Saat memilih file baru di modal edit, preview langsung berubah sebelum disimpan.
+- Katalog membuat signed URL display untuk cover dari bucket `foto_buku`.
 
-Genre di form Tambah Buku:
+Catatan deskripsi:
 
-- Bisa pilih lebih dari satu genre.
-- Bisa mencari genre.
-- List genre diurutkan alfabetis.
-- Genre terpilih diringkas jika terlalu banyak, dengan indikator `+N lainnya`.
-- Genre tersembunyi bisa dilihat kembali lewat tombol expand.
-- Setelah genre baru berhasil ditambahkan, halaman memakai `router.refresh()` untuk memperbarui daftar genre dan opsi form tanpa hard reload browser.
+- Deskripsi disimpan ke `buku.deskripsi_buku`.
+- Kode masih membaca fallback `deskripsi`, `description`, dan `sinopsis`.
 
-## Validasi
+## Genre
 
-Validasi yang diterapkan:
-
-- Judul buku wajib.
-- Penulis wajib.
-- Tahun terbit harus angka tahun valid jika diisi.
-- Jumlah copy awal minimal 1.
-- Nama genre wajib.
-- Nama genre dicegah duplikat berdasarkan daftar genre yang berhasil dibaca aplikasi.
-- ISBN dicek unik jika kolom `isbn` tersedia di tabel `buku`. Jika kolom belum tersedia, validasi ini dilewati agar schema lama tidak rusak.
-
-## Perhitungan Copy Buku
-
-Jumlah tersedia tidak menjadi input manual utama.
-
-Perhitungan yang dipakai:
-
-```text
-available_count = count(copy buku dengan status = "tersedia")
-total_copy = count(seluruh copy buku)
-unavailable_count = total_copy - available_count
-```
-
-Kode mencoba membaca tabel copy dalam urutan berikut:
-
-- `copy_buku` dengan kolom `id_buku`, `status`
-- `buku_copy` dengan kolom `id_buku`, `status`
-- `buku_copies` dengan kolom `id_buku`, `status`
-- `book_copies` dengan kolom `book_id`, `status`
-
-Jika tabel copy belum tersedia, halaman fallback ke `buku.stok_buku` agar data lama tetap bisa tampil. Fallback ini hanya untuk kompatibilitas schema lama.
-
-Saat tambah buku berhasil, sistem mencoba membuat record copy sejumlah `jumlah copy awal` dengan status default `tersedia` memakai konfigurasi tabel copy di atas.
-
-## Asumsi Schema Database
-
-Schema project saat ini masih parsial dan dokumentasi lama hanya memastikan tabel `buku`. Karena itu implementasi dibuat defensif.
-
-Kolom buku yang didukung jika tersedia:
-
-- `id_buku`
-- `judul`
-- `penulis`
-- `penerbit`
-- `isbn`
-- `tahun_terbit`
-- `lokasi_rak`
-- `deskripsi`
-- `foto_buku` / `foto_url` / `cover_url` / `gambar`
-- `denah_rak` / `denah_url` / `shelf_map_url`
-- `stok_buku` sebagai fallback schema lama
+- Tambah genre.
+- Cari genre.
+- Edit genre.
+- Hapus genre.
+- Hapus genre melepas relasi buku-genre.
+- Multi-select genre pada form buku.
 
 Tabel genre yang didukung:
 
 - `genre`
 - `genres`
 
-Kolom genre yang didukung:
-
-- `id_genre` / `genre_id` / `id`
-- `nama_genre` / `nama` / `name` / `genre`
-- `deskripsi_genre` / `deskripsi` / `description`
-
-Tabel relasi buku-genre yang didukung:
+Relasi genre yang didukung:
 
 - `buku_genre`
 - `genre_buku`
 - `buku_genres`
 - `book_genres`
 
-Upload cover disiapkan ke Supabase Storage bucket `book-covers`. Jika bucket belum ada, buku tetap bisa dibuat tanpa gambar.
+## Eksemplar Buku
+
+Perhitungan:
+
+```text
+total_aktif = tersedia + dipinjam + rusak
+tersedia = copy dengan status tersedia
+dipinjam = copy dengan status dipinjam
+dikeluarkan = copy dengan status dikeluarkan/hilang/legacy removed
+```
+
+Tabel copy yang dicoba:
+
+- `copy_buku` dengan kolom `id_buku`, `status`
+- `buku_copy` dengan kolom `id_buku`, `status`
+- `buku_copies` dengan kolom `id_buku`, `status`
+- `book_copies` dengan kolom `book_id`, `status`
+
+Jika tabel copy belum tersedia, katalog fallback ke `buku.stok_buku`.
+
+Aturan:
+
+- Eksemplar baru otomatis `tersedia`.
+- Eksemplar aktif yang tidak sedang dipinjam dapat dikeluarkan.
+- Eksemplar `dipinjam` tidak bisa dikeluarkan dari katalog.
+- Alasan tidak kembali dari peminjam harus diproses lewat modul pengembalian.
 
 ## File Utama
 
@@ -158,12 +129,4 @@ Upload cover disiapkan ke Supabase Storage bucket `book-covers`. Jika bucket bel
 - `modules/library/lib/catalog.ts`
 - `modules/library/ui/admin-catalog.tsx`
 - `modules/library/ui/admin-catalog-forms.tsx`
-- `modules/access/ui/dashboard-shell.tsx`
-
-## Verifikasi
-
-Checklist akhir yang harus tetap hijau:
-
-- `npm run lint`
-- `npx tsc --noEmit`
-- `npm run build`
+- `modules/library/ui/borrow-checkout-drawer.tsx`

@@ -1,51 +1,22 @@
 # Sistem Informasi Perpustakaan SMAN 10 Bogor
 
-Aplikasi web perpustakaan sekolah berbasis **Next.js App Router** dan **Supabase PostgreSQL**. Sistem ini mendukung tiga mode akses:
-
-- **Admin / Petugas Perpustakaan**
-- **Siswa**
-- **Publik / Pengunjung**
-
-Status proyek saat ini: aplikasi sudah memakai data nyata dari database untuk autentikasi, anggota, katalog buku, genre, eksemplar buku, absensi, profil, dan transaksi. Beberapa workflow inti admin seperti modul anggota dan katalog sudah memiliki aksi CRUD/konfirmasi yang cukup lengkap.
+Aplikasi web perpustakaan sekolah berbasis **Next.js App Router** dan **Supabase PostgreSQL**. Sistem ini memakai data nyata dari database untuk autentikasi, anggota, katalog buku, eksemplar, peminjaman, pengembalian, absensi, profil, dan laporan.
 
 ## Teknologi
 
-- **Frontend**: Next.js 16, React 19, Tailwind CSS 4
-- **Backend**: Next.js App Router + Server Actions
-- **Database**: Supabase PostgreSQL
-- **Auth/session**: session cookie internal
-- **Password hashing**: bcryptjs
-- **Bahasa UI**: Indonesia
-
-## Struktur Domain
-
-- `modules/access`
-  - login/logout
-  - session dan guard role
-  - registrasi siswa
-  - profil admin dan siswa
-  - manajemen akun admin
-  - reset/update password
-- `modules/library`
-  - loader buku, genre, copy buku, siswa, absensi, transaksi
-  - katalog admin
-  - form tambah buku/genre
-  - pengembalian admin
-  - kartu dan tabel UI perpustakaan
-- `app/actions`
-  - server actions untuk auth, absensi, katalog, transaksi
+- Frontend: Next.js 16, React 19, Tailwind CSS 4
+- Backend: Next.js App Router dan Server Actions
+- Database: Supabase PostgreSQL
+- Storage: Supabase Storage untuk cover buku
+- Auth/session: session cookie internal
+- Password hashing: bcryptjs
+- Bahasa UI: Indonesia
 
 ## Mode Akses
 
 ### Admin
 
-Admin login dari tabel `admin`.
-
-Identifier login yang didukung:
-
-- `username`
-- `email`
-- `nama`
+Admin login dari tabel `admin`. Identifier login yang didukung adalah `username`, `email`, atau `nama`.
 
 Route admin:
 
@@ -58,21 +29,14 @@ Route admin:
 - `/admin/laporan`
 - `/admin/profil`
 
-Catatan route: peminjaman admin berada di `/admin/buku` (Katalog & Peminjaman). Route lama `/admin/peminjaman` diarahkan kembali ke katalog.
+Catatan:
 
-Catatan: manajemen akun admin hanya aktif untuk superadmin (`id_admin = 0`).
+- Route lama `/admin/peminjaman` diarahkan ke `/admin/buku`.
+- Manajemen akun admin khusus superadmin memakai `id_admin = 0`.
 
 ### Siswa
 
-Siswa login dari tabel `siswa`.
-
-Identifier login yang didukung:
-
-- `nama`
-- `username`
-- `email`
-
-Siswa hanya bisa login jika `status_keanggotaan = 'aktif'`. Akun `menunggu_verifikasi` ditolak sampai disetujui admin.
+Siswa login dari tabel `siswa`. Identifier login yang didukung adalah `nama`, `username`, atau `email`.
 
 Route siswa:
 
@@ -83,9 +47,14 @@ Route siswa:
 - `/siswa/riwayat`
 - `/siswa/profil`
 
+Catatan:
+
+- Siswa hanya bisa login jika `status_keanggotaan = aktif`.
+- Siswa yang masih `menunggu_verifikasi` ditolak sampai disetujui admin.
+
 ### Publik
 
-Publik bisa masuk melalui tombol **Masuk sebagai publik** atau kredensial `public / public`.
+Publik dapat masuk melalui akses publik atau kredensial `public / public`.
 
 Route publik:
 
@@ -93,17 +62,28 @@ Route publik:
 - `/public/absensi`
 - `/public/katalog`
 
+## Struktur Domain
+
+- `modules/access`: login, session, role guard, registrasi siswa, profil, anggota, reset password, shell dashboard, loading navigasi.
+- `modules/library`: katalog, eksemplar, peminjaman, pengembalian, absensi, laporan, PDF, Excel, data loader.
+- `modules/shared`: komponen reusable seperti loading tombol.
+- `app/actions`: server action untuk auth, attendance, catalog, dan transactions.
+- `supabase/sql`: SQL pendukung RPC checkout peminjaman.
+
 ## Fitur Terimplementasi
 
-### Autentikasi dan Session
+### Autentikasi dan UX Login
 
-Sudah berjalan:
-
-- login admin, siswa, dan publik
-- proteksi route berdasarkan role
-- redirect otomatis sesuai role
-- logout
-- session berbasis cookie
+- Login admin, siswa, dan publik.
+- Proteksi route berdasarkan role.
+- Redirect otomatis setelah login sesuai role.
+- Logout.
+- Session berbasis cookie internal.
+- Password memakai bcrypt.
+- Input password di login, signup, dan lupa password memiliki tombol lihat/sembunyikan password.
+- Signup siswa memiliki input konfirmasi password.
+- Navigasi sidebar/navbar menampilkan loading saat tab ditekan sebelum data halaman selesai dimuat.
+- Tombol tab/segmented control penting memakai state loading saat ditekan.
 
 File utama:
 
@@ -111,186 +91,132 @@ File utama:
 - `modules/access/lib/database-auth.ts`
 - `modules/access/lib/session.ts`
 - `modules/access/lib/guards.ts`
+- `modules/access/ui/login-form.tsx`
+- `modules/access/ui/password-input.tsx`
+- `modules/access/ui/dashboard-nav.tsx`
+- `modules/access/ui/dashboard-shell.tsx`
 
 ### Registrasi dan Profil Siswa
 
-Sudah berjalan:
-
-- signup siswa
-- validasi duplikasi `nisn`, `username`, `email`
-- password hash bcrypt
-- status awal `menunggu_verifikasi`
-- siswa dapat update profil sendiri
-- session siswa ikut diperbarui setelah profil disimpan
-
-Data signup:
-
-- nama
-- nisn
-- tahun masuk
-- nomor WhatsApp / telepon
-- email
-- username
-- password
-- kelas
+- Signup siswa dengan status awal `menunggu_verifikasi`.
+- Validasi duplikasi `nisn`, `username`, dan `email`.
+- Data signup: nama, NISN, tahun masuk, nomor WhatsApp/telepon, email, username, password, dan kelas.
+- Password signup wajib dikonfirmasi.
+- Siswa dapat memperbarui profil sendiri.
+- Session siswa diperbarui setelah profil disimpan.
+- Siswa dapat membuka halaman reset/lupa password sesuai alur aplikasi.
 
 File utama:
 
 - `app/signup/page.tsx`
-- `modules/access/ui/signup-form.tsx`
+- `app/lupa-password/page.tsx`
 - `modules/access/lib/student-registration.ts`
-- `modules/access/ui/student-profile-form.tsx`
+- `modules/access/ui/signup-form.tsx`
+- `modules/access/ui/update-siswa-profile-form.tsx`
+- `modules/access/ui/reset-siswa-password-form.tsx`
 
 ### Modul Anggota Admin
 
-Sudah berjalan:
-
-- daftar siswa terdaftar dan menunggu verifikasi
-- search siswa
-- filter/sort kolom
-- reset filter
-- tambah siswa manual
-- lihat detail siswa
-- edit siswa
-- hapus siswa dengan confirmation card
-- fallback nonaktif jika siswa terikat transaksi dan tidak bisa dihapus
-- reset password siswa dengan confirmation card
-- reset password tidak mengubah status siswa
-- notifikasi sukses standar untuk action penting
-- accept pendaftaran dengan confirmation card
-- reject pendaftaran dengan confirmation card dan langsung hapus dari database
-- status dan aksi tabel dibuat center
-- nomor telepon digunakan sebagai kolom utama menggantikan email di tabel
+- Daftar siswa terdaftar dan siswa menunggu verifikasi.
+- Tab anggota memakai loading saat ditekan.
+- Search, filter, sort, dan reset filter.
+- Tambah siswa manual.
+- Lihat detail siswa.
+- Edit data siswa.
+- Approve pendaftaran siswa.
+- Reject pendaftaran siswa dan hapus dari database.
+- Hapus siswa memakai confirmation card.
+- Hapus siswa diblokir jika siswa terkait transaksi.
+- Reset password siswa memakai confirmation card.
+- Reset password tidak mengubah status siswa.
+- Notifikasi sukses/error untuk action penting.
+- Nomor telepon dipakai sebagai kolom utama di tabel anggota.
 
 File utama:
 
 - `app/admin/anggota/page.tsx`
-- `app/actions/auth.ts`
-- `modules/access/ui/*siswa*`
+- `modules/access/ui/admin-members.tsx`
+- `modules/access/ui/approve-siswa-form.tsx`
+- `modules/access/ui/reset-siswa-password-form.tsx`
+- `modules/access/ui/clear-siswa-password-form.tsx`
 
 ### Profil Admin
 
-Sudah berjalan:
-
-- daftar admin
-- detail admin
-- tambah admin
-- edit admin
-- hapus admin khusus superadmin
-- hapus admin memakai konfirmasi ketik `hapus admin`
-- loading dan popup sukses standar
+- Daftar admin.
+- Detail admin.
+- Tambah admin.
+- Edit admin.
+- Hapus admin khusus superadmin.
+- Hapus admin memakai konfirmasi ketik `hapus admin`.
+- Loading dan popup sukses/error pada action admin.
 
 File utama:
 
 - `app/admin/profil/page.tsx`
+- `modules/access/lib/admin-profile.ts`
 - `modules/access/ui/admin-profile-forms.tsx`
-- `app/actions/auth.ts`
 
-### Absensi
+### Katalog Buku
 
-Sudah berjalan:
+Katalog dipakai oleh admin, siswa, dan publik. Admin memiliki action lengkap, sedangkan siswa/publik memakai mode baca.
 
-- publik mengisi absensi pengunjung
-- siswa mencatat absensi sendiri
-- admin melihat daftar absensi
-- data dicoba masuk ke tabel `absensi`, `absensi_umum`, dan `absensi_siswa` sesuai konteks
-
-File utama:
-
-- `app/actions/attendance.ts`
-- `app/public/absensi/page.tsx`
-- `app/siswa/absensi/page.tsx`
-- `app/admin/absensi/page.tsx`
-
-## Katalog Admin
-
-### Daftar Buku
-
-Sudah berjalan:
-
-- daftar buku admin
-- pencarian judul, penulis, penerbit, ISBN, genre
-- filter genre
-- filter status ketersediaan
-- filter tahun dari/sampai
-- reset filter
-- card informasi ringkas
-- jumlah tersedia tampil di card buku
-- pagination default 5 buku
-- pilihan jumlah tampil 5, 10, 25
-- pagination angka `1 2 3 ...`
-- detail buku via modal
-- edit buku via modal
-- hapus buku via confirmation card
-
-Aturan hapus buku:
-
-- buku hanya bisa dihapus jika belum pernah dipinjam
-- jika pernah dipinjam atau terikat transaksi, hapus diblokir dan pesan ditampilkan di card
+- Daftar buku dalam bentuk card.
+- Search berdasarkan judul, penulis, penerbit, ISBN, dan genre.
+- Filter genre.
+- Filter status ketersediaan.
+- Filter tahun terbit dari/sampai.
+- Reset filter.
+- Pagination katalog dengan pilihan 5, 10, atau 25 item.
+- Card menampilkan cover, judul, penulis, genre, lokasi rak, dan jumlah tersedia.
+- Detail buku via modal.
+- Detail buku menampilkan informasi buku, ringkasan eksemplar, dan jadwal jatuh tempo peminjaman aktif.
+- Jadwal jatuh tempo menampilkan tanggal, jam, menit, dan jumlah eksemplar yang jatuh tempo.
+- Untuk admin, jadwal jatuh tempo dapat memuat nama siswa, kelas, dan ID transaksi.
+- Untuk siswa/publik, jadwal jatuh tempo disanitasi dan hanya menampilkan jadwal serta jumlah.
+- Cover buku ditampilkan dari `foto_url`; jika cover berasal dari bucket `foto_buku`, sistem membuat signed URL display agar tetap tampil walau bucket private.
+- Link cover dari internet tetap dapat dipakai.
 
 File utama:
 
 - `app/admin/buku/page.tsx`
-- `modules/library/ui/admin-catalog.tsx`
+- `app/siswa/katalog/page.tsx`
+- `app/public/katalog/page.tsx`
 - `modules/library/lib/catalog.ts`
-- `app/actions/catalog.ts`
+- `modules/library/ui/admin-catalog.tsx`
 
 ### Tambah dan Edit Buku
 
-Sudah berjalan:
-
-- tambah buku baru
-- upload cover opsional ke bucket `book-covers`
-- judul, penulis, penerbit, ISBN, tahun terbit, lokasi rak, deskripsi
-- jumlah copy awal
-- multi-genre
-- validasi ISBN unik
-- edit data buku dasar
-- setelah edit berhasil, data katalog refresh dan modal ditutup
-
-Catatan ISBN:
-
-- kolom database yang digunakan adalah `isbn` lowercase
-- kode baca data tetap punya fallback `ISBN` untuk kompatibilitas data lama
-
-### Lokasi Rak
-
-Lokasi rak dibatasi sebagai pilihan tetap:
-
-- `Rak A1` sampai `Rak A6`
-- `Rak B1` sampai `Rak B6`
-- berlanjut sampai
-- `Rak J1` sampai `Rak J6`
-
-Form tambah buku memakai picker:
-
-- dropdown kode rak `A-J`
-- tombol kiri/kanan untuk nomor `1-6`
-- hidden input menyimpan nilai final, misalnya `Rak B2`
-- preview denah terdiri dari dua placeholder gambar:
-  - kiri: persegi panjang untuk denah utama
-  - kanan: persegi untuk detail/undak rak
-
-Validasi server menolak `lokasi_rak` di luar daftar tersebut.
+- Tambah buku baru.
+- Edit data buku lewat modal.
+- Data buku: judul, penulis, penerbit, ISBN, tahun terbit, lokasi rak, deskripsi, genre, dan jumlah copy awal.
+- Deskripsi disimpan ke `deskripsi_buku` dan tetap punya fallback `deskripsi`.
+- ISBN divalidasi unik jika kolom tersedia.
+- Upload cover buku ke Supabase Storage bucket `foto_buku`.
+- Cover upload mendukung `image/jpeg`, `image/jpg`, `image/png`, dan `image/webp`.
+- Batas upload cover 10 MB.
+- Cover hasil upload disimpan ke kolom `buku.foto_url`.
+- Form juga mendukung input URL gambar internet ke `foto_url`.
+- Menu edit menampilkan cover aktif sebagai background area upload.
+- Saat admin memilih file cover baru di edit modal, preview langsung berubah sebelum disimpan.
+- Setelah tambah/edit berhasil, halaman katalog di-refresh.
 
 File utama:
 
-- `modules/library/lib/shelf-locations.ts`
-- `modules/library/ui/admin-catalog-forms.tsx`
 - `app/actions/catalog.ts`
+- `modules/library/ui/admin-catalog-forms.tsx`
+- `modules/library/ui/admin-catalog.tsx`
 
 ### Genre
 
-Sudah berjalan:
-
-- tambah genre
-- cari genre berdasarkan nama
-- list genre yang sudah dibuat
-- edit genre via modal/card
-- hapus genre via modal/card
-- hapus genre juga melepas relasi buku-genre
-- pemilihan genre di tambah buku berupa checklist button
-- genre di form tambah buku tampil 3 dulu, sisanya lewat tombol `More`
+- Tambah genre.
+- Cari genre.
+- List genre yang sudah dibuat.
+- Edit genre via modal.
+- Hapus genre via modal.
+- Hapus genre melepas relasi buku-genre.
+- Multi-select genre pada form tambah buku.
+- Genre diurutkan alfabetis.
+- Genre dalam form tambah buku menampilkan beberapa item awal dan sisanya lewat tombol `More`.
 
 File utama:
 
@@ -306,86 +232,154 @@ Konsep status eksemplar:
 - `rusak`
 - `dikeluarkan` atau fallback legacy `hilang`
 
-Definisi yang dipakai:
+Fitur:
 
-- **Total Eksemplar Aktif**: eksemplar yang masih masuk koleksi, yaitu tersedia + dipinjam + rusak. Tidak termasuk dikeluarkan/hilang.
-- **Eksemplar Tersedia**: status `tersedia`, bisa dipinjam.
-- **Eksemplar Dipinjam**: status `dipinjam`.
-- **Kondisi/Status Rusak**: status `rusak`, masih dianggap aktif.
-- **Eksemplar Dikeluarkan**: eksemplar tidak masuk koleksi aktif.
-
-Sudah berjalan:
-
-- tambah eksemplar dari card buku
-- eksemplar baru otomatis `tersedia`
-- keluarkan eksemplar via modal/card
-- yang bisa dikeluarkan adalah eksemplar aktif yang tidak sedang dipinjam
-- copy `rusak` bisa dikeluarkan
-- copy `dipinjam` tidak bisa dikeluarkan dari katalog
-- alasan `Tidak Kembali dari Peminjam` bisa dipilih tetapi tombol submit disabled
-- untuk alasan tidak kembali, UI memberi peringatan agar memakai modul pengembalian
-- server action juga menolak alasan tidak kembali jika dipanggil langsung
+- Jumlah tersedia dihitung dari tabel copy, bukan input manual.
+- Jika tabel copy belum tersedia, data fallback ke `buku.stok_buku`.
+- Tambah eksemplar dari katalog.
+- Eksemplar baru otomatis berstatus `tersedia`.
+- Keluarkan eksemplar via modal.
+- Eksemplar yang bisa dikeluarkan adalah eksemplar aktif yang tidak sedang dipinjam.
+- Eksemplar `rusak` masih dianggap aktif dan dapat dikeluarkan.
+- Eksemplar `dipinjam` tidak bisa dikeluarkan dari katalog.
+- Alasan `Tidak Kembali dari Peminjam` diarahkan ke modul pengembalian agar transaksi tetap tercatat.
+- Server action tetap menolak pengeluaran eksemplar dengan alasan tidak kembali dari peminjam.
 
 File utama:
 
-- `app/actions/catalog.ts`
-- `modules/library/ui/admin-catalog.tsx`
 - `modules/library/lib/catalog.ts`
+- `modules/library/ui/admin-catalog.tsx`
+- `app/actions/catalog.ts`
 
-## Peminjaman dan Pengembalian
+### Peminjaman
 
-Sudah berjalan:
+- Admin melakukan peminjaman dari katalog memakai keranjang.
+- Keranjang menampilkan cover buku jika tersedia.
+- Checkout wajib memilih siswa.
+- Deadline peminjaman wajib diisi manual.
+- `tanggal_jatuh_tempo` memakai `timestamptz`.
+- Input deadline mendukung tanggal, jam, dan menit.
+- Tidak ada default tanggal jatuh tempo otomatis.
+- Validasi deadline tidak boleh sebelum tanggal pinjam.
+- RPC checkout disesuaikan untuk menyimpan deadline sampai jam dan menit.
+- Siswa melihat peminjaman aktif dan riwayat transaksi.
+- Tampilan siswa menampilkan deadline dengan jam dan menit.
 
-- admin melihat data peminjaman
-- admin melihat data pengembalian
-- siswa melihat peminjaman aktif
-- siswa melihat riwayat transaksi
-- modul pengembalian mendukung detail transaksi siswa
-- proses pengembalian dapat mencatat jumlah buku baik/rusak/hilang per buku transaksi
-- status eksemplar saat kembali:
-  - baik -> `tersedia`
-  - rusak -> `rusak`
-  - hilang/tidak kembali -> `hilang` atau fallback `dikeluarkan`
+File utama:
 
-Catatan desain:
+- `modules/library/ui/borrow-checkout-drawer.tsx`
+- `modules/library/ui/siswa-dashboard.tsx`
+- `modules/library/ui/siswa-borrowing-history.tsx`
+- `app/actions/transactions.ts`
+- `supabase/sql/checkout_peminjaman.sql`
 
-- kasus `Tidak Kembali dari Peminjam` harus diproses dari modul pengembalian agar transaksi siswa ikut tercatat
-- katalog hanya menangani pengeluaran eksemplar aktif yang tidak sedang dipinjam
+### Pengembalian
+
+- Admin melihat daftar peminjaman/pengembalian.
+- Proses pengembalian mendukung detail item buku per transaksi.
+- Pengembalian mencatat jumlah buku baik, rusak, dan hilang/tidak kembali per item.
+- Status eksemplar saat kembali:
+  - baik menjadi `tersedia`
+  - rusak menjadi `rusak`
+  - hilang/tidak kembali menjadi `hilang` atau fallback `dikeluarkan`
+- Modul pengembalian menjaga riwayat transaksi siswa tetap tersimpan.
+- Perhitungan keterlambatan memakai timestamp jatuh tempo, termasuk jam dan menit.
 
 File utama:
 
 - `app/admin/pengembalian/page.tsx`
-- `app/admin/peminjaman/page.tsx` (redirect ke katalog)
-- `app/actions/transactions.ts`
 - `modules/library/ui/admin-returns.tsx`
 - `modules/library/lib/data.ts`
+- `app/actions/transactions.ts`
 
-## Katalog Siswa dan Publik
+### Absensi
 
-Sudah berjalan:
+- Publik dapat mengisi absensi pengunjung umum.
+- Siswa dapat mengisi absensi dengan akun sendiri.
+- Siswa dibatasi hanya bisa absen satu kali per hari.
+- Validasi sekali sehari dilakukan di server action dan juga tercermin di UI.
+- Admin dapat melihat daftar absensi.
+- Data disimpan ke tabel utama `absensi` dan detail ke `absensi_siswa` atau `absensi_umum`.
+- Absensi siswa menyimpan kelas saat absen.
+- Absensi umum menyimpan instansi asal.
 
-- siswa melihat katalog
-- publik melihat katalog
-- lokasi rak dan stok ditampilkan dari data buku/copy
+File utama:
 
-Masih dapat ditingkatkan:
+- `app/actions/attendance.ts`
+- `app/public/absensi/page.tsx`
+- `app/siswa/absensi/page.tsx`
+- `app/admin/absensi/page.tsx`
+- `modules/library/ui/attendance-forms.tsx`
+- `modules/library/lib/data.ts`
 
-- search/filter interaktif siswa dan publik
-- detail buku publik/siswa
-- tampilan denah rak nyata jika aset gambar sudah tersedia
+### Laporan Admin
 
-## Laporan
+Halaman laporan memakai filter yang sama untuk semua jenis laporan:
 
-Sudah ada:
+- Jenis laporan: Peminjaman, Koleksi Buku, Absensi.
+- Periode: bulanan, tahunan, atau sepanjang waktu.
+- Input bulan/tahun mengikuti periode.
+- Format: PDF atau Excel.
+- Perubahan filter langsung memuat ulang data.
+- Tombol `Reset Filter` mengembalikan filter default.
+- Tombol unduh menampilkan konfirmasi sebelum download.
+- Semua preview tabel memakai pagination untuk optimasi tampilan.
+- Tab laporan menampilkan loading saat ditekan.
 
-- halaman laporan admin
-- ringkasan angka/statistik dasar
+Laporan Peminjaman:
 
-Belum lengkap:
+- Tab `Semua Peminjaman`.
+- Tab `Rekap Per Siswa`.
+- Data semua peminjaman memuat ID transaksi, nama siswa, kelas, judul buku, tanggal pinjam, jatuh tempo, tanggal kembali, dan status.
+- Status mencakup dipinjam, dikembalikan, dan terlambat.
+- Rekap per siswa memuat total transaksi, sedang dipinjam, dikembalikan tepat waktu, dan terlambat.
 
-- filter periode
-- cetak/unduh laporan
-- laporan kehilangan/kerusakan detail
+Laporan Koleksi Buku:
+
+- Tab `Inventaris Buku`.
+- Tab `Buku Terpopuler`.
+- Inventaris menampilkan semua judul, penulis, total eksemplar aktif, dan total eksemplar dikeluarkan.
+- Buku terpopuler diranking berdasarkan total dipinjam pada periode yang dipilih.
+
+Laporan Absensi:
+
+- Tab `Absensi Siswa`.
+- Tab `Absensi Umum`.
+- Absensi siswa memuat nama, kelas saat absen, tujuan kunjungan, dan waktu.
+- Absensi umum memuat nama, instansi asal, tujuan kunjungan, dan waktu.
+
+Export:
+
+- Excel dibuat sebagai workbook `.xlsx` dengan beberapa sheet sesuai jenis laporan.
+- PDF dibuat server-side sebagai file `.pdf`.
+
+File utama:
+
+- `app/admin/laporan/page.tsx`
+- `app/admin/laporan/unduh/route.ts`
+- `modules/library/ui/admin-reports.tsx`
+- `modules/library/lib/reports.ts`
+- `modules/library/lib/xlsx.ts`
+- `modules/library/lib/pdf.ts`
+
+## Supabase Storage
+
+Bucket cover buku:
+
+- Nama bucket: `foto_buku`
+- File size limit: 10 MB
+- MIME type yang direkomendasikan:
+  - `image/jpeg`
+  - `image/jpg`
+  - `image/png`
+  - `image/webp`
+
+Catatan:
+
+- Upload dilakukan dari server action memakai kredensial server.
+- URL hasil upload disimpan ke `buku.foto_url`.
+- Katalog membuat signed URL untuk object dari bucket `foto_buku` agar cover tetap tampil jika bucket tidak public.
+- Link gambar eksternal tetap boleh digunakan selama berupa URL `http://` atau `https://`.
 
 ## Konfigurasi Environment
 
@@ -399,14 +393,13 @@ SUPABASE_SECRET_KEY=sb_secret_xxx
 
 Catatan:
 
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY` dipakai untuk client Supabase bila diperlukan
-- `SUPABASE_SECRET_KEY` dipakai server-side untuk query database
-- bucket Supabase Storage `book-covers` dipakai untuk cover buku
-- jangan commit `.env.local`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY` dipakai untuk client Supabase bila diperlukan.
+- `SUPABASE_SECRET_KEY` atau `SUPABASE_SERVICE_ROLE_KEY` dipakai server-side.
+- Jangan commit `.env.local`.
 
 ## Permission Database Minimal
 
-Karena aplikasi memakai Supabase server-side, `service_role` perlu akses ke tabel yang digunakan.
+Aplikasi memakai Supabase server-side, sehingga service role perlu akses ke tabel yang digunakan.
 
 Contoh grant dasar:
 
@@ -415,9 +408,10 @@ grant usage on schema public to service_role;
 
 grant select, insert, update, delete on table public.admin to service_role;
 grant select, insert, update, delete on table public.siswa to service_role;
+
 grant select, insert, update, delete on table public.absensi to service_role;
-grant select, insert, update, delete on table public.absensi_umum to service_role;
 grant select, insert, update, delete on table public.absensi_siswa to service_role;
+grant select, insert, update, delete on table public.absensi_umum to service_role;
 
 grant select, insert, update, delete on table public.buku to service_role;
 grant select, insert, update, delete on table public.genre to service_role;
@@ -435,6 +429,7 @@ grant select, insert, update, delete on table public.book_copies to service_role
 
 grant select, insert, update, delete on table public.transaksi to service_role;
 grant select, insert, update, delete on table public.detail_transaksi to service_role;
+grant select, insert, update, delete on table public.detail_transaksi_peminjaman to service_role;
 ```
 
 Sesuaikan grant dengan nama tabel yang benar-benar ada di database.
@@ -473,7 +468,7 @@ npm run lint
 
 ## Struktur Route
 
-### Publik
+Publik:
 
 - `/`
 - `/login/admin`
@@ -484,7 +479,7 @@ npm run lint
 - `/public/absensi`
 - `/public/katalog`
 
-### Admin
+Admin:
 
 - `/admin`
 - `/admin/buku`
@@ -495,7 +490,7 @@ npm run lint
 - `/admin/laporan`
 - `/admin/profil`
 
-### Siswa
+Siswa:
 
 - `/siswa`
 - `/siswa/absensi`
@@ -506,17 +501,7 @@ npm run lint
 
 ## Catatan Implementasi
 
-- README ini menggambarkan implementasi saat ini, bukan rancangan awal.
-- Katalog admin sudah melewati mockup dan memakai data Supabase.
-- Beberapa tabel dibuat adaptif dengan fallback nama tabel/kolom, misalnya tabel genre/copy.
-- Untuk produksi, sebaiknya schema database distandarkan agar fallback bisa dikurangi.
-
-## Rekomendasi Lanjutan
-
-Prioritas berikutnya:
-
-1. finalisasi workflow peminjaman dari admin
-2. finalisasi pengembalian dan detail transaksi per eksemplar
-3. tambahkan aset gambar denah rak nyata
-4. lengkapi laporan periode dan export
-5. tambah search/filter katalog untuk siswa dan publik
+- README ini menggambarkan implementasi saat ini.
+- Beberapa loader masih defensif dan punya fallback nama tabel/kolom untuk kompatibilitas schema lama.
+- Kolom penting yang sudah didukung: `buku.foto_url`, `buku.deskripsi_buku`, dan `transaksi.tanggal_jatuh_tempo` bertipe `timestamptz`.
+- Untuk produksi, schema database sebaiknya distandarkan agar fallback dapat dikurangi.

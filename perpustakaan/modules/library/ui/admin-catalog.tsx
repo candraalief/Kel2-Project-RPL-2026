@@ -66,6 +66,10 @@ function getBookStatus(book: AdminCatalogBook) {
   return book.availableCount > 0 ? "Tersedia" : "Tidak tersedia";
 }
 
+function getBookCoverDisplayUrl(book: AdminCatalogBook) {
+  return book.coverDisplayUrl ?? book.coverUrl;
+}
+
 function useCatalogCopySummary(bookId: number, enabled = true) {
   const [summary, setSummary] = useState<CatalogCopySummary | null>(null);
   const [error, setError] = useState("");
@@ -338,7 +342,7 @@ export function AdminCatalog({
     addItem({
       bookId: book.id,
       title: book.title,
-      coverUrl: book.coverUrl,
+      coverUrl: getBookCoverDisplayUrl(book),
       availableCount: book.availableCount,
       quantity,
     });
@@ -1084,13 +1088,15 @@ function BookCard({
 }
 
 function BookCover({ book }: { book: AdminCatalogBook }) {
-  if (book.coverUrl) {
+  const coverUrl = getBookCoverDisplayUrl(book);
+
+  if (coverUrl) {
     return (
       <div
         role="img"
         aria-label={`Sampul ${book.title}`}
         className="aspect-[4/5] w-full rounded-xl bg-cover bg-center"
-        style={{ backgroundImage: `url("${book.coverUrl}")` }}
+        style={{ backgroundImage: `url("${coverUrl}")` }}
       />
     );
   }
@@ -2082,6 +2088,9 @@ function EditBookModal({
     initialActionState
   );
   const router = useRouter();
+  const initialCoverPreview = getBookCoverDisplayUrl(book);
+  const [coverPreview, setCoverPreview] = useState(initialCoverPreview);
+  const [temporaryCoverUrl, setTemporaryCoverUrl] = useState("");
 
   useEffect(() => {
     if (state.success) {
@@ -2089,6 +2098,30 @@ function EditBookModal({
       onClose();
     }
   }, [onClose, router, state.success]);
+
+  useEffect(() => {
+    return () => {
+      if (temporaryCoverUrl) {
+        URL.revokeObjectURL(temporaryCoverUrl);
+      }
+    };
+  }, [temporaryCoverUrl]);
+
+  function previewSelectedCover(file: File | null) {
+    if (temporaryCoverUrl) {
+      URL.revokeObjectURL(temporaryCoverUrl);
+    }
+
+    if (!file) {
+      setTemporaryCoverUrl("");
+      setCoverPreview(initialCoverPreview);
+      return;
+    }
+
+    const objectUrl = URL.createObjectURL(file);
+    setTemporaryCoverUrl(objectUrl);
+    setCoverPreview(objectUrl);
+  }
 
   return (
     <div
@@ -2121,13 +2154,33 @@ function EditBookModal({
         <input type="hidden" name="id_buku" value={book.id} />
 
         <div className="mt-5 grid gap-4 md:grid-cols-2">
-          <label className="flex min-h-32 cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed border-zinc-400 bg-zinc-100 p-5 text-center transition hover:bg-zinc-50">
-            <input type="file" name="foto_buku" accept="image/*" className="sr-only" />
-            <span className="text-sm font-semibold text-zinc-900">
-              Upload Foto Baru
+          <label
+            className={`relative flex min-h-32 cursor-pointer flex-col items-center justify-center overflow-hidden rounded-2xl border border-dashed border-zinc-400 bg-zinc-100 bg-cover bg-center p-5 text-center transition hover:bg-zinc-50 ${
+              coverPreview ? "text-white" : "text-zinc-900"
+            }`}
+            style={
+              coverPreview
+                ? { backgroundImage: `url("${coverPreview}")` }
+                : undefined
+            }
+          >
+            {coverPreview ? (
+              <span className="absolute inset-0 bg-zinc-950/45" aria-hidden />
+            ) : null}
+            <input
+              type="file"
+              name="foto_buku"
+              accept=".jpg,.jpeg,.png,.webp,image/jpg,image/jpeg,image/png,image/webp"
+              className="sr-only"
+              onChange={(event) =>
+                previewSelectedCover(event.currentTarget.files?.[0] ?? null)
+              }
+            />
+            <span className="relative text-sm font-semibold">
+              {coverPreview ? "Ganti Foto Buku" : "Upload Foto Baru"}
             </span>
-            <span className="mt-1 text-xs text-zinc-500">
-              Pilih file gambar dari perangkat.
+            <span className={`relative mt-1 text-xs ${coverPreview ? "text-white/85" : "text-zinc-500"}`}>
+              Pilih file JPG, PNG, atau WebP, maksimal 10 MB.
             </span>
           </label>
 

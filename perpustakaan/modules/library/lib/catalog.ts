@@ -61,6 +61,7 @@ const removedCopyStatusKeywords = [
 ];
 const borrowedCopyStatusKeywords = ["dipinjam"];
 const availableCopyStatusValues = ["tersedia", "available"];
+const bookCoverBucket = "foto_buku";
 
 type CopyCounts = {
   active: number;
@@ -101,6 +102,7 @@ export type AdminCatalogBook = {
   publishedYear: number | null;
   shelfLocation: string | null;
   coverUrl: string | null;
+  coverDisplayUrl: string | null;
   description: string | null;
   genres: CatalogGenre[];
   totalCopies: number;
@@ -141,6 +143,58 @@ function readNumber(row: Row, keys: string[]) {
   }
 
   return null;
+}
+
+function getBookCoverPath(value: string | null) {
+  if (!value) {
+    return null;
+  }
+
+  try {
+    const url = new URL(value);
+    const prefixes = [
+      `/storage/v1/object/public/${bookCoverBucket}/`,
+      `/storage/v1/object/sign/${bookCoverBucket}/`,
+      `/storage/v1/object/${bookCoverBucket}/`,
+    ];
+
+    for (const prefix of prefixes) {
+      const index = url.pathname.indexOf(prefix);
+
+      if (index >= 0) {
+        return decodeURIComponent(url.pathname.slice(index + prefix.length));
+      }
+    }
+  } catch {
+    // Legacy rows may store only the storage object path.
+  }
+
+  if (/^covers\//i.test(value)) {
+    return value;
+  }
+
+  return null;
+}
+
+async function getBookCoverDisplayUrl(
+  supabase: ReturnType<typeof getServerSupabaseClient>,
+  storedUrl: string | null
+) {
+  const path = getBookCoverPath(storedUrl);
+
+  if (!path) {
+    return storedUrl;
+  }
+
+  const { data, error } = await supabase.storage
+    .from(bookCoverBucket)
+    .createSignedUrl(path, 60 * 60);
+
+  if (error || !data?.signedUrl) {
+    return storedUrl;
+  }
+
+  return data.signedUrl;
 }
 
 function normalizeStatus(status: string | null) {
@@ -520,7 +574,7 @@ export async function getAdminCatalogData(): Promise<AdminCatalogData> {
   ]);
   const bookGenreMap = await loadBookGenreMap(bookIds, genres);
 
-  const books = bookRows.map((row) => {
+  const books = await Promise.all(bookRows.map(async (row) => {
     const id = readNumber(row, ["id_buku", "book_id", "id"]) ?? 0;
     const fallbackStock = readNumber(row, ["stok_buku", "stock", "jumlah_copy"]) ?? 0;
     const counts = copyCounts.get(id) ?? {
@@ -535,6 +589,7 @@ export async function getAdminCatalogData(): Promise<AdminCatalogData> {
       description: null,
     }));
     const relatedGenres = bookGenreMap.get(id) ?? inlineGenres;
+    const coverUrl = readString(row, ["foto_url", "foto_buku", "cover_url", "gambar"]);
 
     return {
       id,
@@ -544,7 +599,8 @@ export async function getAdminCatalogData(): Promise<AdminCatalogData> {
       isbn: readString(row, ["isbn", "ISBN"]),
       publishedYear: readNumber(row, ["tahun_terbit", "published_year", "tahun"]),
       shelfLocation: readString(row, ["lokasi_rak", "rak", "shelf_location"]),
-      coverUrl: readString(row, ["foto_buku", "foto_url", "cover_url", "gambar"]),
+      coverUrl,
+      coverDisplayUrl: await getBookCoverDisplayUrl(supabase, coverUrl),
       description: readString(row, [
         "deskripsi_buku",
         "deskripsi",
@@ -554,7 +610,7 @@ export async function getAdminCatalogData(): Promise<AdminCatalogData> {
       genres: relatedGenres,
       ...toCopySummary(counts),
     } satisfies AdminCatalogBook;
-  });
+  }));
 
   const inlineGenres = books.flatMap((book) => book.genres);
   const genreMap = new Map<string, CatalogGenre>();
