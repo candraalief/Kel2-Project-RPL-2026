@@ -377,7 +377,12 @@ export async function getAdminCatalogData(): Promise<AdminCatalogData> {
       publishedYear: readNumber(row, ["tahun_terbit", "published_year", "tahun"]),
       shelfLocation: readString(row, ["lokasi_rak", "rak", "shelf_location"]),
       coverUrl: readString(row, ["foto_buku", "foto_url", "cover_url", "gambar"]),
-      description: readString(row, ["deskripsi", "description", "sinopsis"]),
+      description: readString(row, [
+        "deskripsi_buku",
+        "deskripsi",
+        "description",
+        "sinopsis",
+      ]),
       genres: relatedGenres,
       ...toCopySummary(counts),
     } satisfies AdminCatalogBook;

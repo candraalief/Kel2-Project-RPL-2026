@@ -181,6 +181,40 @@ async function uploadBookCover(
   return supabase.storage.from("book-covers").getPublicUrl(path).data.publicUrl;
 }
 
+function parseBookCoverUrl(value: string) {
+  if (!value) {
+    return { coverUrl: null, error: "" };
+  }
+
+  try {
+    const url = new URL(value);
+
+    if (url.protocol !== "http:" && url.protocol !== "https:") {
+      return {
+        coverUrl: null,
+        error: "Link gambar harus diawali http:// atau https://.",
+      };
+    }
+
+    return { coverUrl: url.toString(), error: "" };
+  } catch {
+    return { coverUrl: null, error: "Link gambar tidak valid." };
+  }
+}
+
+async function resolveBookCoverUrl(
+  supabase: ReturnType<typeof getServerSupabaseClient>,
+  formData: FormData
+) {
+  const uploadedCoverUrl = await uploadBookCover(supabase, formData);
+
+  if (uploadedCoverUrl) {
+    return { coverUrl: uploadedCoverUrl, error: "" };
+  }
+
+  return parseBookCoverUrl(readTrimmed(formData, "foto_url"));
+}
+
 async function removeBookCopies(bookId: number) {
   const supabase = getServerSupabaseClient();
 
@@ -610,7 +644,12 @@ export async function createCatalogBook(
   }
 
   const supabase = getServerSupabaseClient();
-  const coverUrl = await uploadBookCover(supabase, formData);
+  const cover = await resolveBookCoverUrl(supabase, formData);
+
+  if (cover.error) {
+    return { error: cover.error, success: "" };
+  }
+
   const fullPayload = {
     judul: title,
     penulis: author,
@@ -619,7 +658,8 @@ export async function createCatalogBook(
     tahun_terbit: year,
     lokasi_rak: shelfLocation || null,
     deskripsi: description || null,
-    foto_url: coverUrl,
+    deskripsi_buku: description || null,
+    foto_url: cover.coverUrl,
     stok_buku: initialCopies,
   };
 
@@ -628,6 +668,41 @@ export async function createCatalogBook(
     .insert(fullPayload as never)
     .select("*")
     .single<Record<string, unknown>>();
+
+  if (insertBook.error) {
+    insertBook = await supabase
+      .from("buku")
+      .insert({
+        judul: title,
+        penulis: author,
+        penerbit: publisher || null,
+        isbn: isbn || null,
+        tahun_terbit: year,
+        lokasi_rak: shelfLocation || null,
+        deskripsi_buku: description || null,
+        foto_url: cover.coverUrl,
+        stok_buku: initialCopies,
+      } as never)
+      .select("*")
+      .single<Record<string, unknown>>();
+  }
+
+  if (insertBook.error) {
+    insertBook = await supabase
+      .from("buku")
+      .insert({
+        judul: title,
+        penulis: author,
+        penerbit: publisher || null,
+        isbn: isbn || null,
+        tahun_terbit: year,
+        lokasi_rak: shelfLocation || null,
+        foto_url: cover.coverUrl,
+        stok_buku: initialCopies,
+      } as never)
+      .select("*")
+      .single<Record<string, unknown>>();
+  }
 
   if (insertBook.error) {
     insertBook = await supabase
@@ -702,6 +777,12 @@ export async function updateCatalogBook(
   }
 
   const supabase = getServerSupabaseClient();
+  const cover = await resolveBookCoverUrl(supabase, formData);
+
+  if (cover.error) {
+    return { error: cover.error, success: "" };
+  }
+
   const { error } = await supabase
     .from("buku")
     .update({
@@ -712,10 +793,57 @@ export async function updateCatalogBook(
       tahun_terbit: year,
       lokasi_rak: shelfLocation || null,
       deskripsi: description || null,
+      deskripsi_buku: description || null,
+      foto_url: cover.coverUrl,
     } as never)
     .eq("id_buku", bookId);
 
   if (error) {
+    const fallbackWithBookDescription = await supabase
+      .from("buku")
+      .update({
+        judul: title,
+        penulis: author,
+        penerbit: publisher || null,
+        isbn: isbn || null,
+        tahun_terbit: year,
+        lokasi_rak: shelfLocation || null,
+        deskripsi_buku: description || null,
+        foto_url: cover.coverUrl,
+      } as never)
+      .eq("id_buku", bookId);
+
+    if (!fallbackWithBookDescription.error) {
+      revalidatePath("/admin/buku");
+      revalidatePath("/admin/buku/tambah");
+      revalidatePath("/public/katalog");
+      revalidatePath("/siswa/katalog");
+
+      return { error: "", success: "Buku berhasil diperbarui." };
+    }
+
+    const fallbackWithCover = await supabase
+      .from("buku")
+      .update({
+        judul: title,
+        penulis: author,
+        penerbit: publisher || null,
+        isbn: isbn || null,
+        tahun_terbit: year,
+        lokasi_rak: shelfLocation || null,
+        foto_url: cover.coverUrl,
+      } as never)
+      .eq("id_buku", bookId);
+
+    if (!fallbackWithCover.error) {
+      revalidatePath("/admin/buku");
+      revalidatePath("/admin/buku/tambah");
+      revalidatePath("/public/katalog");
+      revalidatePath("/siswa/katalog");
+
+      return { error: "", success: "Buku berhasil diperbarui." };
+    }
+
     const fallback = await supabase
       .from("buku")
       .update({

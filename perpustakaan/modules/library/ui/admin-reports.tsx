@@ -6,6 +6,7 @@ import {
   useEffect,
   useMemo,
   useState,
+  useTransition,
   type ReactNode,
 } from "react";
 import type {
@@ -107,6 +108,13 @@ export function AdminReports({
     <div className="space-y-6">
       <section className="rounded-[1.75rem] border border-zinc-200 bg-white p-5 shadow-sm lg:p-6">
         <ReportControlForm
+          key={[
+            filters.type,
+            filters.format,
+            filters.collectionPeriod,
+            filters.collectionMonth,
+            filters.collectionYear,
+          ].join(":")}
           filters={filters}
           confirmDownload={confirmDownload}
         />
@@ -141,9 +149,29 @@ function ReportControlForm({
   confirmDownload: boolean;
 }) {
   const router = useRouter();
+  const [isFilterPending, startFilterTransition] = useTransition();
   const [selectedType, setSelectedType] = useState<ReportType>(filters.type);
   const [selectedCollectionPeriod, setSelectedCollectionPeriod] =
     useState<CollectionReportPeriod>(filters.collectionPeriod);
+  const [selectedCollectionMonth, setSelectedCollectionMonth] = useState(
+    filters.collectionMonth
+  );
+  const [selectedCollectionYear, setSelectedCollectionYear] = useState(
+    filters.collectionYear
+  );
+  const [selectedFormat, setSelectedFormat] = useState(filters.format);
+
+  function applyReportFilters(overrides: Partial<ReportFilters>) {
+    startFilterTransition(() => {
+      router.replace(buildReportHref(filters, overrides), { scroll: false });
+    });
+  }
+
+  function resetReportFilters() {
+    startFilterTransition(() => {
+      router.replace("/admin/laporan", { scroll: false });
+    });
+  }
 
   function closeDownloadConfirm() {
     router.replace(buildReportHref(filters, {}), { scroll: false });
@@ -169,7 +197,17 @@ function ReportControlForm({
           <select
             name="jenis"
             value={selectedType}
-            onChange={(event) => setSelectedType(event.target.value as ReportType)}
+            onChange={(event) => {
+              const nextType = event.target.value as ReportType;
+
+              setSelectedType(nextType);
+              applyReportFilters({
+                type: nextType,
+                tab: "transaksi",
+                collectionTab: "inventaris",
+                attendanceTab: "siswa",
+              });
+            }}
             className="h-[42px] w-full rounded-xl border border-zinc-300 bg-white px-3 text-sm font-semibold text-zinc-900 outline-none transition focus:border-[#1d66d6]"
           >
             <option value="transaksi">Peminjaman</option>
@@ -183,11 +221,12 @@ function ReportControlForm({
             <select
               name="periode"
               value={selectedCollectionPeriod}
-              onChange={(event) =>
-                setSelectedCollectionPeriod(
-                  event.target.value as CollectionReportPeriod
-                )
-              }
+              onChange={(event) => {
+                const nextPeriod = event.target.value as CollectionReportPeriod;
+
+                setSelectedCollectionPeriod(nextPeriod);
+                applyReportFilters({ collectionPeriod: nextPeriod });
+              }}
               className="h-[42px] w-full rounded-xl border border-zinc-300 bg-white px-3 text-sm font-semibold text-zinc-900 outline-none transition focus:border-[#1d66d6]"
             >
               <option value="monthly">Bulanan</option>
@@ -210,14 +249,26 @@ function ReportControlForm({
                 type="number"
                 name="tahun"
                 min="1900"
-                defaultValue={filters.collectionYear}
+                value={selectedCollectionYear}
+                onChange={(event) => {
+                  const nextYear = event.currentTarget.value;
+
+                  setSelectedCollectionYear(nextYear);
+                  applyReportFilters({ collectionYear: nextYear });
+                }}
                 className="h-[42px] w-full rounded-xl border border-zinc-300 bg-white px-3 text-sm font-semibold text-zinc-900 outline-none transition focus:border-[#1d66d6]"
               />
             ) : selectedCollectionPeriod === "monthly" ? (
               <input
                 type="month"
                 name="bulan"
-                defaultValue={filters.collectionMonth}
+                value={selectedCollectionMonth}
+                onChange={(event) => {
+                  const nextMonth = event.currentTarget.value;
+
+                  setSelectedCollectionMonth(nextMonth);
+                  applyReportFilters({ collectionMonth: nextMonth });
+                }}
                 className="h-[42px] w-full rounded-xl border border-zinc-300 bg-white px-3 text-sm font-semibold text-zinc-900 outline-none transition focus:border-[#1d66d6]"
               />
             ) : (
@@ -235,7 +286,11 @@ function ReportControlForm({
                 type="radio"
                 name="format"
                 value="pdf"
-                defaultChecked={filters.format === "pdf"}
+                checked={selectedFormat === "pdf"}
+                onChange={() => {
+                  setSelectedFormat("pdf");
+                  applyReportFilters({ format: "pdf" });
+                }}
                 className="h-4 w-4 accent-[#1d66d6]"
               />
               PDF
@@ -245,7 +300,11 @@ function ReportControlForm({
                 type="radio"
                 name="format"
                 value="excel"
-                defaultChecked={filters.format === "excel"}
+                checked={selectedFormat === "excel"}
+                onChange={() => {
+                  setSelectedFormat("excel");
+                  applyReportFilters({ format: "excel" });
+                }}
                 className="h-4 w-4 accent-[#1d66d6]"
               />
               Excel
@@ -254,10 +313,12 @@ function ReportControlForm({
         </ControlField>
 
         <button
-          type="submit"
-          className="inline-flex h-[42px] items-center justify-center rounded-xl bg-[#1d66d6] px-4 text-sm font-semibold text-white transition hover:bg-[#1553b2] active:bg-[#0f4698]"
+          type="button"
+          onClick={resetReportFilters}
+          disabled={isFilterPending}
+          className="inline-flex h-[42px] items-center justify-center rounded-xl border border-zinc-300 bg-white px-4 text-sm font-semibold text-zinc-700 transition hover:bg-zinc-100 disabled:cursor-not-allowed disabled:bg-zinc-100 disabled:text-zinc-400"
         >
-          Tampilkan
+          Reset Filter
         </button>
 
         <button

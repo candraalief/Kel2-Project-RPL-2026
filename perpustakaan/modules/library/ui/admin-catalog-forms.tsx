@@ -101,6 +101,7 @@ function AddBookForm({ genres }: { genres: CatalogGenre[] }) {
     jumlah_copy: "1",
     deskripsi: "",
     lokasi_rak: "",
+    foto_url: "",
   });
   const [selectedGenreIds, setSelectedGenreIds] = useState<string[]>([]);
   const [showAllGenres, setShowAllGenres] = useState(false);
@@ -120,6 +121,7 @@ function AddBookForm({ genres }: { genres: CatalogGenre[] }) {
         jumlah_copy: "1",
         deskripsi: "",
         lokasi_rak: "",
+        foto_url: "",
       });
       setSelectedGenreIds([]);
       setShowAllGenres(false);
@@ -151,20 +153,39 @@ function AddBookForm({ genres }: { genres: CatalogGenre[] }) {
 
   return (
     <form action={formAction} className="space-y-5">
-      <label className="flex min-h-40 cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed border-zinc-400 bg-zinc-100 p-6 text-center transition hover:bg-zinc-50">
-        <input type="file" name="foto_buku" accept="image/*" className="sr-only" />
-        <svg viewBox="0 0 24 24" fill="none" className="h-10 w-10 text-zinc-700" aria-hidden>
-          <path d="M4 5h16v14H4z" stroke="currentColor" strokeWidth="1.8" />
-          <path d="M8 13l2.5-3 3 4 1.5-2 3 4H6l2-3z" fill="currentColor" />
-          <circle cx="16" cy="8" r="1.5" fill="currentColor" />
-        </svg>
-        <span className="mt-3 text-sm font-semibold text-zinc-900">
-          Tambah Foto Buku
-        </span>
-        <span className="mt-1 text-xs text-zinc-500">
-          Struktur upload sudah siap, crop foto bisa ditambahkan nanti.
-        </span>
-      </label>
+      <div className="grid gap-4 md:grid-cols-2">
+        <label className="flex min-h-40 cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed border-zinc-400 bg-zinc-100 p-6 text-center transition hover:bg-zinc-50">
+          <input type="file" name="foto_buku" accept="image/*" className="sr-only" />
+          <svg viewBox="0 0 24 24" fill="none" className="h-10 w-10 text-zinc-700" aria-hidden>
+            <path d="M4 5h16v14H4z" stroke="currentColor" strokeWidth="1.8" />
+            <path d="M8 13l2.5-3 3 4 1.5-2 3 4H6l2-3z" fill="currentColor" />
+            <circle cx="16" cy="8" r="1.5" fill="currentColor" />
+          </svg>
+          <span className="mt-3 text-sm font-semibold text-zinc-900">
+            Upload Foto Buku
+          </span>
+          <span className="mt-1 text-xs text-zinc-500">
+            Pilih file gambar dari perangkat.
+          </span>
+        </label>
+
+        <label className="flex min-h-40 flex-col justify-center rounded-2xl border border-zinc-200 bg-white p-5">
+          <span className="text-sm font-semibold text-zinc-900">
+            Link Gambar Buku
+          </span>
+          <input
+            name="foto_url"
+            type="url"
+            value={bookFields.foto_url}
+            onChange={(event) => updateBookField("foto_url", event.currentTarget.value)}
+            placeholder="https://contoh.com/sampul-buku.jpg"
+            className="mt-3 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2.5 text-sm text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-[#1d66d6]"
+          />
+          <span className="mt-2 text-xs text-zinc-500">
+            Bisa memakai URL gambar dari internet.
+          </span>
+        </label>
+      </div>
 
       <div className="grid gap-4 md:grid-cols-2">
         <Field

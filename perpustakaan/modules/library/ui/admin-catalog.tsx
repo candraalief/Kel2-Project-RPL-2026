@@ -1793,6 +1793,34 @@ function EditBookModal({
 
         <input type="hidden" name="id_buku" value={book.id} />
 
+        <div className="mt-5 grid gap-4 md:grid-cols-2">
+          <label className="flex min-h-32 cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed border-zinc-400 bg-zinc-100 p-5 text-center transition hover:bg-zinc-50">
+            <input type="file" name="foto_buku" accept="image/*" className="sr-only" />
+            <span className="text-sm font-semibold text-zinc-900">
+              Upload Foto Baru
+            </span>
+            <span className="mt-1 text-xs text-zinc-500">
+              Pilih file gambar dari perangkat.
+            </span>
+          </label>
+
+          <label className="flex min-h-32 flex-col justify-center rounded-2xl border border-zinc-200 bg-white p-5">
+            <span className="text-sm font-semibold text-zinc-900">
+              Link Gambar Buku
+            </span>
+            <input
+              name="foto_url"
+              type="url"
+              defaultValue={book.coverUrl ?? ""}
+              placeholder="https://contoh.com/sampul-buku.jpg"
+              className="mt-3 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2.5 text-sm text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-[#1d66d6]"
+            />
+            <span className="mt-2 text-xs text-zinc-500">
+              Kosongkan field ini untuk menghapus gambar.
+            </span>
+          </label>
+        </div>
+
         <div className="mt-5 rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
