@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { getServerSupabaseClient } from "@/lib/supabase-server";
 import { getSessionUser } from "@/modules/access/lib/session";
+import { getSiswaAttendanceToday } from "@/modules/library/lib/data";
 
 export type AttendanceState = {
   error: string;
@@ -159,6 +160,24 @@ export async function submitSiswaAttendance(
   }
 
   const supabase = getServerSupabaseClient();
+  let todayAttendance;
+
+  try {
+    todayAttendance = await getSiswaAttendanceToday(sessionUser.id);
+  } catch {
+    return {
+      error: "Gagal memeriksa absensi hari ini. Coba lagi beberapa saat lagi.",
+      success: "",
+    };
+  }
+
+  if (todayAttendance) {
+    return {
+      error: "Kamu sudah melakukan absensi hari ini. Absensi hanya bisa sekali sehari.",
+      success: "",
+    };
+  }
+
   const insertAbsensi = await supabase
     .from("absensi")
     .insert({
@@ -193,6 +212,7 @@ export async function submitSiswaAttendance(
 
   revalidatePath("/siswa");
   revalidatePath("/siswa/absensi");
+  revalidatePath("/admin/absensi");
 
   return {
     error: "",

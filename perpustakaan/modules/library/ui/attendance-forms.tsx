@@ -373,9 +373,13 @@ export function PublicAttendanceForm({
 export function SiswaAttendanceForm({
   userName,
   className,
+  alreadyAttendedToday = false,
+  attendanceTime,
 }: {
   userName: string;
   className: string | null;
+  alreadyAttendedToday?: boolean;
+  attendanceTime?: string | null;
 }) {
   const [tujuanInput, setTujuanInput] = useState("Kunjungan perpustakaan siswa");
   const [hideSuccessNotice, setHideSuccessNotice] = useState(false);
@@ -405,6 +409,8 @@ export function SiswaAttendanceForm({
     }
   }, [pending, state?.success]);
 
+  const attendanceLocked = alreadyAttendedToday || Boolean(state?.success);
+
   return (
     <form action={formAction} className="space-y-4">
       <div className="rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-4 text-sm text-zinc-600">
@@ -412,11 +418,19 @@ export function SiswaAttendanceForm({
         <p>Kelas: {className ?? "-"}</p>
       </div>
 
+      {alreadyAttendedToday ? (
+        <p className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+          Kamu sudah absen hari ini
+          {attendanceTime ? ` pada ${formatSiswaAttendanceTime(attendanceTime)}` : ""}.
+        </p>
+      ) : null}
+
       <Field
         id="tujuan"
         label="Tujuan kunjungan"
         placeholder="Kunjungan perpustakaan siswa"
         required
+        disabled={attendanceLocked}
         value={tujuanInput}
         onChange={(value) => {
           setHideSuccessNotice(true);
@@ -445,13 +459,31 @@ export function SiswaAttendanceForm({
 
       <button
         type="submit"
-        disabled={pending}
+        disabled={pending || attendanceLocked}
         className="inline-flex min-w-44 items-center justify-center rounded-xl bg-[#1d66d6] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#1553b2] disabled:cursor-not-allowed disabled:bg-zinc-400"
       >
-        {pending ? "Menyimpan..." : "Catat absensi saya"}
+        {attendanceLocked
+          ? "Sudah absen hari ini"
+          : pending
+            ? "Menyimpan..."
+            : "Catat absensi saya"}
       </button>
     </form>
   );
+}
+
+function formatSiswaAttendanceTime(value: string) {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat("id-ID", {
+    dateStyle: "medium",
+    timeStyle: "short",
+    timeZone: "Asia/Jakarta",
+  }).format(date);
 }
 
 function Field({

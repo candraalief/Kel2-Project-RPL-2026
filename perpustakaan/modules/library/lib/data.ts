@@ -107,6 +107,25 @@ export type AttendanceRecordPage = {
   limit: number;
 };
 
+export function getTodayAttendanceDateKey(date = new Date()) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    day: "2-digit",
+    month: "2-digit",
+    timeZone: "Asia/Jakarta",
+    year: "numeric",
+  }).formatToParts(date);
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+
+  return `${values.year}-${values.month}-${values.day}`;
+}
+
+function getAttendanceDayBounds(dateKey: string) {
+  return {
+    end: `${dateKey}T23:59:59+07:00`,
+    start: `${dateKey}T00:00:00+07:00`,
+  };
+}
+
 function readString(row: Row, keys: string[]) {
   for (const key of keys) {
     const value = row[key];
@@ -777,6 +796,55 @@ export async function getLatestSiswaAttendance(idSiswa: number) {
   const [latestAttendance] = await getRecentSiswaAttendances(idSiswa, 1);
 
   return latestAttendance ?? null;
+}
+
+export async function getSiswaAttendanceOnDate(
+  idSiswa: number,
+  dateKey = getTodayAttendanceDateKey()
+) {
+  if (!Number.isInteger(idSiswa) || idSiswa <= 0) {
+    return null;
+  }
+
+  const supabase = getServerSupabaseClient();
+  const { data: attendanceLinks, error: linkError } = await supabase
+    .from("absensi_siswa")
+    .select("id_absensi")
+    .eq("id_siswa", idSiswa)
+    .order("id_absensi", { ascending: false })
+    .limit(200)
+    .returns<Array<{ id_absensi: number }>>();
+
+  if (linkError) {
+    throw new Error(`Failed to load siswa attendance link: ${linkError.message}`);
+  }
+
+  const attendanceIds = (attendanceLinks ?? []).map((item) => item.id_absensi);
+
+  if (attendanceIds.length === 0) {
+    return null;
+  }
+
+  const bounds = getAttendanceDayBounds(dateKey);
+  const { data, error } = await supabase
+    .from("absensi")
+    .select("id_absensi, nama, tujuan, jenis_pengunjung, waktu_kunjungan")
+    .in("id_absensi", attendanceIds)
+    .gte("waktu_kunjungan", bounds.start)
+    .lte("waktu_kunjungan", bounds.end)
+    .order("waktu_kunjungan", { ascending: false })
+    .limit(1)
+    .returns<AbsensiRecord[]>();
+
+  if (error) {
+    throw new Error(`Failed to load siswa attendance for date: ${error.message}`);
+  }
+
+  return data?.[0] ?? null;
+}
+
+export async function getSiswaAttendanceToday(idSiswa: number) {
+  return getSiswaAttendanceOnDate(idSiswa);
 }
 
 export type StudentSuggestion = {
