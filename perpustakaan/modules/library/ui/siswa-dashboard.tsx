@@ -25,7 +25,13 @@ type QuickAction = {
   label: string;
 };
 
-function dateOnlyToUtcTime(value: string) {
+function dateTimeToTime(value: string) {
+  const parsedDate = new Date(value);
+
+  if (!Number.isNaN(parsedDate.getTime())) {
+    return parsedDate.getTime();
+  }
+
   const [year, month, day] = value.slice(0, 10).split("-").map(Number);
 
   if (!year || !month || !day) {
@@ -49,13 +55,15 @@ function formatDate(value: string | null) {
   return new Intl.DateTimeFormat("id-ID", {
     day: "numeric",
     month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
     timeZone: "Asia/Jakarta",
   }).format(date);
 }
 
 function getDueInfo(dueDate: string, todayDate: string): DueInfo {
-  const dueTime = dateOnlyToUtcTime(dueDate);
-  const todayTime = dateOnlyToUtcTime(todayDate);
+  const dueTime = dateTimeToTime(dueDate);
+  const todayTime = dateTimeToTime(todayDate);
 
   if (dueTime === null || todayTime === null) {
     return {
@@ -95,8 +103,8 @@ function getDueInfo(dueDate: string, todayDate: string): DueInfo {
 
 function sortBorrowingItems(items: SiswaActiveBorrowingItem[]) {
   return [...items].sort((first, second) => {
-    const firstTime = dateOnlyToUtcTime(first.dueDate) ?? Number.MAX_SAFE_INTEGER;
-    const secondTime = dateOnlyToUtcTime(second.dueDate) ?? Number.MAX_SAFE_INTEGER;
+    const firstTime = dateTimeToTime(first.dueDate) ?? Number.MAX_SAFE_INTEGER;
+    const secondTime = dateTimeToTime(second.dueDate) ?? Number.MAX_SAFE_INTEGER;
 
     return firstTime - secondTime;
   });

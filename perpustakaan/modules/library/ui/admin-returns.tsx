@@ -69,8 +69,6 @@ function getDaysLate(value: string | null) {
     return 0;
   }
 
-  dueDate.setHours(23, 59, 59, 999);
-
   const difference = Date.now() - dueDate.getTime();
 
   if (difference <= 0) {

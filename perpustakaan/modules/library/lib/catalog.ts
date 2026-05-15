@@ -14,6 +14,13 @@ type BookGenreTableConfig = {
   genreIdColumn: string;
 };
 
+type TransactionDetailTableConfig = {
+  table: string;
+  transactionIdColumn: string;
+  bookIdColumn: string;
+  quantityColumn: string;
+};
+
 const copyTableConfigs: CopyTableConfig[] = [
   { table: "copy_buku", bookIdColumn: "id_buku", statusColumn: "status" },
   { table: "buku_copy", bookIdColumn: "id_buku", statusColumn: "status" },
@@ -26,6 +33,21 @@ const bookGenreTableConfigs: BookGenreTableConfig[] = [
   { table: "genre_buku", bookIdColumn: "id_buku", genreIdColumn: "id_genre" },
   { table: "buku_genres", bookIdColumn: "id_buku", genreIdColumn: "id_genre" },
   { table: "book_genres", bookIdColumn: "book_id", genreIdColumn: "genre_id" },
+];
+
+const transactionDetailTableConfigs: TransactionDetailTableConfig[] = [
+  {
+    table: "detail_transaksi",
+    transactionIdColumn: "id_transaksi",
+    bookIdColumn: "id_buku",
+    quantityColumn: "jumlah",
+  },
+  {
+    table: "detail_transaksi_peminjaman",
+    transactionIdColumn: "id_transaksi",
+    bookIdColumn: "id_buku",
+    quantityColumn: "jumlah",
+  },
 ];
 
 const removedCopyStatusKeywords = [
@@ -53,6 +75,15 @@ export type CatalogCopySummary = {
   borrowedCount: number;
   removedCount: number;
   unavailableCount: number;
+};
+
+export type CatalogBorrowScheduleItem = {
+  transactionId: number;
+  studentName: string;
+  className: string | null;
+  borrowedAt: string | null;
+  dueDate: string;
+  quantity: number;
 };
 
 export type CatalogGenre = {
@@ -328,6 +359,143 @@ export async function getCatalogBookCopySummary(
   };
 
   return toCopySummary(counts);
+}
+
+async function loadBookBorrowDetailRows(bookId: number) {
+  const supabase = getServerSupabaseClient();
+  let emptyResult:
+    | { rows: Row[]; config: TransactionDetailTableConfig }
+    | null = null;
+
+  for (const config of transactionDetailTableConfigs) {
+    const { data, error } = await supabase
+      .from(config.table)
+      .select("*")
+      .eq(config.bookIdColumn, bookId);
+
+    if (!error && data) {
+      const rows = data as Row[];
+
+      if (rows.length > 0) {
+        return { rows, config };
+      }
+
+      emptyResult ??= { rows, config };
+    }
+  }
+
+  return emptyResult;
+}
+
+export async function getCatalogBookBorrowSchedule(
+  bookId: number
+): Promise<CatalogBorrowScheduleItem[]> {
+  if (!Number.isInteger(bookId) || bookId <= 0) {
+    return [];
+  }
+
+  const detailRows = await loadBookBorrowDetailRows(bookId);
+
+  if (!detailRows) {
+    return [];
+  }
+
+  const quantityByTransaction = new Map<number, number>();
+
+  detailRows.rows.forEach((row) => {
+    const transactionId = readNumber(row, [
+      detailRows.config.transactionIdColumn,
+      "id_transaksi",
+      "transaction_id",
+    ]);
+
+    if (!transactionId) {
+      return;
+    }
+
+    const quantity =
+      readNumber(row, [
+        detailRows.config.quantityColumn,
+        "jumlah",
+        "jumlah_buku",
+        "qty",
+        "quantity",
+      ]) ?? 1;
+
+    quantityByTransaction.set(
+      transactionId,
+      (quantityByTransaction.get(transactionId) ?? 0) + Math.max(quantity, 1)
+    );
+  });
+
+  const transactionIds = Array.from(quantityByTransaction.keys());
+
+  if (transactionIds.length === 0) {
+    return [];
+  }
+
+  const supabase = getServerSupabaseClient();
+  const { data: transactions, error } = await supabase
+    .from("transaksi")
+    .select(
+      "id_transaksi, id_siswa, tanggal_pinjam, tanggal_jatuh_tempo, tanggal_kembali, status"
+    )
+    .in("id_transaksi", transactionIds)
+    .is("tanggal_kembali", null)
+    .order("tanggal_jatuh_tempo", { ascending: true })
+    .returns<
+      Array<{
+        id_transaksi: number;
+        id_siswa: number | null;
+        tanggal_pinjam: string | null;
+        tanggal_jatuh_tempo: string | null;
+        tanggal_kembali: string | null;
+        status: string | null;
+      }>
+    >();
+
+  if (error || !transactions) {
+    return [];
+  }
+
+  const activeTransactions = transactions.filter(
+    (transaction) => transaction.tanggal_jatuh_tempo && !transaction.tanggal_kembali
+  );
+  const studentIds = activeTransactions
+    .map((transaction) => transaction.id_siswa)
+    .filter((id): id is number => typeof id === "number");
+  const studentMap = new Map<number, { nama: string; kelas: string | null }>();
+
+  if (studentIds.length > 0) {
+    const { data: students } = await supabase
+      .from("siswa")
+      .select("id_siswa, nama, kelas")
+      .in("id_siswa", [...new Set(studentIds)])
+      .returns<Array<{ id_siswa: number; nama: string; kelas: string | null }>>();
+
+    (students ?? []).forEach((student) => {
+      studentMap.set(student.id_siswa, {
+        nama: student.nama,
+        kelas: student.kelas,
+      });
+    });
+  }
+
+  return activeTransactions.map((transaction) => {
+    const student =
+      typeof transaction.id_siswa === "number"
+        ? studentMap.get(transaction.id_siswa)
+        : null;
+
+    return {
+      transactionId: transaction.id_transaksi,
+      studentName: student?.nama ?? "Siswa tidak diketahui",
+      className: student?.kelas ?? null,
+      borrowedAt: transaction.tanggal_pinjam,
+      dueDate: transaction.tanggal_jatuh_tempo ?? "",
+      quantity: quantityByTransaction.get(transaction.id_transaksi) ?? 1,
+    };
+  });
 }
 
 export async function getAdminCatalogData(): Promise<AdminCatalogData> {

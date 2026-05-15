@@ -19,12 +19,28 @@ drop function if exists public.checkout_peminjaman(
   text,
   jsonb
 );
+drop function if exists public.checkout_peminjaman(
+  integer,
+  integer,
+  timestamptz,
+  date,
+  text,
+  jsonb
+);
+drop function if exists public.checkout_peminjaman(
+  integer,
+  integer,
+  timestamptz,
+  timestamptz,
+  text,
+  jsonb
+);
 
 create or replace function public.checkout_peminjaman(
   p_id_siswa integer,
   p_id_admin integer,
   p_tanggal_pinjam timestamptz,
-  p_tanggal_jatuh_tempo date,
+  p_tanggal_jatuh_tempo timestamptz,
   p_catatan text,
   p_items jsonb
 )
@@ -50,8 +66,8 @@ begin
     raise exception 'Tanggal peminjaman wajib diisi.';
   end if;
 
-  if p_tanggal_jatuh_tempo < (p_tanggal_pinjam at time zone 'Asia/Jakarta')::date then
-    raise exception 'Tenggat kembali tidak boleh lebih awal dari tanggal pinjam.';
+  if p_tanggal_jatuh_tempo < p_tanggal_pinjam then
+    raise exception 'Tenggat kembali tidak boleh lebih awal dari waktu pinjam.';
   end if;
 
   if p_items is null or jsonb_typeof(p_items) <> 'array' or jsonb_array_length(p_items) = 0 then
@@ -203,7 +219,7 @@ grant execute on function public.checkout_peminjaman(
   integer,
   integer,
   timestamptz,
-  date,
+  timestamptz,
   text,
   jsonb
 ) to service_role;

@@ -16,9 +16,15 @@ type SiswaBorrowingHistoryProps = {
 
 const dayInMs = 24 * 60 * 60 * 1000;
 
-function dateOnlyToUtcTime(value: string | null) {
+function dateTimeToTime(value: string | null) {
   if (!value) {
     return null;
+  }
+
+  const parsedDate = new Date(value);
+
+  if (!Number.isNaN(parsedDate.getTime())) {
+    return parsedDate.getTime();
   }
 
   const [year, month, day] = value.slice(0, 10).split("-").map(Number);
@@ -43,13 +49,14 @@ function formatDate(value: string | null) {
 
   return new Intl.DateTimeFormat("id-ID", {
     dateStyle: "medium",
+    timeStyle: "short",
     timeZone: "Asia/Jakarta",
   }).format(date);
 }
 
 function getDaysBetween(from: string | null, to: string | null) {
-  const fromTime = dateOnlyToUtcTime(from);
-  const toTime = dateOnlyToUtcTime(to);
+  const fromTime = dateTimeToTime(from);
+  const toTime = dateTimeToTime(to);
 
   if (fromTime === null || toTime === null) {
     return null;
@@ -245,9 +252,9 @@ export function SiswaBorrowingHistory({
         .filter((transaction) => transaction.tanggal_kembali === null)
         .sort((first, second) => {
           const firstTime =
-            dateOnlyToUtcTime(first.tanggal_jatuh_tempo) ?? Number.MAX_SAFE_INTEGER;
+            dateTimeToTime(first.tanggal_jatuh_tempo) ?? Number.MAX_SAFE_INTEGER;
           const secondTime =
-            dateOnlyToUtcTime(second.tanggal_jatuh_tempo) ?? Number.MAX_SAFE_INTEGER;
+            dateTimeToTime(second.tanggal_jatuh_tempo) ?? Number.MAX_SAFE_INTEGER;
 
           return firstTime - secondTime;
         }),
@@ -259,9 +266,9 @@ export function SiswaBorrowingHistory({
         .filter((transaction) => transaction.tanggal_kembali !== null)
         .sort((first, second) => {
           const firstTime =
-            dateOnlyToUtcTime(first.tanggal_kembali) ?? Number.MIN_SAFE_INTEGER;
+            dateTimeToTime(first.tanggal_kembali) ?? Number.MIN_SAFE_INTEGER;
           const secondTime =
-            dateOnlyToUtcTime(second.tanggal_kembali) ?? Number.MIN_SAFE_INTEGER;
+            dateTimeToTime(second.tanggal_kembali) ?? Number.MIN_SAFE_INTEGER;
 
           return secondTime - firstTime;
         }),

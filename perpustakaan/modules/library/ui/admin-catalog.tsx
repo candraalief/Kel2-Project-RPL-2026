@@ -14,6 +14,7 @@ import {
 import {
   addCatalogCopies,
   deleteCatalogBook,
+  loadCatalogBookBorrowSchedule,
   loadCatalogBookCopySummary,
   removeCatalogCopies,
   updateCatalogBook,
@@ -21,6 +22,7 @@ import {
 } from "@/app/actions/catalog";
 import type {
   AdminCatalogBook,
+  CatalogBorrowScheduleItem,
   CatalogCopySummary,
   CatalogGenre,
 } from "@/modules/library/lib/catalog";
@@ -42,9 +44,13 @@ const emptyCopySummary: CatalogCopySummary = {
   removedCount: 0,
   unavailableCount: 0,
 };
+const emptyBorrowSchedule: CatalogBorrowScheduleItem[] = [];
 
 type AvailabilityFilter = "all" | "available" | "unavailable";
 type PageSize = 5 | 10 | 25;
+type CatalogBorrowScheduleCalendarItem = CatalogBorrowScheduleItem & {
+  dateKey: string;
+};
 
 function normalize(value: string | null) {
   return (value ?? "").trim().toLowerCase();
@@ -102,6 +108,56 @@ function useCatalogCopySummary(bookId: number, enabled = true) {
     summary,
     counts: summary ?? emptyCopySummary,
     error,
+    loading,
+  };
+}
+
+function useCatalogBorrowSchedule(
+  bookId: number,
+  enabled = true,
+  includeBorrowerDetails = false
+) {
+  const [items, setItems] =
+    useState<CatalogBorrowScheduleItem[]>(emptyBorrowSchedule);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(enabled);
+
+  useEffect(() => {
+    let alive = true;
+
+    if (!enabled) {
+      return;
+    }
+
+    loadCatalogBookBorrowSchedule(bookId, includeBorrowerDetails)
+      .then((result) => {
+        if (!alive) {
+          return;
+        }
+
+        setItems(result.items);
+        setError(result.error);
+      })
+      .catch(() => {
+        if (alive) {
+          setError("Gagal memuat kalender pengembalian buku.");
+          setItems(emptyBorrowSchedule);
+        }
+      })
+      .finally(() => {
+        if (alive) {
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      alive = false;
+    };
+  }, [bookId, enabled, includeBorrowerDetails]);
+
+  return {
+    error,
+    items,
     loading,
   };
 }
@@ -1228,6 +1284,7 @@ function BookDetailModal({
   onClose: () => void;
 }) {
   const copySummary = useCatalogCopySummary(book.id, !readOnly);
+  const borrowSchedule = useCatalogBorrowSchedule(book.id, true, !readOnly);
   const counts = readOnly
     ? {
         totalCopies: book.totalCopies,
@@ -1311,9 +1368,279 @@ function BookDetailModal({
             </div>
           </div>
         </div>
+        <BookBorrowCalendar
+          error={borrowSchedule.error}
+          items={borrowSchedule.items}
+          loading={borrowSchedule.loading}
+          showBorrowerDetails={!readOnly}
+        />
       </article>
     </div>
   );
+}
+
+function BookBorrowCalendar({
+  error,
+  items,
+  loading,
+  showBorrowerDetails,
+}: {
+  error: string;
+  items: CatalogBorrowScheduleItem[];
+  loading: boolean;
+  showBorrowerDetails: boolean;
+}) {
+  const dueItems = useMemo<CatalogBorrowScheduleCalendarItem[]>(
+    () =>
+      items
+        .map((item) => ({
+          ...item,
+          dateKey: toDateKey(item.dueDate),
+        }))
+        .filter(isCatalogBorrowScheduleCalendarItem)
+        .sort((first, second) => first.dateKey.localeCompare(second.dateKey)),
+    [items]
+  );
+  const month = getCalendarMonth(dueItems);
+  const cells = useMemo(
+    () => buildCalendarCells(month.year, month.monthIndex),
+    [month.monthIndex, month.year]
+  );
+  const todayKey = getTodayKey();
+  const dueByDate = useMemo(() => {
+    const map = new Map<string, CatalogBorrowScheduleItem[]>();
+
+    dueItems.forEach((item) => {
+      map.set(item.dateKey, [...(map.get(item.dateKey) ?? []), item]);
+    });
+
+    return map;
+  }, [dueItems]);
+
+  return (
+    <section className="mt-6 border-t border-zinc-200 pt-5">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-[#1d66d6]">
+            Kalender Pengembalian
+          </p>
+          <h3 className="mt-1 text-xl font-semibold text-zinc-950">
+            Deadline peminjaman buku ini
+          </h3>
+        </div>
+        <span className="rounded-full bg-[#e6f0ff] px-3 py-1 text-xs font-semibold text-[#1d66d6]">
+          {loading ? "Memuat..." : `${dueItems.length} jadwal aktif`}
+        </span>
+      </div>
+
+      {error ? (
+        <p className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
+          {error}
+        </p>
+      ) : null}
+
+      {loading ? (
+        <div className="mt-4 inline-flex items-center gap-2 rounded-xl border border-sky-200 bg-sky-50 px-4 py-2 text-sm text-sky-800">
+          <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-sky-600" />
+          Memuat jadwal pengembalian...
+        </div>
+      ) : dueItems.length === 0 ? (
+        <p className="mt-4 rounded-2xl border border-dashed border-zinc-300 bg-zinc-50 px-4 py-5 text-sm text-zinc-500">
+          Belum ada peminjaman aktif untuk buku ini.
+        </p>
+      ) : (
+        <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(260px,340px)]">
+          <div className="rounded-2xl border border-zinc-200 bg-white p-4">
+            <div className="flex items-center justify-between">
+              <p className="text-base font-semibold text-zinc-950">
+                {formatMonthLabel(month.year, month.monthIndex)}
+              </p>
+              <p className="text-xs font-semibold text-zinc-500">
+                Tanggal biru = deadline
+              </p>
+            </div>
+
+            <div className="mt-4 grid grid-cols-7 gap-1 text-center text-xs font-semibold text-zinc-500">
+              {["Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min"].map((day) => (
+                <span key={day} className="py-1">
+                  {day}
+                </span>
+              ))}
+            </div>
+
+            <div className="mt-1 grid grid-cols-7 gap-1">
+              {cells.map((cell) => {
+                const dayItems = cell.dateKey ? dueByDate.get(cell.dateKey) ?? [] : [];
+                const dueCount = dayItems.reduce(
+                  (total, item) => total + item.quantity,
+                  0
+                );
+                const hasDue = dueCount > 0;
+                const isToday = cell.dateKey === todayKey;
+
+                return (
+                  <div
+                    key={cell.key}
+                    className={`relative flex aspect-square min-h-11 items-center justify-center rounded-xl border text-sm font-semibold ${
+                      hasDue
+                        ? "border-[#1d66d6] bg-[#1d66d6] text-white"
+                        : isToday
+                          ? "border-[#1d66d6] bg-white text-[#1d66d6]"
+                          : cell.day
+                            ? "border-zinc-200 bg-white text-zinc-700"
+                            : "border-transparent bg-transparent text-transparent"
+                    }`}
+                  >
+                    {cell.day ?? ""}
+                    {hasDue ? (
+                      <span className="absolute bottom-1 right-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-white/25 px-1 text-[10px] text-white">
+                        {dueCount}
+                      </span>
+                    ) : null}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
+            <p className="text-sm font-semibold text-zinc-950">
+              Jadwal jatuh tempo
+            </p>
+            <div className="mt-3 max-h-80 space-y-2 overflow-y-auto pr-1">
+              {dueItems.map((item, index) => (
+                <div
+                  key={`${item.transactionId}-${item.dateKey}-${index}`}
+                  className="rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-sm"
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="font-semibold text-zinc-950">
+                      {formatDueDateTime(item.dueDate, item.dateKey)}
+                    </p>
+                    <span className="rounded-full bg-[#e6f0ff] px-2 py-1 text-xs font-semibold text-[#1d66d6]">
+                      {item.quantity} eksemplar
+                    </span>
+                  </div>
+                  {showBorrowerDetails ? (
+                    <>
+                      <p className="mt-1 text-zinc-700">{item.studentName}</p>
+                      <p className="mt-1 text-xs text-zinc-500">
+                        {item.className ?? "-"} · Transaksi #{item.transactionId}
+                      </p>
+                    </>
+                  ) : null}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function isCatalogBorrowScheduleCalendarItem(
+  item: CatalogBorrowScheduleItem & { dateKey: string | null }
+): item is CatalogBorrowScheduleCalendarItem {
+  return item.dateKey !== null;
+}
+
+function toDateKey(value: string | null) {
+  if (!value) {
+    return null;
+  }
+
+  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})/);
+
+  if (match) {
+    return `${match[1]}-${match[2]}-${match[3]}`;
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+
+  return new Intl.DateTimeFormat("en-CA", {
+    day: "2-digit",
+    month: "2-digit",
+    timeZone: "Asia/Jakarta",
+    year: "numeric",
+  }).format(date);
+}
+
+function getTodayKey() {
+  return toDateKey(new Date().toISOString()) ?? "";
+}
+
+function getCalendarMonth(items: Array<{ dateKey: string }>) {
+  const firstDateKey = items[0]?.dateKey ?? getTodayKey();
+  const [year, month] = firstDateKey.split("-").map(Number);
+
+  return {
+    monthIndex: Number.isFinite(month) ? month - 1 : new Date().getMonth(),
+    year: Number.isFinite(year) ? year : new Date().getFullYear(),
+  };
+}
+
+function buildCalendarCells(year: number, monthIndex: number) {
+  const firstDay = new Date(year, monthIndex, 1).getDay();
+  const offset = (firstDay + 6) % 7;
+  const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
+  const totalCells = Math.ceil((offset + daysInMonth) / 7) * 7;
+
+  return Array.from({ length: totalCells }, (_, index) => {
+    const day = index - offset + 1;
+
+    if (day < 1 || day > daysInMonth) {
+      return {
+        dateKey: null,
+        day: null,
+        key: `empty-${index}`,
+      };
+    }
+
+    const month = String(monthIndex + 1).padStart(2, "0");
+    const date = String(day).padStart(2, "0");
+
+    return {
+      dateKey: `${year}-${month}-${date}`,
+      day,
+      key: `${year}-${month}-${date}`,
+    };
+  });
+}
+
+function formatMonthLabel(year: number, monthIndex: number) {
+  return new Intl.DateTimeFormat("id-ID", {
+    month: "long",
+    timeZone: "Asia/Jakarta",
+    year: "numeric",
+  }).format(new Date(Date.UTC(year, monthIndex, 1)));
+}
+
+function formatDateKey(dateKey: string) {
+  const [year, month, day] = dateKey.split("-").map(Number);
+
+  return new Intl.DateTimeFormat("id-ID", {
+    dateStyle: "medium",
+    timeZone: "Asia/Jakarta",
+  }).format(new Date(Date.UTC(year, month - 1, day)));
+}
+
+function formatDueDateTime(value: string, fallbackDateKey: string) {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return formatDateKey(fallbackDateKey);
+  }
+
+  return new Intl.DateTimeFormat("id-ID", {
+    dateStyle: "medium",
+    timeStyle: "short",
+    timeZone: "Asia/Jakarta",
+  }).format(date);
 }
 
 function CatalogAddCopiesModal({

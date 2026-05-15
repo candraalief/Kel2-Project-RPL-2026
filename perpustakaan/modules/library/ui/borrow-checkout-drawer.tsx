@@ -20,33 +20,10 @@ type BorrowCheckoutDrawerProps = {
   adminName: string;
 };
 
-function toDateInputValue(date: Date) {
-  const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
-
-  return localDate.toISOString().slice(0, 10);
-}
-
 function toDateTimeLocalInputValue(date: Date) {
   const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
 
-  // YYYY-MM-DDTHH:mm:ss for <input type="datetime-local">
-  return localDate.toISOString().slice(0, 19);
-}
-
-function getDatePart(value: string) {
-  return value.slice(0, 10);
-}
-
-function addDays(dateValue: string, days: number) {
-  const date = dateValue ? new Date(`${dateValue}T00:00:00`) : new Date();
-
-  if (Number.isNaN(date.getTime())) {
-    return toDateInputValue(new Date());
-  }
-
-  date.setDate(date.getDate() + days);
-
-  return toDateInputValue(date);
+  return localDate.toISOString().slice(0, 16);
 }
 
 function cartItemCover(coverUrl: string | null, title: string) {
@@ -178,7 +155,7 @@ export function BorrowCheckoutDrawer({
   const [borrowDate, setBorrowDate] = useState(() =>
     toDateTimeLocalInputValue(new Date())
   );
-  const [dueDate, setDueDate] = useState(() => addDays(toDateInputValue(new Date()), 7));
+  const [dueDate, setDueDate] = useState("");
   const [note, setNote] = useState("");
   const [error, setError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
@@ -239,7 +216,6 @@ export function BorrowCheckoutDrawer({
 
   function updateBorrowDate(value: string) {
     setBorrowDate(value);
-    setDueDate(addDays(getDatePart(value), 7));
   }
 
   function handleStudentQueryChange(value: string) {
@@ -270,6 +246,11 @@ export function BorrowCheckoutDrawer({
       return;
     }
 
+    if (!dueDate) {
+      setError("Isi tanggal dan jam tenggat kembali terlebih dahulu.");
+      return;
+    }
+
     const payload: CreateBorrowTransactionInput = {
       idSiswa,
       tanggalPinjam: borrowDate,
@@ -294,6 +275,7 @@ export function BorrowCheckoutDrawer({
       closeCart();
       setSelectedStudentId("");
       setStudentQuery("");
+      setDueDate("");
       setNote("");
       setSuccessMessage(result.success || "Peminjaman berhasil dibuat.");
       router.refresh();
@@ -469,7 +451,7 @@ export function BorrowCheckoutDrawer({
                       </span>
                       <input
                         type="datetime-local"
-                        step={1}
+                        step={60}
                         value={borrowDate}
                         onChange={(event) => updateBorrowDate(event.currentTarget.value)}
                         className="h-10 w-full rounded-xl border border-zinc-300 bg-white px-3 text-sm text-zinc-900 outline-none transition focus:border-[#1d66d6]"
@@ -480,11 +462,16 @@ export function BorrowCheckoutDrawer({
                         Tenggat Kembali
                       </span>
                       <input
-                        type="date"
+                        type="datetime-local"
+                        step={60}
+                        min={borrowDate || undefined}
                         value={dueDate}
                         onChange={(event) => setDueDate(event.currentTarget.value)}
                         className="h-10 w-full rounded-xl border border-zinc-300 bg-white px-3 text-sm text-zinc-900 outline-none transition focus:border-[#1d66d6]"
                       />
+                      <span className="text-xs text-zinc-500">
+                        Wajib diisi manual sampai jam dan menit sebelum checkout.
+                      </span>
                     </label>
                   </div>
 
@@ -515,7 +502,7 @@ export function BorrowCheckoutDrawer({
               <button
                 type="button"
                 onClick={handleSubmit}
-                disabled={isPending || items.length === 0}
+                disabled={isPending || items.length === 0 || !dueDate}
                 className="inline-flex h-11 w-full items-center justify-center rounded-xl bg-[#1d66d6] px-4 text-sm font-semibold text-white transition hover:bg-[#1553b2] disabled:cursor-not-allowed disabled:bg-zinc-400"
               >
                 {isPending ? "Memproses..." : "Checkout Peminjaman"}

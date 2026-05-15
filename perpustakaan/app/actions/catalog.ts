@@ -6,9 +6,11 @@ import { getSessionUser } from "@/modules/access/lib/session";
 import { normalizeCatalogShelfLocation } from "@/modules/library/lib/shelf-locations";
 import {
   getBookGenreTableConfigs,
+  getCatalogBookBorrowSchedule,
   getCatalogBookCopySummary,
   getCatalogGenres,
   getCopyTableConfigs,
+  type CatalogBorrowScheduleItem,
   type CatalogCopySummary,
 } from "@/modules/library/lib/catalog";
 
@@ -21,6 +23,11 @@ export type CatalogActionState = {
 export type CatalogCopySummaryState = {
   error: string;
   summary: CatalogCopySummary | null;
+};
+
+export type CatalogBorrowScheduleState = {
+  error: string;
+  items: CatalogBorrowScheduleItem[];
 };
 
 const emptyState: CatalogActionState = {
@@ -889,6 +896,40 @@ export async function loadCatalogBookCopySummary(
           ? `Gagal memuat ringkasan eksemplar: ${error.message}`
           : "Gagal memuat ringkasan eksemplar.",
       summary: null,
+    };
+  }
+}
+
+export async function loadCatalogBookBorrowSchedule(
+  bookId: number,
+  includeBorrowerDetails = false
+): Promise<CatalogBorrowScheduleState> {
+  const sessionUser = await getSessionUser();
+  const canSeeBorrowerDetails =
+    includeBorrowerDetails && sessionUser?.role === "admin";
+
+  if (!Number.isInteger(bookId) || bookId <= 0) {
+    return { error: "Buku tidak valid.", items: [] };
+  }
+
+  try {
+    const items = await getCatalogBookBorrowSchedule(bookId);
+
+    return {
+      error: "",
+      items: canSeeBorrowerDetails
+        ? items
+        : items.map((item) => ({
+            ...item,
+            className: null,
+            studentName: "",
+            transactionId: 0,
+          })),
+    };
+  } catch {
+    return {
+      error: "Gagal memuat kalender pengembalian buku.",
+      items: [],
     };
   }
 }

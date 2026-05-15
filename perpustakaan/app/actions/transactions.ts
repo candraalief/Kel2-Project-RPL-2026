@@ -160,18 +160,15 @@ export async function createBorrowTransaction(
   }
 
   const borrowedAt = parseBorrowDateTime(input.tanggalPinjam);
+  const dueAt = parseBorrowDateTime(input.tanggalJatuhTempo);
 
-  if (!borrowedAt || !isDateInput(input.tanggalJatuhTempo)) {
-    return { error: "Tanggal peminjaman tidak valid.", success: "" };
+  if (!borrowedAt || !dueAt) {
+    return { error: "Tanggal pinjam dan tenggat kembali wajib diisi lengkap.", success: "" };
   }
 
-  const borrowDateOnly = isDateInput(input.tanggalPinjam)
-    ? input.tanggalPinjam
-    : input.tanggalPinjam.slice(0, 10);
-
-  if (input.tanggalJatuhTempo < borrowDateOnly) {
+  if (dueAt.getTime() < borrowedAt.getTime()) {
     return {
-      error: "Tenggat kembali tidak boleh lebih awal dari tanggal pinjam.",
+      error: "Tenggat kembali tidak boleh lebih awal dari waktu pinjam.",
       success: "",
     };
   }
@@ -229,7 +226,7 @@ export async function createBorrowTransaction(
       p_id_siswa: input.idSiswa,
       p_id_admin: sessionUser.id,
       p_tanggal_pinjam: borrowedAt.toISOString(),
-      p_tanggal_jatuh_tempo: input.tanggalJatuhTempo,
+      p_tanggal_jatuh_tempo: dueAt.toISOString(),
       p_catatan: note || null,
       p_items: payloadItems,
     } as never
