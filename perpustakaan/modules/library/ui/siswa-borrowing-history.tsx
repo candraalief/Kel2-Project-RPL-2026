@@ -194,19 +194,27 @@ function DeadlineBadge({
 
 function TransactionItemsPanel({
   transaction,
+  id,
 }: {
   transaction: SiswaDetailedTransactionRecord;
+  id: string;
 }) {
   if (transaction.items.length === 0) {
     return (
-      <div className="border-t border-zinc-200 bg-zinc-50 px-5 py-4 text-sm text-zinc-500">
+      <div
+        id={id}
+        className="border-t border-zinc-200 bg-zinc-50 px-4 py-4 text-sm text-zinc-500 sm:px-5"
+      >
         Detail buku untuk transaksi ini belum tersedia.
       </div>
     );
   }
 
   return (
-    <div className="border-t border-zinc-200 bg-zinc-50 px-5 py-4">
+    <div
+      id={id}
+      className="border-t border-zinc-200 bg-zinc-50 px-4 py-4 sm:px-5"
+    >
       <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-400">
         Detail Buku
       </p>
@@ -231,6 +239,123 @@ function TransactionItemsPanel({
           </div>
         ))}
       </div>
+    </div>
+  );
+}
+
+function MobileTransactionCard({
+  transaction,
+  todayDate,
+  isExpanded,
+  onToggle,
+}: {
+  transaction: SiswaDetailedTransactionRecord;
+  todayDate: string;
+  isExpanded: boolean;
+  onToggle: () => void;
+}) {
+  const panelId = `siswa-transaction-detail-mobile-${transaction.id_transaksi}`;
+
+  return (
+    <article className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm">
+      <button
+        type="button"
+        onClick={onToggle}
+        className="w-full px-4 py-4 text-left transition hover:bg-[#f8fbff] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#1768d8] active:bg-[#edf5ff]"
+        aria-expanded={isExpanded}
+        aria-controls={panelId}
+      >
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="line-clamp-2 text-base font-semibold text-zinc-950">
+              {getBookTitleSummary(transaction)}
+            </p>
+            <p className="mt-2 text-xs text-zinc-500">
+              Transaksi #{transaction.id_transaksi}
+            </p>
+          </div>
+          <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-zinc-200 text-zinc-700">
+            <ChevronIcon expanded={isExpanded} />
+          </span>
+        </div>
+
+        <div className="mt-4 grid gap-2 text-sm text-zinc-600">
+          <p>
+            Tanggal pinjam:{" "}
+            <span className="font-semibold text-zinc-950">
+              {formatDate(transaction.tanggal_pinjam)}
+            </span>
+          </p>
+          <p>
+            Tanggal kembali:{" "}
+            <span className="font-semibold text-zinc-950">
+              {formatDate(transaction.tanggal_kembali)}
+            </span>
+          </p>
+          <DeadlineBadge transaction={transaction} todayDate={todayDate} />
+          <span className="inline-flex w-fit rounded-lg bg-zinc-100 px-3 py-1 text-xs font-semibold text-zinc-700">
+            {getStatusLabel(transaction)}
+          </span>
+        </div>
+      </button>
+
+      {isExpanded ? (
+        <TransactionItemsPanel transaction={transaction} id={panelId} />
+      ) : null}
+    </article>
+  );
+}
+
+function DesktopTransactionRow({
+  transaction,
+  todayDate,
+  isExpanded,
+  onToggle,
+}: {
+  transaction: SiswaDetailedTransactionRecord;
+  todayDate: string;
+  isExpanded: boolean;
+  onToggle: () => void;
+}) {
+  const panelId = `siswa-transaction-detail-desktop-${transaction.id_transaksi}`;
+
+  return (
+    <div className="border-t border-zinc-200">
+      <button
+        type="button"
+        onClick={onToggle}
+        className="grid w-full gap-3 px-4 py-4 text-left text-sm text-zinc-600 transition hover:bg-[#f8fbff] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#1768d8] active:bg-[#edf5ff] md:grid-cols-[0.8fr_1.8fr_0.6fr_1.5fr_0.7fr] md:items-center"
+        aria-expanded={isExpanded}
+        aria-controls={panelId}
+      >
+        <span className="inline-flex items-center gap-2 font-semibold text-zinc-950 transition">
+          <ChevronIcon expanded={isExpanded} />
+          #{transaction.id_transaksi}
+        </span>
+
+        <span className="min-w-0">
+          <span className="line-clamp-2 font-semibold text-zinc-950">
+            {getBookTitleSummary(transaction)}
+          </span>
+          <span className="mt-1 block text-xs text-zinc-500">
+            Pinjam {formatDate(transaction.tanggal_pinjam)}
+          </span>
+        </span>
+
+        <span className="inline-flex w-fit rounded-lg bg-[#dbeafe] px-3 py-1 text-xs font-semibold text-[#0b55ff]">
+          {getTotalBooks(transaction)} buku
+        </span>
+
+        <DeadlineBadge transaction={transaction} todayDate={todayDate} />
+
+        <span className="inline-flex w-fit rounded-lg bg-zinc-100 px-3 py-1 text-xs font-semibold text-zinc-700">
+          {getStatusLabel(transaction)}
+        </span>
+      </button>
+
+      {isExpanded ? (
+        <TransactionItemsPanel transaction={transaction} id={panelId} />
+      ) : null}
     </div>
   );
 }
@@ -294,7 +419,7 @@ export function SiswaBorrowingHistory({
     <section className="space-y-4">
       <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
 
-        <div className="mt-4 grid gap-3 rounded-2xl bg-zinc-100 p-1.5 md:grid-cols-2">
+        <div className="mt-4 grid gap-2 rounded-2xl bg-zinc-100 p-1.5 md:grid-cols-2">
           <button
             type="button"
             onClick={() => {
@@ -302,14 +427,14 @@ export function SiswaBorrowingHistory({
               setView("active");
             }}
             aria-busy={loadingView === "active"}
-            className={`inline-flex h-16 items-center justify-center gap-3 rounded-2xl text-base font-semibold transition ${
+            className={`inline-flex min-h-[56px] min-w-0 items-center justify-center gap-2 rounded-2xl px-3 text-sm font-semibold transition sm:text-base ${
               view === "active"
                 ? "bg-[#2567d8] text-white shadow-sm"
                 : "bg-white text-zinc-950 hover:bg-zinc-50"
             }`}
           >
             {loadingView === "active" ? <ButtonLoadingSpinner /> : null}
-            Peminjaman Aktif
+            <span className="truncate">Peminjaman Aktif</span>
             <span
               className={`inline-flex h-7 min-w-7 items-center justify-center rounded-full px-2 text-sm font-semibold ${
                 view === "active"
@@ -327,14 +452,14 @@ export function SiswaBorrowingHistory({
               setView("history");
             }}
             aria-busy={loadingView === "history"}
-            className={`inline-flex h-16 items-center justify-center gap-3 rounded-2xl text-base font-semibold transition ${
+            className={`inline-flex min-h-[56px] min-w-0 items-center justify-center gap-2 rounded-2xl px-3 text-sm font-semibold transition sm:text-base ${
               view === "history"
                 ? "bg-[#2567d8] text-white shadow-sm"
                 : "bg-white text-zinc-950 hover:bg-zinc-50"
             }`}
           >
             {loadingView === "history" ? <ButtonLoadingSpinner /> : null}
-            Riwayat Peminjaman
+            <span className="truncate">Riwayat Peminjaman</span>
             <span
               className={`inline-flex h-7 min-w-7 items-center justify-center rounded-full px-2 text-sm font-semibold ${
                 view === "history"
@@ -348,7 +473,31 @@ export function SiswaBorrowingHistory({
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm">
+      <div className="space-y-3 md:hidden">
+        {visibleTransactions.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-zinc-300 bg-white px-4 py-8 text-center text-sm text-zinc-500 shadow-sm">
+            {view === "active"
+              ? "Tidak ada peminjaman aktif."
+              : "Belum ada riwayat pengembalian."}
+          </div>
+        ) : (
+          visibleTransactions.map((transaction) => {
+            const isExpanded = expandedTransactionIds.has(transaction.id_transaksi);
+
+            return (
+              <MobileTransactionCard
+                key={transaction.id_transaksi}
+                transaction={transaction}
+                todayDate={todayDate}
+                isExpanded={isExpanded}
+                onToggle={() => toggleExpanded(transaction.id_transaksi)}
+              />
+            );
+          })
+        )}
+      </div>
+
+      <div className="hidden overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm md:block">
         <div className="hidden grid-cols-[0.8fr_1.8fr_0.6fr_1.5fr_0.7fr] bg-zinc-50 px-4 py-3 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500 md:grid">
           <span>Transaksi</span>
           <span>Buku</span>
@@ -368,40 +517,13 @@ export function SiswaBorrowingHistory({
             const isExpanded = expandedTransactionIds.has(transaction.id_transaksi);
 
             return (
-              <div key={transaction.id_transaksi} className="border-t border-zinc-200">
-                <button
-                  type="button"
-                  onClick={() => toggleExpanded(transaction.id_transaksi)}
-                  className="grid w-full gap-3 px-4 py-4 text-left text-sm text-zinc-600 transition hover:bg-[#f8fbff] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#1768d8] active:bg-[#edf5ff] md:grid-cols-[0.8fr_1.8fr_0.6fr_1.5fr_0.7fr] md:items-center"
-                  aria-expanded={isExpanded}
-                >
-                  <span className="inline-flex items-center gap-2 font-semibold text-zinc-950 transition">
-                    <ChevronIcon expanded={isExpanded} />
-                    #{transaction.id_transaksi}
-                  </span>
-
-                  <span className="min-w-0">
-                    <span className="line-clamp-2 font-semibold text-zinc-950">
-                      {getBookTitleSummary(transaction)}
-                    </span>
-                    <span className="mt-1 block text-xs text-zinc-500">
-                      Pinjam {formatDate(transaction.tanggal_pinjam)}
-                    </span>
-                  </span>
-
-                  <span className="inline-flex w-fit rounded-lg bg-[#dbeafe] px-3 py-1 text-xs font-semibold text-[#0b55ff]">
-                    {getTotalBooks(transaction)} buku
-                  </span>
-
-                  <DeadlineBadge transaction={transaction} todayDate={todayDate} />
-
-                  <span className="inline-flex w-fit rounded-lg bg-zinc-100 px-3 py-1 text-xs font-semibold text-zinc-700">
-                    {getStatusLabel(transaction)}
-                  </span>
-                </button>
-
-                {isExpanded ? <TransactionItemsPanel transaction={transaction} /> : null}
-              </div>
+              <DesktopTransactionRow
+                key={transaction.id_transaksi}
+                transaction={transaction}
+                todayDate={todayDate}
+                isExpanded={isExpanded}
+                onToggle={() => toggleExpanded(transaction.id_transaksi)}
+              />
             );
           })
         )}

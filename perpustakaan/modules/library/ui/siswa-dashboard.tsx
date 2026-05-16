@@ -25,6 +25,12 @@ type QuickAction = {
   label: string;
 };
 
+type StatCardData = {
+  label: string;
+  value: string;
+  helper: string;
+};
+
 function dateTimeToTime(value: string) {
   const parsedDate = new Date(value);
 
@@ -191,6 +197,16 @@ function ProfileStrip({ user }: { user: SessionUser }) {
   );
 }
 
+function StatCard({ stat }: { stat: StatCardData }) {
+  return (
+    <article className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
+      <p className="text-sm font-medium text-zinc-500">{stat.label}</p>
+      <p className="mt-3 text-3xl font-semibold text-zinc-950">{stat.value}</p>
+      <p className="mt-2 text-sm leading-5 text-zinc-500">{stat.helper}</p>
+    </article>
+  );
+}
+
 function DeadlineListCard({
   items,
   todayDate,
@@ -212,7 +228,7 @@ function DeadlineListCard({
         </p>
         <Link
           href="/siswa/katalog"
-          className="mt-5 inline-flex h-10 items-center justify-center rounded-xl bg-[#1768d8] px-4 text-sm font-semibold text-white transition hover:bg-[#1258ba] active:scale-[0.99]"
+          className="mt-5 inline-flex min-h-[44px] w-full items-center justify-center rounded-xl bg-[#1768d8] px-4 text-sm font-semibold text-white transition hover:bg-[#1258ba] active:scale-[0.99] sm:w-auto"
         >
           Buka Katalog
         </Link>
@@ -222,7 +238,7 @@ function DeadlineListCard({
 
   return (
     <section className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm">
-      <div className="flex items-center justify-between gap-3 px-5 py-4">
+      <div className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
         <div>
           <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#1768d8]">
             Deadline Terdekat
@@ -233,7 +249,7 @@ function DeadlineListCard({
         </div>
         <Link
           href="/siswa/peminjaman"
-          className="inline-flex h-9 items-center justify-center rounded-xl border border-zinc-200 px-3 text-sm font-semibold text-zinc-700 transition hover:border-[#b9d3ff] hover:bg-zinc-50 active:scale-[0.99]"
+          className="inline-flex min-h-[44px] w-full items-center justify-center rounded-xl border border-zinc-200 px-3 text-sm font-semibold text-zinc-700 transition hover:border-[#b9d3ff] hover:bg-zinc-50 active:scale-[0.99] sm:w-auto"
         >
           Lihat semua
         </Link>
@@ -258,7 +274,7 @@ function DeadlineListCard({
             <Link
               key={item.key}
               href="/siswa/peminjaman"
-              className="grid gap-3 border-t border-zinc-200 px-5 py-4 text-sm transition hover:bg-[#f8fbff] active:bg-[#edf5ff] md:grid-cols-[1.5fr_0.55fr_1.2fr] md:items-center"
+              className="grid gap-3 border-t border-zinc-200 px-4 py-4 text-sm transition hover:bg-[#f8fbff] active:bg-[#edf5ff] sm:px-5 md:grid-cols-[1.5fr_0.55fr_1.2fr] md:items-center"
             >
               <div className="min-w-0">
                 <p className="line-clamp-2 font-semibold text-zinc-950">
@@ -295,7 +311,7 @@ function QuickActionCard({
     <Link
       href={action.href}
       onClick={() => onNavigate(action.href)}
-      className="group rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-[#b9d3ff] hover:shadow-md active:translate-y-0 active:shadow-sm"
+      className="group min-h-[112px] rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-[#b9d3ff] hover:shadow-md active:translate-y-0 active:shadow-sm"
     >
       <div className="flex items-start gap-3">
         <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#edf5ff] text-[#1768d8] transition group-hover:bg-[#1768d8] group-hover:text-white">
@@ -321,6 +337,35 @@ export function SiswaDashboard({
 }: SiswaDashboardProps) {
   const [navigatingTo, setNavigatingTo] = useState("");
   const sortedItems = sortBorrowingItems(activeItems);
+  const activeTransactionCount = new Set(
+    activeItems.map((item) => item.transactionId)
+  ).size;
+  const activeBookCount = activeItems.reduce(
+    (total, item) => total + item.quantity,
+    0
+  );
+  const urgentDeadlineCount = activeItems.filter((item) => {
+    const dueInfo = getDueInfo(item.dueDate, todayDate);
+
+    return dueInfo.tone !== "good";
+  }).length;
+  const stats: StatCardData[] = [
+    {
+      label: "Buku Dipinjam",
+      value: String(activeBookCount),
+      helper: "Total eksemplar yang sedang kamu pinjam.",
+    },
+    {
+      label: "Transaksi Aktif",
+      value: String(activeTransactionCount),
+      helper: "Jumlah transaksi yang belum selesai dikembalikan.",
+    },
+    {
+      label: "Deadline Dekat",
+      value: String(urgentDeadlineCount),
+      helper: "Buku yang jatuh tempo hari ini, terlambat, atau kurang dari 3 hari.",
+    },
+  ];
   const quickActions: QuickAction[] = [
     {
       href: "/siswa/katalog",
@@ -351,6 +396,12 @@ export function SiswaDashboard({
   return (
     <div className="space-y-5">
       <ProfileStrip user={user} />
+
+      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {stats.map((stat) => (
+          <StatCard key={stat.label} stat={stat} />
+        ))}
+      </section>
 
       <section>
         <DeadlineListCard items={sortedItems} todayDate={todayDate} />
