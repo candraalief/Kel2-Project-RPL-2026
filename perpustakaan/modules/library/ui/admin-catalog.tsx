@@ -1511,7 +1511,7 @@ function BookBorrowCalendar({
 
           <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
             <p className="text-sm font-semibold text-zinc-950">
-              Jadwal jatuh tempo
+              Jadwal Pengembalian Buku
             </p>
             <div className="mt-3 max-h-80 space-y-2 overflow-y-auto pr-1">
               {dueItems.map((item, index) => (
