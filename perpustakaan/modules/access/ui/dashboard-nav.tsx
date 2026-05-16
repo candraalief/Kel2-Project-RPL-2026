@@ -112,7 +112,7 @@ export function DashboardNav({ activeNav, items, role }: DashboardNavProps) {
   const [pendingHref, setPendingHref] = useState<string | null>(null);
 
   return (
-    <div className="mt-[clamp(0.75rem,2.5vh,1.5rem)] shrink-0 space-y-1">
+    <div className="mt-[clamp(0.75rem,2.5vh,1.5rem)] min-h-0 flex-1 space-y-1 overflow-y-auto pr-1 md:shrink-0 md:flex-none md:overflow-visible md:pr-0">
       {items.map((item) => {
         const isActive = isItemActive(item, activeNav);
         const isPending = pendingHref === item.href && pathname !== item.href;
@@ -131,7 +131,7 @@ export function DashboardNav({ activeNav, items, role }: DashboardNavProps) {
 
               setPendingHref(item.href);
             }}
-            className={`group flex items-center gap-2.5 rounded-xl px-3 py-[clamp(0.4rem,1.2vh,0.625rem)] text-[13px] font-medium transition ${
+            className={`group flex min-h-11 items-center gap-2.5 rounded-xl px-3 py-[clamp(0.4rem,1.2vh,0.625rem)] text-[13px] font-medium transition md:min-h-0 ${
               isHighlighted
                 ? "bg-[#e6f0ff] text-[#0e53b7] shadow-[0_8px_20px_rgba(2,31,84,0.15)]"
                 : "text-[#dbeaff] hover:bg-white/10 hover:text-white"
@@ -146,7 +146,7 @@ export function DashboardNav({ activeNav, items, role }: DashboardNavProps) {
             >
               <NavIcon label={item.label} />
             </span>
-            <span className="min-w-0 leading-tight">
+            <span className="min-w-0 truncate leading-tight">
               {item.label === "Beranda" && role === "siswa"
                 ? "Dashboard Siswa"
                 : item.label}
