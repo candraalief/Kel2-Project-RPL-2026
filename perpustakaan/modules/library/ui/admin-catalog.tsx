@@ -460,14 +460,14 @@ export function AdminCatalog({
                   setCurrentPage(1);
                 }}
                 placeholder="Cari buku..."
-                className="h-9 w-full rounded-md border border-transparent bg-[#f1f1f4] pl-9 pr-3 text-sm font-semibold text-zinc-900 outline-none transition placeholder:text-slate-500 focus:border-[#1d66d6]"
+                className="min-h-[44px] w-full rounded-md border border-transparent bg-[#f1f1f4] pl-9 pr-3 text-sm font-semibold text-zinc-900 outline-none transition placeholder:text-slate-500 focus:border-[#1d66d6]"
               />
             </label>
 
             {!readOnly ? (
               <Link
                 href="/admin/buku/tambah"
-                className="inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-md bg-[#1768d8] px-4 text-sm font-semibold text-white transition hover:bg-[#1258ba] md:w-auto"
+                className="inline-flex min-h-[44px] w-full items-center justify-center gap-1.5 rounded-md bg-[#1768d8] px-4 text-sm font-semibold text-white transition hover:bg-[#1258ba] md:w-auto"
               >
                 <PlusIcon />
                 Tambah Buku
@@ -517,7 +517,7 @@ export function AdminCatalog({
         </div>
       ) : (
         <section className="space-y-3">
-          <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+          <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {paginatedBooks.map((book) => (
               <BookCard
                 key={book.id}
@@ -816,7 +816,7 @@ function FilterPanel({
               onChange={(event) =>
                 onAvailabilityChange(event.currentTarget.value as AvailabilityFilter)
               }
-              className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2.5 text-sm text-zinc-900 outline-none transition focus:border-[#1d66d6]"
+              className="min-h-[44px] w-full rounded-xl border border-zinc-300 bg-white px-3 py-2.5 text-sm text-zinc-900 outline-none transition focus:border-[#1d66d6]"
             >
               <option value="all">Semua Status</option>
               <option value="available">Tersedia</option>
@@ -830,7 +830,7 @@ function FilterPanel({
               value={yearFrom}
               onChange={(event) => onYearFromChange(event.currentTarget.value)}
               placeholder="2000"
-              className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2.5 text-sm text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-[#1d66d6]"
+              className="min-h-[44px] w-full rounded-xl border border-zinc-300 bg-white px-3 py-2.5 text-sm text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-[#1d66d6]"
             />
           </CatalogFilterField>
 
@@ -840,7 +840,7 @@ function FilterPanel({
               value={yearTo}
               onChange={(event) => onYearToChange(event.currentTarget.value)}
               placeholder="2026"
-              className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2.5 text-sm text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-[#1d66d6]"
+              className="min-h-[44px] w-full rounded-xl border border-zinc-300 bg-white px-3 py-2.5 text-sm text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-[#1d66d6]"
             />
           </CatalogFilterField>
         </div>
@@ -1018,13 +1018,13 @@ function BookCard({
           onOpen();
         }
       }}
-      className="flex cursor-pointer flex-col rounded-2xl border border-zinc-200 bg-white p-2 shadow-sm transition hover:-translate-y-0.5 hover:border-[#b9d3ff] hover:shadow-md"
+      className="flex cursor-pointer flex-col rounded-2xl border border-zinc-200 bg-white p-3 shadow-sm transition hover:-translate-y-0.5 hover:border-[#b9d3ff] hover:shadow-md"
     >
       <BookCover book={book} />
 
       <div className="mt-2 min-w-0">
         <div className="flex items-start justify-between gap-3">
-          <h3 className="line-clamp-2 text-[12px] font-semibold text-zinc-950">
+          <h3 className="line-clamp-2 text-sm font-semibold text-zinc-950">
             {book.title}
           </h3>
           <span
@@ -1037,7 +1037,7 @@ function BookCard({
             {getBookStatus(book)}
           </span>
         </div>
-        <p className="mt-1 text-[10px] text-zinc-600">{book.author ?? "-"}</p>
+        <p className="mt-1 truncate text-xs text-zinc-600">{book.author ?? "-"}</p>
         <p className="mt-1 text-[10px] text-zinc-500">{genreText(book)}</p>
       </div>
 
@@ -1055,7 +1055,7 @@ function BookCard({
               onAddToBorrowCart();
             }}
             disabled={!available}
-            className="inline-flex h-7 w-full items-center justify-center rounded-md border border-blue-200 bg-blue-50 px-2 text-[10px] font-semibold text-blue-600 transition hover:bg-blue-100 disabled:cursor-not-allowed disabled:border-zinc-200 disabled:bg-zinc-100 disabled:text-zinc-400"
+            className="inline-flex min-h-[40px] w-full items-center justify-center rounded-md border border-blue-200 bg-blue-50 px-2 text-xs font-semibold text-blue-600 transition hover:bg-blue-100 disabled:cursor-not-allowed disabled:border-zinc-200 disabled:bg-zinc-100 disabled:text-zinc-400"
           >
             Pinjam
           </button>
@@ -1066,7 +1066,7 @@ function BookCard({
                 event.stopPropagation();
                 onEdit();
               }}
-              className="inline-flex h-7 w-full items-center justify-center rounded-md border border-blue-200 bg-blue-50 px-2 text-[10px] font-semibold text-blue-600 transition hover:bg-blue-100"
+              className="inline-flex min-h-[40px] w-full items-center justify-center rounded-md border border-blue-200 bg-blue-50 px-2 text-xs font-semibold text-blue-600 transition hover:bg-blue-100"
             >
               Edit
             </button>
@@ -1076,7 +1076,7 @@ function BookCard({
                 event.stopPropagation();
                 onDelete();
               }}
-              className="inline-flex h-7 w-full items-center justify-center rounded-md border border-red-200 bg-red-50 px-2 text-[10px] font-semibold text-red-600 transition hover:bg-red-100"
+              className="inline-flex min-h-[40px] w-full items-center justify-center rounded-md border border-red-200 bg-red-50 px-2 text-xs font-semibold text-red-600 transition hover:bg-red-100"
             >
               Hapus
             </button>
@@ -1171,11 +1171,11 @@ function BorrowBookModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/50 p-4"
+      className="fixed inset-0 z-50 flex items-start justify-center bg-zinc-950/50 p-4 sm:items-center"
       onClick={onClose}
     >
       <article
-        className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl"
+        className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl bg-white p-4 shadow-xl sm:p-5"
         onClick={(event) => event.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-4">
@@ -1258,11 +1258,11 @@ function BorrowBookModal({
           </div>
         ) : null}
 
-        <div className="mt-5 flex justify-end gap-3">
+        <div className="mt-5 flex flex-col justify-end gap-3 sm:flex-row">
           <button
             type="button"
             onClick={onClose}
-            className="inline-flex min-w-24 items-center justify-center rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-700 transition hover:bg-zinc-100"
+            className="inline-flex min-h-[44px] w-full min-w-24 items-center justify-center rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-700 transition hover:bg-zinc-100 sm:w-auto"
           >
             Batal
           </button>
@@ -1270,7 +1270,7 @@ function BorrowBookModal({
             type="button"
             onClick={() => onConfirm(safeQuantity)}
             disabled={disabled || !quantityInput}
-            className="inline-flex min-w-32 items-center justify-center rounded-xl bg-[#1d66d6] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#1553b2] disabled:cursor-not-allowed disabled:bg-zinc-400"
+            className="inline-flex min-h-[44px] w-full min-w-32 items-center justify-center rounded-xl bg-[#1d66d6] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#1553b2] disabled:cursor-not-allowed disabled:bg-zinc-400 sm:w-auto"
           >
             Masukkan Cart
           </button>
@@ -1307,11 +1307,11 @@ function BookDetailModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/50 p-4"
+      className="fixed inset-0 z-50 flex items-start justify-center bg-zinc-950/50 p-4 sm:items-center"
       onClick={onClose}
     >
       <article
-        className="max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-[1.5rem] bg-white p-5 shadow-xl"
+        className="max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-[1.5rem] bg-white p-4 shadow-xl sm:p-5"
         onClick={(event) => event.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-4">
@@ -1319,7 +1319,7 @@ function BookDetailModal({
             <p className="text-sm font-semibold uppercase tracking-[0.2em] text-[#1d66d6]">
               Detail Buku
             </p>
-            <h2 className="mt-1 text-3xl font-semibold text-zinc-950">
+            <h2 className="mt-1 text-2xl font-semibold text-zinc-950 sm:text-3xl">
               {book.title}
             </h2>
           </div>
@@ -1487,7 +1487,7 @@ function BookBorrowCalendar({
                 return (
                   <div
                     key={cell.key}
-                    className={`relative flex aspect-square min-h-11 items-center justify-center rounded-xl border text-sm font-semibold ${
+                    className={`relative flex aspect-square min-h-10 items-center justify-center rounded-xl border text-sm font-semibold sm:min-h-11 ${
                       hasDue
                         ? "border-[#1d66d6] bg-[#1d66d6] text-white"
                         : isToday
@@ -1671,11 +1671,11 @@ function CatalogAddCopiesModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/50 p-4"
+      className="fixed inset-0 z-50 flex items-start justify-center bg-zinc-950/50 p-4 sm:items-center"
       onClick={onClose}
     >
       <article
-        className="w-full max-w-xl rounded-2xl bg-white p-5 shadow-xl"
+        className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-2xl bg-white p-4 shadow-xl sm:p-5"
         onClick={(event) => event.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-4">
@@ -1747,12 +1747,12 @@ function CatalogAddCopiesModal({
           </div>
         ) : null}
 
-        <div className="mt-5 flex justify-end gap-3">
+        <div className="mt-5 flex flex-col justify-end gap-3 sm:flex-row">
           <button
             type="button"
             onClick={onClose}
             disabled={pending}
-            className="inline-flex min-w-24 items-center justify-center rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-700 transition hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex min-h-[44px] w-full min-w-24 items-center justify-center rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-700 transition hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
           >
             Kembali
           </button>
@@ -1760,7 +1760,7 @@ function CatalogAddCopiesModal({
             type="button"
             onClick={() => onConfirm(quantityNumber)}
             disabled={disabled}
-            className="inline-flex min-w-40 items-center justify-center rounded-xl bg-[#1768d8] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#1258ba] disabled:cursor-not-allowed disabled:bg-zinc-400"
+            className="inline-flex min-h-[44px] w-full min-w-40 items-center justify-center rounded-xl bg-[#1768d8] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#1258ba] disabled:cursor-not-allowed disabled:bg-zinc-400 sm:w-auto"
           >
             {pending ? "Menambahkan..." : "Tambah"}
           </button>
@@ -1809,11 +1809,11 @@ function RemoveCopiesModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/50 p-4"
+      className="fixed inset-0 z-50 flex items-start justify-center bg-zinc-950/50 p-4 sm:items-center"
       onClick={onClose}
     >
       <article
-        className="w-full max-w-xl rounded-2xl bg-white p-5 shadow-xl"
+        className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-2xl bg-white p-4 shadow-xl sm:p-5"
         onClick={(event) => event.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-4">
@@ -1922,12 +1922,12 @@ function RemoveCopiesModal({
           </div>
         ) : null}
 
-        <div className="mt-5 flex justify-end gap-3">
+        <div className="mt-5 flex flex-col justify-end gap-3 sm:flex-row">
           <button
             type="button"
             onClick={onClose}
             disabled={pending}
-            className="inline-flex min-w-24 items-center justify-center rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-700 transition hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex min-h-[44px] w-full min-w-24 items-center justify-center rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-700 transition hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
           >
             Kembali
           </button>
@@ -1935,7 +1935,7 @@ function RemoveCopiesModal({
             type="button"
             onClick={() => onConfirm(quantityNumber, reason)}
             disabled={disabled}
-            className="inline-flex min-w-40 items-center justify-center rounded-xl bg-red-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-red-600 disabled:cursor-not-allowed disabled:bg-zinc-400"
+            className="inline-flex min-h-[44px] w-full min-w-40 items-center justify-center rounded-xl bg-red-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-red-600 disabled:cursor-not-allowed disabled:bg-zinc-400 sm:w-auto"
           >
             {pending ? "Mengeluarkan..." : "Keluarkan"}
           </button>
@@ -1967,11 +1967,11 @@ function DeleteBookModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/50 p-4"
+      className="fixed inset-0 z-50 flex items-start justify-center bg-zinc-950/50 p-4 sm:items-center"
       onClick={onClose}
     >
       <article
-        className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl"
+        className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl bg-white p-4 shadow-xl sm:p-5"
         onClick={(event) => event.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-4">
@@ -2020,12 +2020,12 @@ function DeleteBookModal({
           </div>
         ) : null}
 
-        <div className="mt-5 flex justify-end gap-3">
+        <div className="mt-5 flex flex-col justify-end gap-3 sm:flex-row">
           <button
             type="button"
             onClick={onClose}
             disabled={pending}
-            className="inline-flex min-w-24 items-center justify-center rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-700 transition hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex min-h-[44px] w-full min-w-24 items-center justify-center rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-700 transition hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
           >
             Kembali
           </button>
@@ -2033,7 +2033,7 @@ function DeleteBookModal({
             type="button"
             onClick={onConfirm}
             disabled={pending || loading || blocked}
-            className="inline-flex min-w-28 items-center justify-center rounded-xl bg-red-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-red-600 disabled:cursor-not-allowed disabled:bg-zinc-400"
+            className="inline-flex min-h-[44px] w-full min-w-28 items-center justify-center rounded-xl bg-red-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-red-600 disabled:cursor-not-allowed disabled:bg-zinc-400 sm:w-auto"
           >
             {pending ? "Menghapus..." : "Hapus"}
           </button>
@@ -2125,12 +2125,12 @@ function EditBookModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/50 p-4"
+      className="fixed inset-0 z-50 flex items-start justify-center bg-zinc-950/50 p-4 sm:items-center"
       onClick={onClose}
     >
       <form
         action={formAction}
-        className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-[1.5rem] bg-white p-5 shadow-xl"
+        className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-[1.5rem] bg-white p-4 shadow-xl sm:p-5"
         onClick={(event) => event.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-4">
@@ -2138,7 +2138,7 @@ function EditBookModal({
             <p className="text-sm uppercase tracking-[0.2em] text-zinc-400">
               Katalog
             </p>
-            <h2 className="mt-1 text-3xl font-semibold text-zinc-950">
+            <h2 className="mt-1 text-2xl font-semibold text-zinc-950 sm:text-3xl">
               Edit Buku
             </h2>
           </div>
@@ -2193,7 +2193,7 @@ function EditBookModal({
               type="url"
               defaultValue={book.coverUrl ?? ""}
               placeholder="https://contoh.com/sampul-buku.jpg"
-              className="mt-3 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2.5 text-sm text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-[#1d66d6]"
+              className="mt-3 min-h-[44px] w-full rounded-xl border border-zinc-300 bg-white px-3 py-2.5 text-sm text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-[#1d66d6]"
             />
             <span className="mt-2 text-xs text-zinc-500">
               Kosongkan field ini untuk menghapus gambar.
@@ -2215,14 +2215,14 @@ function EditBookModal({
               <button
                 type="button"
                 onClick={onAddCopies}
-                className="inline-flex h-10 items-center justify-center rounded-xl border border-blue-200 bg-blue-50 px-3 text-xs font-semibold text-blue-600 transition hover:bg-blue-100"
+                className="inline-flex min-h-[44px] items-center justify-center rounded-xl border border-blue-200 bg-blue-50 px-3 text-xs font-semibold text-blue-600 transition hover:bg-blue-100"
               >
                 Tambah Eksemplar
               </button>
               <button
                 type="button"
                 onClick={onRemoveCopies}
-                className="inline-flex h-10 items-center justify-center rounded-xl border border-red-200 bg-red-50 px-3 text-xs font-semibold text-red-600 transition hover:bg-red-100"
+                className="inline-flex min-h-[44px] items-center justify-center rounded-xl border border-red-200 bg-red-50 px-3 text-xs font-semibold text-red-600 transition hover:bg-red-100"
               >
                 Keluarkan Eksemplar
               </button>
@@ -2247,7 +2247,7 @@ function EditBookModal({
               name="deskripsi"
               rows={4}
               defaultValue={book.description ?? ""}
-              className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2.5 text-sm text-zinc-900 outline-none transition focus:border-[#1d66d6]"
+              className="min-h-[96px] w-full rounded-xl border border-zinc-300 bg-white px-3 py-2.5 text-sm text-zinc-900 outline-none transition focus:border-[#1d66d6]"
             />
           </label>
         </div>
@@ -2256,18 +2256,18 @@ function EditBookModal({
           <ActionNotice state={state} />
         </div>
 
-        <div className="mt-5 flex justify-end gap-3">
+        <div className="mt-5 flex flex-col justify-end gap-3 sm:flex-row">
           <button
             type="button"
             onClick={onClose}
-            className="inline-flex min-w-28 items-center justify-center rounded-xl border border-zinc-300 bg-white px-5 py-3 text-sm font-semibold text-zinc-700 transition hover:bg-zinc-100"
+            className="inline-flex min-h-[44px] w-full min-w-28 items-center justify-center rounded-xl border border-zinc-300 bg-white px-5 py-3 text-sm font-semibold text-zinc-700 transition hover:bg-zinc-100 sm:w-auto"
           >
             Batal
           </button>
           <button
             type="submit"
             disabled={pending}
-            className="inline-flex min-w-36 items-center justify-center rounded-xl bg-[#2f7eea] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#1d66d6] disabled:cursor-not-allowed disabled:bg-zinc-400"
+            className="inline-flex min-h-[44px] w-full min-w-36 items-center justify-center rounded-xl bg-[#2f7eea] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#1d66d6] disabled:cursor-not-allowed disabled:bg-zinc-400 sm:w-auto"
           >
             {pending ? "Menyimpan..." : "Simpan"}
           </button>
@@ -2311,7 +2311,7 @@ function Field({
   required?: boolean;
 }) {
   return (
-    <label className="block space-y-2">
+    <label className="block min-w-0 space-y-2">
       <span className="text-sm font-semibold text-zinc-900">
         {label}
         {required ? <span className="text-red-500"> *</span> : null}
@@ -2321,7 +2321,7 @@ function Field({
         type={type}
         defaultValue={defaultValue}
         required={required}
-        className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2.5 text-sm text-zinc-900 outline-none transition focus:border-[#1d66d6]"
+        className="min-h-[44px] w-full rounded-xl border border-zinc-300 bg-white px-3 py-2.5 text-sm text-zinc-900 outline-none transition focus:border-[#1d66d6]"
       />
     </label>
   );
@@ -2333,7 +2333,7 @@ function shelfCodeValue(value: string) {
 
 function ShelfLocationInput({ defaultValue = "" }: { defaultValue?: string }) {
   return (
-    <label className="block space-y-2">
+    <label className="block min-w-0 space-y-2">
       <span className="text-sm font-semibold text-zinc-900">Lokasi Rak</span>
       <div className="flex overflow-hidden rounded-xl border border-zinc-300 bg-white focus-within:border-[#1d66d6]">
         <span className="inline-flex items-center border-r border-zinc-200 bg-zinc-50 px-3 text-sm font-semibold text-zinc-700">
@@ -2343,7 +2343,7 @@ function ShelfLocationInput({ defaultValue = "" }: { defaultValue?: string }) {
           name="lokasi_rak"
           defaultValue={shelfCodeValue(defaultValue)}
           placeholder="A1"
-          className="min-w-0 flex-1 px-3 py-2.5 text-sm text-zinc-900 outline-none"
+          className="min-h-[44px] min-w-0 flex-1 px-3 py-2.5 text-sm text-zinc-900 outline-none"
         />
       </div>
     </label>
@@ -2353,7 +2353,7 @@ function ShelfLocationInput({ defaultValue = "" }: { defaultValue?: string }) {
 function ActionNotice({ state }: { state: CatalogActionState }) {
   if (state.error) {
     return (
-      <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+      <p className="break-words rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
         {state.error}
       </p>
     );
@@ -2361,7 +2361,7 @@ function ActionNotice({ state }: { state: CatalogActionState }) {
 
   if (state.success) {
     return (
-      <p className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+      <p className="break-words rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
         {state.success}
       </p>
     );

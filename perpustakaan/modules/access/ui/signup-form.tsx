@@ -47,7 +47,7 @@ export function SignupForm() {
 
   if (state?.success) {
     return (
-      <div className="rounded-[1.75rem] border border-emerald-200 bg-white/95 p-6 shadow-sm">
+      <div className="w-full rounded-[1.75rem] border border-emerald-200 bg-white/95 p-4 shadow-sm sm:p-6">
         <div className="space-y-2">
           <p className="text-xs font-semibold uppercase tracking-[0.3em] text-emerald-700">
             Pendaftaran Terkirim
@@ -61,14 +61,14 @@ export function SignupForm() {
           </p>
         </div>
 
-        <div className="mt-6 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm leading-6 text-emerald-800">
+        <div className="mt-6 break-words rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm leading-6 text-emerald-800">
           Setelah admin menyetujui pendaftaran, masuk kembali melalui halaman
           login dengan username atau email yang sudah didaftarkan.
         </div>
 
         <Link
           href="/"
-          className="mt-6 inline-flex w-full items-center justify-center rounded-2xl bg-[#145da0] px-5 py-3 text-sm font-medium text-white transition hover:bg-[#0f4f8a]"
+          className="mt-6 inline-flex min-h-[44px] w-full items-center justify-center rounded-2xl bg-[#145da0] px-5 py-3 text-sm font-medium text-white transition hover:bg-[#0f4f8a]"
         >
           Kembali ke halaman login
         </Link>
@@ -77,7 +77,7 @@ export function SignupForm() {
   }
 
   return (
-    <div className="rounded-[1.75rem] border border-white/70 bg-white/95 p-6 shadow-sm">
+    <div className="w-full rounded-[1.75rem] border border-white/70 bg-white/95 p-4 shadow-sm sm:p-6">
       <div className="space-y-2">
         <p className="text-xs font-semibold uppercase tracking-[0.3em] text-[#145da0]">
           Registrasi Siswa
@@ -144,7 +144,7 @@ export function SignupForm() {
           onChange={(value) => updateField("password", value)}
           minLength={8}
           required
-          inputClassName="w-full rounded-2xl border border-zinc-300 bg-zinc-50 px-4 py-3 pr-12 text-zinc-950 outline-none transition focus:border-[#145da0]"
+          inputClassName="min-h-[44px] w-full rounded-2xl border border-zinc-300 bg-zinc-50 px-4 py-3 pr-12 text-zinc-950 outline-none transition focus:border-[#145da0]"
         />
         <PasswordInput
           id="confirm_password"
@@ -153,18 +153,18 @@ export function SignupForm() {
           onChange={(value) => updateField("confirm_password", value)}
           minLength={8}
           required
-          inputClassName="w-full rounded-2xl border border-zinc-300 bg-zinc-50 px-4 py-3 pr-12 text-zinc-950 outline-none transition focus:border-[#145da0]"
+          inputClassName="min-h-[44px] w-full rounded-2xl border border-zinc-300 bg-zinc-50 px-4 py-3 pr-12 text-zinc-950 outline-none transition focus:border-[#145da0]"
         />
 
         <div className="md:col-span-2">
           {state?.error ? (
-            <p className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            <p className="break-words rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
               {state.error}
             </p>
           ) : null}
 
           {state?.success ? (
-            <p className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+            <p className="break-words rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
               {state.success}
             </p>
           ) : null}
@@ -174,7 +174,7 @@ export function SignupForm() {
           <button
             type="submit"
             disabled={pending}
-            className="inline-flex w-full items-center justify-center rounded-2xl bg-[#145da0] px-5 py-3 text-sm font-medium text-white transition hover:bg-[#0f4f8a] disabled:cursor-not-allowed disabled:bg-zinc-400"
+            className="inline-flex min-h-[44px] w-full items-center justify-center rounded-2xl bg-[#145da0] px-5 py-3 text-sm font-medium text-white transition hover:bg-[#0f4f8a] disabled:cursor-not-allowed disabled:bg-zinc-400"
           >
             {pending ? "Mengirim pendaftaran..." : "Daftarkan akun siswa"}
           </button>
@@ -200,7 +200,7 @@ function Field({
   className?: string;
 }) {
   return (
-    <div className={`space-y-2 ${className}`}>
+    <div className={`min-w-0 space-y-2 ${className}`}>
       <label htmlFor={id} className="text-sm font-medium text-zinc-800">
         {label}
       </label>
@@ -211,7 +211,7 @@ function Field({
         value={value}
         onChange={(event) => onChange(event.target.value)}
         required
-        className="w-full rounded-2xl border border-zinc-300 bg-zinc-50 px-4 py-3 text-zinc-950 outline-none transition focus:border-[#145da0]"
+        className="min-h-[44px] w-full rounded-2xl border border-zinc-300 bg-zinc-50 px-4 py-3 text-zinc-950 outline-none transition focus:border-[#145da0]"
       />
     </div>
   );

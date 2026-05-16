@@ -363,41 +363,41 @@ export function AdminMembers({
 
   return (
     <div className="overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm">
-      <div className="shrink-0 space-y-4 border-b border-zinc-200 px-7 py-5">
+      <div className="shrink-0 space-y-4 border-b border-zinc-200 px-4 py-5 sm:px-7">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
-          <div className="grid h-12 w-full grid-cols-2 rounded-2xl bg-[#e8e8ed] p-1 lg:flex-1">
+          <div className="grid min-h-12 w-full grid-cols-2 rounded-2xl bg-[#e8e8ed] p-1 lg:flex-1">
             <button
               type="button"
               onClick={() => changeTab("registered")}
               aria-busy={loadingTab === "registered"}
-              className={`inline-flex items-center justify-center gap-2 rounded-2xl text-sm font-semibold transition ${
+              className={`inline-flex min-w-0 items-center justify-center gap-2 rounded-2xl px-2 py-2 text-sm font-semibold transition ${
                 activeTab === "registered" || loadingTab === "registered"
                   ? "bg-white text-black shadow-sm"
                   : "text-black"
               }`}
             >
               {loadingTab === "registered" ? <ButtonLoadingSpinner /> : null}
-              <span>Siswa Terdaftar ({registeredSiswaCount})</span>
+              <span className="truncate">Siswa Terdaftar ({registeredSiswaCount})</span>
             </button>
             <button
               type="button"
               onClick={() => changeTab("pending")}
               aria-busy={loadingTab === "pending"}
-              className={`inline-flex items-center justify-center gap-2 rounded-2xl text-sm font-semibold transition ${
+              className={`inline-flex min-w-0 items-center justify-center gap-2 rounded-2xl px-2 py-2 text-sm font-semibold transition ${
                 activeTab === "pending" || loadingTab === "pending"
                   ? "bg-white text-black shadow-sm"
                   : "text-black"
               }`}
             >
               {loadingTab === "pending" ? <ButtonLoadingSpinner /> : null}
-              <span>Menunggu Verifikasi ({pendingSiswaCount})</span>
+              <span className="truncate">Menunggu Verifikasi ({pendingSiswaCount})</span>
             </button>
           </div>
 
           <button
             type="button"
             onClick={() => setModal({ mode: "add" })}
-            className="inline-flex h-12 shrink-0 items-center justify-center gap-3 rounded-lg bg-[#020016] px-5 text-sm font-semibold text-white transition hover:bg-[#10102a]"
+            className="inline-flex h-12 w-full shrink-0 items-center justify-center gap-3 rounded-lg bg-[#020016] px-5 text-sm font-semibold text-white transition hover:bg-[#10102a] lg:w-auto"
           >
             <Icon name="plus" className="h-5 w-5" />
             Tambah Siswa
@@ -420,17 +420,17 @@ export function AdminMembers({
           <button
             type="button"
             onClick={resetFilters}
-            className="inline-flex h-12 shrink-0 items-center justify-center rounded-lg border border-zinc-200 bg-white px-6 text-sm font-semibold text-black transition hover:bg-zinc-50"
+            className="inline-flex h-12 w-full shrink-0 items-center justify-center rounded-lg border border-zinc-200 bg-white px-6 text-sm font-semibold text-black transition hover:bg-zinc-50 lg:w-auto"
           >
             Reset Filter
           </button>
         </div>
       </div>
 
-      <div className="px-7 py-5">
+      <div className="px-4 py-5 sm:px-7">
         <div className="min-w-0">
-          <div className="min-w-0">
-          <table className="w-full table-fixed border-collapse text-center">
+          <div className="overflow-x-auto pb-2">
+          <table className="min-w-[760px] w-full table-fixed border-collapse text-center">
             <thead>
               <tr className="border-b border-zinc-200 text-sm font-semibold text-black">
                 <th className="w-[12%] px-2 py-2.5">
@@ -469,7 +469,7 @@ export function AdminMembers({
           </table>
 
           <div className="max-h-[310px] overflow-y-auto">
-          <table className="w-full table-fixed border-collapse text-center">
+          <table className="min-w-[760px] w-full table-fixed border-collapse text-center">
             <tbody>
               {filteredSiswa.length === 0 ? (
                 <tr>
@@ -569,7 +569,7 @@ export function AdminMembers({
                 </select>
               </label>
 
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <button
                   type="button"
                   onClick={() => changePage(siswaPage.page - 1)}
@@ -759,7 +759,7 @@ function ActionToast({
   onClose: () => void;
 }) {
   return (
-    <div className="fixed right-6 top-6 z-[60] flex items-center gap-4 rounded-lg border border-emerald-200 bg-emerald-50 px-5 py-3 text-sm font-semibold text-emerald-700 shadow-lg">
+    <div className="fixed left-4 right-4 top-4 z-[60] flex items-center gap-4 rounded-lg border border-emerald-200 bg-emerald-50 px-5 py-3 text-sm font-semibold text-emerald-700 shadow-lg sm:left-auto sm:right-6 sm:top-6">
       <span>{message}</span>
       <button
         type="button"
@@ -804,7 +804,7 @@ function DangerConfirmModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 py-4"
       onClick={() => {
         if (!isPending) {
           onClose();
@@ -812,7 +812,7 @@ function DangerConfirmModal({
       }}
     >
       <section
-        className="w-full max-w-md rounded-lg bg-white p-6 shadow-2xl"
+        className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-lg bg-white p-4 shadow-2xl sm:p-6"
         onClick={(event) => event.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-4">
@@ -835,17 +835,17 @@ function DangerConfirmModal({
         {children}
 
         {error ? (
-          <p className="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          <p className="mt-4 break-words rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
             {error}
           </p>
         ) : null}
 
-        <div className="mt-6 flex justify-end gap-3">
+        <div className="mt-6 flex flex-col justify-end gap-3 sm:flex-row">
           <button
             type="button"
             onClick={onClose}
             disabled={isPending}
-            className="inline-flex h-11 min-w-24 items-center justify-center rounded-lg border border-zinc-200 bg-white px-5 text-sm font-semibold text-black transition hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex h-11 w-full min-w-24 items-center justify-center rounded-lg border border-zinc-200 bg-white px-5 text-sm font-semibold text-black transition hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
           >
             Kembali
           </button>
@@ -853,7 +853,7 @@ function DangerConfirmModal({
             type="button"
             onClick={onConfirm}
             disabled={isPending}
-            className={`inline-flex h-11 min-w-24 items-center justify-center rounded-lg px-5 text-sm font-semibold text-white transition disabled:cursor-not-allowed disabled:bg-zinc-400 ${confirmClassName}`}
+            className={`inline-flex h-11 w-full min-w-24 items-center justify-center rounded-lg px-5 text-sm font-semibold text-white transition disabled:cursor-not-allowed disabled:bg-zinc-400 sm:w-auto ${confirmClassName}`}
           >
             {isPending ? pendingLabel : confirmLabel}
           </button>
@@ -893,11 +893,11 @@ function ResetPasswordModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 py-4"
       onClick={onClose}
     >
       <section
-        className="w-full max-w-md rounded-lg bg-white p-6 shadow-2xl"
+        className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-lg bg-white p-4 shadow-2xl sm:p-6"
         onClick={(event) => event.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-4">
@@ -929,17 +929,17 @@ function ResetPasswordModal({
         </div>
 
         {error ? (
-          <p className="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          <p className="mt-4 break-words rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
             {error}
           </p>
         ) : null}
 
-        <div className="mt-6 flex justify-end gap-3">
+        <div className="mt-6 flex flex-col justify-end gap-3 sm:flex-row">
           <button
             type="button"
             onClick={onClose}
             disabled={isPending}
-            className="inline-flex h-11 min-w-20 items-center justify-center rounded-lg border border-zinc-200 bg-white px-5 text-sm font-semibold text-black transition hover:bg-zinc-50"
+            className="inline-flex h-11 w-full min-w-20 items-center justify-center rounded-lg border border-zinc-200 bg-white px-5 text-sm font-semibold text-black transition hover:bg-zinc-50 sm:w-auto"
           >
             Tidak
           </button>
@@ -947,7 +947,7 @@ function ResetPasswordModal({
             type="button"
             onClick={handleReset}
             disabled={isPending}
-            className="inline-flex h-11 min-w-20 items-center justify-center rounded-lg bg-[#020016] px-5 text-sm font-semibold text-white transition hover:bg-[#10102a] disabled:cursor-not-allowed disabled:bg-zinc-400"
+            className="inline-flex h-11 w-full min-w-20 items-center justify-center rounded-lg bg-[#020016] px-5 text-sm font-semibold text-white transition hover:bg-[#10102a] disabled:cursor-not-allowed disabled:bg-zinc-400 sm:w-auto"
           >
             {isPending ? "Memproses..." : "Ya"}
           </button>
@@ -1241,14 +1241,14 @@ function SiswaModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/50 px-4 py-9"
+      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/50 px-4 py-4 sm:py-9"
       onClick={onClose}
     >
       <section
-        className="w-full max-w-2xl rounded-lg bg-white shadow-2xl"
+        className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-lg bg-white shadow-2xl"
         onClick={(event) => event.stopPropagation()}
       >
-        <div className="flex items-start justify-between gap-4 px-7 pt-7">
+        <div className="flex items-start justify-between gap-4 px-4 pt-5 sm:px-7 sm:pt-7">
           <div>
             <h2 className="text-2xl font-semibold text-black">{title}</h2>
             <p className="mt-2 text-sm text-slate-500">{subtitle}</p>
@@ -1281,7 +1281,7 @@ function SiswaModal({
 
 function SiswaDetail({ siswa }: { siswa: SiswaAccount }) {
   return (
-    <div className="grid gap-3 px-7 py-7 sm:grid-cols-2">
+    <div className="grid gap-3 px-4 py-5 sm:grid-cols-2 sm:px-7 sm:py-7">
       <DetailItem label="NIS" value={siswa.nisn} />
       <DetailItem label="Nama Lengkap" value={siswa.nama} />
       <DetailItem label="Username" value={siswa.username} />
@@ -1374,7 +1374,7 @@ function SiswaForm({
   const isEditMode = mode === "edit";
 
   return (
-    <form ref={formRef} action={formAction} className="px-7 py-7">
+    <form ref={formRef} action={formAction} className="px-4 py-5 sm:px-7 sm:py-7">
       {siswa ? <input type="hidden" name="id_siswa" value={siswa.id_siswa} /> : null}
 
       <div className="grid gap-x-5 gap-y-4 sm:grid-cols-2">
@@ -1474,18 +1474,18 @@ function SiswaForm({
 
       <ActionNotice state={state} />
 
-      <div className="mt-8 flex justify-end gap-3">
+      <div className="mt-8 flex flex-col justify-end gap-3 sm:flex-row">
         <button
           type="button"
           onClick={onClose}
-          className="inline-flex h-11 min-w-20 items-center justify-center rounded-lg border border-zinc-200 bg-white px-5 text-sm font-semibold text-black transition hover:bg-zinc-50"
+          className="inline-flex h-11 w-full min-w-20 items-center justify-center rounded-lg border border-zinc-200 bg-white px-5 text-sm font-semibold text-black transition hover:bg-zinc-50 sm:w-auto"
         >
           Batal
         </button>
         <button
           type="submit"
           disabled={pending}
-          className="inline-flex h-11 min-w-36 items-center justify-center rounded-lg bg-[#020016] px-5 text-sm font-semibold text-white transition hover:bg-[#10102a] disabled:cursor-not-allowed disabled:bg-zinc-400"
+          className="inline-flex h-11 w-full min-w-36 items-center justify-center rounded-lg bg-[#020016] px-5 text-sm font-semibold text-white transition hover:bg-[#10102a] disabled:cursor-not-allowed disabled:bg-zinc-400 sm:w-auto"
         >
           {pending
             ? "Menyimpan..."
@@ -1529,7 +1529,7 @@ function Field({
         };
 
   return (
-    <label className={`block space-y-2 ${className}`}>
+    <label className={`block min-w-0 space-y-2 ${className}`}>
       <span className="text-sm font-semibold text-black">{label}</span>
       <input
         name={name}
@@ -1555,7 +1555,7 @@ function DetailItem({ label, value }: { label: string; value: string | null }) {
 function ActionNotice({ state }: { state: SiswaAdminActionState }) {
   if (state.error) {
     return (
-      <p className="mt-5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+      <p className="mt-5 break-words rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
         {state.error}
       </p>
     );
@@ -1563,7 +1563,7 @@ function ActionNotice({ state }: { state: SiswaAdminActionState }) {
 
   if (state.success) {
     return (
-      <p className="mt-5 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+      <p className="mt-5 break-words rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
         {state.success}
       </p>
     );

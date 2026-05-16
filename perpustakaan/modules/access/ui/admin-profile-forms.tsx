@@ -98,7 +98,7 @@ export function AdminProfileForms({
       ) : null}
 
       <section className="overflow-hidden rounded-[1.5rem] border border-zinc-200 bg-white shadow-sm">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-200 px-5 py-4">
+        <div className="flex flex-col gap-3 border-b border-zinc-200 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
           <div>
             <p className="text-sm font-semibold uppercase tracking-[0.16em] text-zinc-500">
               Admin Profile
@@ -112,7 +112,7 @@ export function AdminProfileForms({
           </span>
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto pb-2">
           <div className="min-w-[760px]">
             <div className="grid grid-cols-[80px_1fr_1fr_1fr_130px] bg-zinc-50 px-5 py-3 text-xs font-semibold uppercase tracking-[0.14em] text-zinc-400">
               <span>ID</span>
@@ -149,7 +149,7 @@ export function AdminProfileForms({
               type="button"
               onClick={() => canManageAdmins && setModalMode("add")}
               disabled={!canManageAdmins}
-              className="flex w-full items-center justify-center gap-3 border-t border-dashed border-[#b9d3ff] bg-[#eef5ff] px-5 py-5 text-sm font-semibold text-[#0f5fc4] transition hover:bg-[#e3efff] disabled:cursor-not-allowed disabled:border-zinc-200 disabled:bg-zinc-50 disabled:text-zinc-400"
+            className="flex min-h-[44px] w-full items-center justify-center gap-3 border-t border-dashed border-[#b9d3ff] bg-[#eef5ff] px-5 py-5 text-sm font-semibold text-[#0f5fc4] transition hover:bg-[#e3efff] disabled:cursor-not-allowed disabled:border-zinc-200 disabled:bg-zinc-50 disabled:text-zinc-400"
             >
               <span className="text-2xl leading-none">+</span>
               Tambah Admin
@@ -313,11 +313,11 @@ function AdminDetailModal({
         />
         <FormStatus state={updateState} />
 
-        <div className="flex flex-wrap justify-between gap-3 pt-1">
+        <div className="flex flex-col justify-between gap-3 pt-1 sm:flex-row">
           <button
             type="submit"
             disabled={!canManageAdmins || updatePending}
-            className="inline-flex min-w-36 items-center justify-center rounded-xl bg-[#2f7eea] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#1d66d6] disabled:cursor-not-allowed disabled:bg-zinc-400"
+            className="inline-flex min-h-[44px] w-full min-w-36 items-center justify-center rounded-xl bg-[#2f7eea] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#1d66d6] disabled:cursor-not-allowed disabled:bg-zinc-400 sm:w-auto"
           >
             {updatePending ? "Menyimpan..." : "Simpan Edit"}
           </button>
@@ -329,7 +329,7 @@ function AdminDetailModal({
           type="button"
           onClick={onDelete}
           disabled={!canDelete}
-          className="inline-flex min-w-36 items-center justify-center rounded-xl bg-red-500 px-5 py-3 text-sm font-semibold text-white transition hover:bg-red-600 disabled:cursor-not-allowed disabled:bg-zinc-400"
+          className="inline-flex min-h-[44px] w-full min-w-36 items-center justify-center rounded-xl bg-red-500 px-5 py-3 text-sm font-semibold text-white transition hover:bg-red-600 disabled:cursor-not-allowed disabled:bg-zinc-400 sm:w-auto"
         >
           Hapus Admin
         </button>
@@ -411,7 +411,7 @@ function AddAdminModal({
         <button
           type="submit"
           disabled={pending}
-          className="inline-flex min-w-40 items-center justify-center rounded-xl bg-[#2f7eea] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#1d66d6] disabled:cursor-not-allowed disabled:bg-zinc-400"
+          className="inline-flex min-h-[44px] w-full min-w-40 items-center justify-center rounded-xl bg-[#2f7eea] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#1d66d6] disabled:cursor-not-allowed disabled:bg-zinc-400 sm:w-auto"
         >
           {pending ? "Menambahkan..." : "Tambah Akun"}
         </button>
@@ -428,7 +428,7 @@ function ActionToast({
   onClose: () => void;
 }) {
   return (
-    <div className="fixed right-6 top-6 z-[60] flex items-center gap-4 rounded-lg border border-emerald-200 bg-emerald-50 px-5 py-3 text-sm font-semibold text-emerald-700 shadow-lg">
+    <div className="fixed left-4 right-4 top-4 z-[60] flex items-center gap-4 rounded-lg border border-emerald-200 bg-emerald-50 px-5 py-3 text-sm font-semibold text-emerald-700 shadow-lg sm:left-auto sm:right-6 sm:top-6">
       <span>{message}</span>
       <button
         type="button"
@@ -468,7 +468,7 @@ function DangerConfirmModal({
 }) {
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/50 px-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/50 px-4 py-4"
       onClick={() => {
         if (!isPending) {
           onClose();
@@ -476,7 +476,7 @@ function DangerConfirmModal({
       }}
     >
       <section
-        className="w-full max-w-md rounded-xl bg-white p-6 shadow-2xl"
+        className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-xl bg-white p-4 shadow-2xl sm:p-6"
         onClick={(event) => event.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-4">
@@ -500,17 +500,17 @@ function DangerConfirmModal({
         {children}
 
         {error ? (
-          <p className="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          <p className="mt-4 break-words rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
             {error}
           </p>
         ) : null}
 
-        <div className="mt-6 flex justify-end gap-3">
+        <div className="mt-6 flex flex-col justify-end gap-3 sm:flex-row">
           <button
             type="button"
             onClick={onClose}
             disabled={isPending}
-            className="inline-flex h-11 min-w-24 items-center justify-center rounded-lg border border-zinc-200 bg-white px-5 text-sm font-semibold text-zinc-950 transition hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex h-11 w-full min-w-24 items-center justify-center rounded-lg border border-zinc-200 bg-white px-5 text-sm font-semibold text-zinc-950 transition hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
           >
             Kembali
           </button>
@@ -518,7 +518,7 @@ function DangerConfirmModal({
             type="button"
             onClick={onConfirm}
             disabled={isPending || confirmDisabled}
-            className="inline-flex h-11 min-w-24 items-center justify-center rounded-lg bg-red-600 px-5 text-sm font-semibold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-zinc-400"
+            className="inline-flex h-11 w-full min-w-24 items-center justify-center rounded-lg bg-red-600 px-5 text-sm font-semibold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-zinc-400 sm:w-auto"
           >
             {isPending ? pendingLabel : confirmLabel}
           </button>
@@ -606,7 +606,7 @@ function DeleteAdminModal({
           }}
           disabled={isPending}
           placeholder="ketik : hapus admin"
-          className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-3 text-sm text-zinc-950 outline-none transition placeholder:text-zinc-400 focus:border-red-500 disabled:cursor-not-allowed disabled:bg-zinc-100"
+          className="min-h-[44px] w-full rounded-xl border border-zinc-300 bg-white px-3 py-3 text-sm text-zinc-950 outline-none transition placeholder:text-zinc-400 focus:border-red-500 disabled:cursor-not-allowed disabled:bg-zinc-100"
         />
       </label>
     </DangerConfirmModal>
@@ -623,8 +623,8 @@ function Modal({
   onClose: () => void;
 }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/40 px-4 py-6 backdrop-blur-sm">
-      <section className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-[1.5rem] border border-zinc-200 bg-white p-5 shadow-2xl">
+    <div className="fixed inset-0 z-50 flex items-start justify-center bg-zinc-950/40 px-4 py-4 backdrop-blur-sm sm:items-center sm:py-6">
+      <section className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-[1.5rem] border border-zinc-200 bg-white p-4 shadow-2xl sm:p-5">
         <div className="mb-5 flex items-center justify-between gap-3">
           <div>
             <p className="text-sm font-semibold uppercase tracking-[0.16em] text-zinc-500">
@@ -680,7 +680,7 @@ function Field({
         };
 
   return (
-    <label className="space-y-2">
+    <label className="min-w-0 space-y-2">
       <span className="text-sm font-semibold text-zinc-800">{label}</span>
       <input
         name={name}
@@ -689,7 +689,7 @@ function Field({
         required={required}
         disabled={disabled}
         placeholder={disabled ? "Tidak tersedia" : placeholder}
-        className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-3 text-sm text-zinc-950 outline-none transition placeholder:text-zinc-400 focus:border-[#1d66d6] disabled:cursor-not-allowed disabled:bg-zinc-100 disabled:text-zinc-500"
+        className="min-h-[44px] w-full rounded-xl border border-zinc-300 bg-white px-3 py-3 text-sm text-zinc-950 outline-none transition placeholder:text-zinc-400 focus:border-[#1d66d6] disabled:cursor-not-allowed disabled:bg-zinc-100 disabled:text-zinc-500"
       />
     </label>
   );
@@ -707,7 +707,7 @@ function SchemaNote({
   }
 
   return (
-    <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+    <p className="break-words rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
       Kolom email atau nomor telephone belum tersedia di tabel admin, jadi field
       tersebut dinonaktifkan tanpa mengganggu data utama.
     </p>
@@ -718,13 +718,13 @@ function FormStatus({ state }: { state: AdminProfileState }) {
   return (
     <>
       {state.error ? (
-        <p className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+        <p className="break-words rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
           {state.error}
         </p>
       ) : null}
 
       {state.success ? (
-        <p className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+        <p className="break-words rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
           {state.success}
         </p>
       ) : null}

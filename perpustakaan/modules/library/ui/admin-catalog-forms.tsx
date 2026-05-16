@@ -34,10 +34,10 @@ export function AdminCatalogCreatePage({ genres }: { genres: CatalogGenre[] }) {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-4">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="text-sm font-semibold text-zinc-500">Admin</p>
-          <h2 className="text-3xl font-semibold text-zinc-950">
+          <h2 className="text-2xl font-semibold text-zinc-950 sm:text-3xl">
             Katalog - Tambah Katalog
           </h2>
         </div>
@@ -49,12 +49,12 @@ export function AdminCatalogCreatePage({ genres }: { genres: CatalogGenre[] }) {
         </Link>
       </div>
 
-      <div className="inline-flex rounded-2xl border border-zinc-200 bg-white p-1 shadow-sm">
+      <div className="inline-flex w-full rounded-2xl border border-zinc-200 bg-white p-1 shadow-sm sm:w-auto">
         <button
           type="button"
           onClick={() => selectTab("book")}
           aria-busy={loadingTab === "book"}
-          className={`inline-flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold transition ${
+          className={`inline-flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold transition sm:flex-none ${
             activeTab === "book"
               ? "bg-[#1d66d6] text-white"
               : "text-zinc-600 hover:bg-zinc-50"
@@ -67,7 +67,7 @@ export function AdminCatalogCreatePage({ genres }: { genres: CatalogGenre[] }) {
           type="button"
           onClick={() => selectTab("genre")}
           aria-busy={loadingTab === "genre"}
-          className={`inline-flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold transition ${
+          className={`inline-flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold transition sm:flex-none ${
             activeTab === "genre"
               ? "bg-[#1d66d6] text-white"
               : "text-zinc-600 hover:bg-zinc-50"
@@ -79,11 +79,11 @@ export function AdminCatalogCreatePage({ genres }: { genres: CatalogGenre[] }) {
       </div>
 
       {activeTab === "book" ? (
-        <section className="rounded-[1.5rem] border border-zinc-200 bg-white p-5 shadow-sm">
+        <section className="rounded-[1.5rem] border border-zinc-200 bg-white p-4 shadow-sm sm:p-5">
           <AddBookForm genres={genres} />
         </section>
       ) : (
-        <section className="rounded-[1.5rem] border border-zinc-200 bg-white p-5 shadow-sm">
+        <section className="rounded-[1.5rem] border border-zinc-200 bg-white p-4 shadow-sm sm:p-5">
           <AddGenreForm genres={genres} />
         </section>
       )}
@@ -234,7 +234,7 @@ function AddBookForm({ genres }: { genres: CatalogGenre[] }) {
             value={bookFields.foto_url}
             onChange={(event) => updateBookField("foto_url", event.currentTarget.value)}
             placeholder="https://contoh.com/sampul-buku.jpg"
-            className="mt-3 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2.5 text-sm text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-[#1d66d6]"
+            className="mt-3 min-h-[44px] w-full rounded-xl border border-zinc-300 bg-white px-3 py-2.5 text-sm text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-[#1d66d6]"
           />
           <span className="mt-2 text-xs text-zinc-500">
             Bisa memakai URL gambar dari internet.
@@ -302,7 +302,7 @@ function AddBookForm({ genres }: { genres: CatalogGenre[] }) {
                   key={genre.id}
                   type="button"
                   onClick={() => toggleGenre(genre.id)}
-                  className={`inline-flex h-8 items-center gap-2 rounded-full border px-3 text-xs font-semibold transition ${
+                  className={`inline-flex min-h-[36px] items-center gap-2 rounded-full border px-3 text-xs font-semibold transition ${
                     selectedGenreIds.includes(genre.id)
                       ? "border-[#2f7cff] bg-[#2f7cff] text-white"
                       : "border-zinc-200 bg-white text-black hover:bg-zinc-50"
@@ -327,7 +327,7 @@ function AddBookForm({ genres }: { genres: CatalogGenre[] }) {
                 <button
                   type="button"
                   onClick={() => setShowAllGenres(!showAllGenres)}
-                  className="inline-flex h-8 items-center justify-center rounded-full border border-zinc-200 bg-white px-3 text-xs font-semibold text-[#1768d8] transition hover:bg-zinc-50"
+                  className="inline-flex min-h-[36px] items-center justify-center rounded-full border border-zinc-200 bg-white px-3 text-xs font-semibold text-[#1768d8] transition hover:bg-zinc-50"
                 >
                   {showAllGenres ? "Less" : `More +${hiddenGenreCount}`}
                 </button>
@@ -345,7 +345,7 @@ function AddBookForm({ genres }: { genres: CatalogGenre[] }) {
             rows={4}
             value={bookFields.deskripsi}
             onChange={(event) => updateBookField("deskripsi", event.currentTarget.value)}
-            className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2.5 text-sm text-zinc-900 outline-none transition focus:border-[#1d66d6]"
+            className="min-h-[96px] w-full rounded-xl border border-zinc-300 bg-white px-3 py-2.5 text-sm text-zinc-900 outline-none transition focus:border-[#1d66d6]"
           />
         </label>
 
@@ -360,7 +360,7 @@ function AddBookForm({ genres }: { genres: CatalogGenre[] }) {
       <button
         type="submit"
         disabled={pending}
-        className="inline-flex min-w-44 items-center justify-center rounded-xl bg-[#2f7eea] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#1d66d6] disabled:cursor-not-allowed disabled:bg-zinc-400"
+        className="inline-flex min-h-[44px] w-full min-w-44 items-center justify-center rounded-xl bg-[#2f7eea] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#1d66d6] disabled:cursor-not-allowed disabled:bg-zinc-400 sm:w-auto"
       >
         {pending ? "Menambahkan..." : "Tambahkan"}
       </button>
@@ -469,14 +469,14 @@ function AddGenreForm({ genres }: { genres: CatalogGenre[] }) {
   return (
     <div className="space-y-4">
       <section className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
-        <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
             <h3 className="text-lg font-semibold text-zinc-950">Kelola Genre</h3>
             <p className="mt-1 text-sm text-zinc-500">
               Cari, tambah, edit, dan hapus genre katalog.
             </p>
           </div>
-          <div className="flex min-w-[min(100%,28rem)] flex-1 items-center gap-2 md:flex-none">
+          <div className="flex w-full min-w-0 flex-1 items-center gap-2 md:max-w-md md:flex-none">
             <label className="relative block flex-1">
               <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">
                 <SearchIcon />
@@ -485,13 +485,13 @@ function AddGenreForm({ genres }: { genres: CatalogGenre[] }) {
                 value={genreQuery}
                 onChange={(event) => setGenreQuery(event.currentTarget.value)}
                 placeholder="Cari genre berdasarkan nama..."
-                className="h-10 w-full rounded-xl border border-transparent bg-[#f1f1f4] pl-9 pr-3 text-sm font-semibold text-zinc-900 outline-none transition placeholder:text-slate-500 focus:border-[#1d66d6]"
+                className="min-h-[44px] w-full rounded-xl border border-transparent bg-[#f1f1f4] pl-9 pr-3 text-sm font-semibold text-zinc-900 outline-none transition placeholder:text-slate-500 focus:border-[#1d66d6]"
               />
             </label>
             <button
               type="button"
               onClick={openAddModal}
-              className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#2f7eea] text-xl font-semibold text-white transition hover:bg-[#1d66d6]"
+              className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#2f7eea] text-xl font-semibold text-white transition hover:bg-[#1d66d6]"
               aria-label="Tambah genre"
             >
               +
@@ -518,18 +518,18 @@ function AddGenreForm({ genres }: { genres: CatalogGenre[] }) {
                     {genre.description ?? "Tanpa deskripsi"}
                   </p>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex w-full items-center gap-2 sm:w-auto">
                   <button
                     type="button"
                     onClick={() => openEditModal(genre)}
-                    className="inline-flex h-8 items-center justify-center rounded-lg border border-blue-200 bg-blue-50 px-3 text-xs font-semibold text-blue-600 transition hover:bg-blue-100"
+                    className="inline-flex min-h-[40px] flex-1 items-center justify-center rounded-lg border border-blue-200 bg-blue-50 px-3 text-xs font-semibold text-blue-600 transition hover:bg-blue-100 sm:flex-none"
                   >
                     Edit
                   </button>
                   <button
                     type="button"
                     onClick={() => openDeleteModal(genre)}
-                    className="inline-flex h-8 items-center justify-center rounded-lg border border-red-200 bg-red-50 px-3 text-xs font-semibold text-red-600 transition hover:bg-red-100"
+                    className="inline-flex min-h-[40px] flex-1 items-center justify-center rounded-lg border border-red-200 bg-red-50 px-3 text-xs font-semibold text-red-600 transition hover:bg-red-100 sm:flex-none"
                   >
                     Hapus
                   </button>
@@ -605,12 +605,12 @@ function GenreFormModal({
 }) {
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/50 p-4"
+      className="fixed inset-0 z-50 flex items-start justify-center bg-zinc-950/50 p-4 sm:items-center"
       onClick={onClose}
     >
       <form
         action={onSubmit}
-        className="w-full max-w-xl rounded-2xl bg-white p-5 shadow-xl"
+        className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-2xl bg-white p-4 shadow-xl sm:p-5"
         onClick={(event) => event.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-4">
@@ -647,7 +647,7 @@ function GenreFormModal({
               name="deskripsi_genre"
               rows={4}
               defaultValue={genre?.description ?? ""}
-              className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2.5 text-sm text-zinc-900 outline-none transition focus:border-[#1d66d6]"
+              className="min-h-[96px] w-full rounded-xl border border-zinc-300 bg-white px-3 py-2.5 text-sm text-zinc-900 outline-none transition focus:border-[#1d66d6]"
             />
           </label>
         </div>
@@ -656,19 +656,19 @@ function GenreFormModal({
           <ActionNotice state={state} />
         </div>
 
-        <div className="mt-5 flex justify-end gap-3">
+        <div className="mt-5 flex flex-col justify-end gap-3 sm:flex-row">
           <button
             type="button"
             onClick={onClose}
             disabled={pending}
-            className="inline-flex min-w-24 items-center justify-center rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-700 transition hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex min-h-[44px] w-full min-w-24 items-center justify-center rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-700 transition hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
           >
             Kembali
           </button>
           <button
             type="submit"
             disabled={pending}
-            className="inline-flex min-w-36 items-center justify-center rounded-xl bg-[#2f7eea] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#1d66d6] disabled:cursor-not-allowed disabled:bg-zinc-400"
+            className="inline-flex min-h-[44px] w-full min-w-36 items-center justify-center rounded-xl bg-[#2f7eea] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#1d66d6] disabled:cursor-not-allowed disabled:bg-zinc-400 sm:w-auto"
           >
             {submitLabel}
           </button>
@@ -693,11 +693,11 @@ function DangerGenreModal({
 }) {
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/50 p-4"
+      className="fixed inset-0 z-50 flex items-start justify-center bg-zinc-950/50 p-4 sm:items-center"
       onClick={onClose}
     >
       <article
-        className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl"
+        className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl bg-white p-4 shadow-xl sm:p-5"
         onClick={(event) => event.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-4">
@@ -719,7 +719,7 @@ function DangerGenreModal({
           </button>
         </div>
 
-        <p className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
+        <p className="mt-4 break-words rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
           Genre akan dihapus dari daftar dan relasi buku yang memakai genre ini
           akan dilepas.
         </p>
@@ -728,12 +728,12 @@ function DangerGenreModal({
           <ActionNotice state={state} />
         </div>
 
-        <div className="mt-5 flex justify-end gap-3">
+        <div className="mt-5 flex flex-col justify-end gap-3 sm:flex-row">
           <button
             type="button"
             onClick={onClose}
             disabled={pending}
-            className="inline-flex min-w-24 items-center justify-center rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-700 transition hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex min-h-[44px] w-full min-w-24 items-center justify-center rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-700 transition hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
           >
             Kembali
           </button>
@@ -741,7 +741,7 @@ function DangerGenreModal({
             type="button"
             onClick={onConfirm}
             disabled={pending}
-            className="inline-flex min-w-28 items-center justify-center rounded-xl bg-red-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-red-600 disabled:cursor-not-allowed disabled:bg-zinc-400"
+            className="inline-flex min-h-[44px] w-full min-w-28 items-center justify-center rounded-xl bg-red-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-red-600 disabled:cursor-not-allowed disabled:bg-zinc-400 sm:w-auto"
           >
             {pending ? "Menghapus..." : "Hapus"}
           </button>
@@ -774,7 +774,7 @@ function ShelfLocationInput({
   const code = shelfCodeValue(value);
 
   return (
-    <label className="block space-y-2 md:col-span-2">
+    <label className="block min-w-0 space-y-2 md:col-span-2">
       <span className="text-sm font-semibold text-zinc-900">Lokasi Rak</span>
       <input type="hidden" name="lokasi_rak" value={code} />
       <div className="flex overflow-hidden rounded-xl border border-zinc-300 bg-white focus-within:border-[#1d66d6]">
@@ -785,7 +785,7 @@ function ShelfLocationInput({
           value={code}
           onChange={(event) => onChange(event.currentTarget.value)}
           placeholder="A1"
-          className="min-w-0 flex-1 px-3 py-2.5 text-sm text-zinc-900 outline-none"
+          className="min-h-[44px] min-w-0 flex-1 px-3 py-2.5 text-sm text-zinc-900 outline-none"
         />
       </div>
       <p className="text-xs text-zinc-500">
@@ -826,7 +826,7 @@ function Field({
         };
 
   return (
-    <label className={`block space-y-2 ${className}`}>
+    <label className={`block min-w-0 space-y-2 ${className}`}>
       <span className="text-sm font-semibold text-zinc-900">
         {label}
         {required ? <span className="text-red-500"> *</span> : null}
@@ -837,7 +837,7 @@ function Field({
         {...controlledProps}
         required={required}
         min={min}
-        className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2.5 text-sm text-zinc-900 outline-none transition focus:border-[#1d66d6]"
+        className="min-h-[44px] w-full rounded-xl border border-zinc-300 bg-white px-3 py-2.5 text-sm text-zinc-900 outline-none transition focus:border-[#1d66d6]"
       />
     </label>
   );
@@ -846,7 +846,7 @@ function Field({
 function ActionNotice({ state }: { state: CatalogActionState }) {
   if (state.error) {
     return (
-      <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+      <p className="break-words rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
         {state.error}
       </p>
     );
@@ -854,7 +854,7 @@ function ActionNotice({ state }: { state: CatalogActionState }) {
 
   if (state.success) {
     return (
-      <p className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+      <p className="break-words rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
         {state.success}
       </p>
     );

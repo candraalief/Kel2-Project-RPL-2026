@@ -106,7 +106,7 @@ export function AdminReports({
 }) {
   return (
     <div className="space-y-6">
-      <section className="rounded-[1.75rem] border border-zinc-200 bg-white p-5 shadow-sm lg:p-6">
+      <section className="rounded-[1.75rem] border border-zinc-200 bg-white p-4 shadow-sm sm:p-5 lg:p-6">
         <ReportControlForm
           key={[
             filters.type,
@@ -208,7 +208,7 @@ function ReportControlForm({
                 attendanceTab: "siswa",
               });
             }}
-            className="h-[42px] w-full rounded-xl border border-zinc-300 bg-white px-3 text-sm font-semibold text-zinc-900 outline-none transition focus:border-[#1d66d6]"
+            className="min-h-[44px] w-full rounded-xl border border-zinc-300 bg-white px-3 text-sm font-semibold text-zinc-900 outline-none transition focus:border-[#1d66d6]"
           >
             <option value="transaksi">Peminjaman</option>
             <option value="koleksi">Koleksi Buku</option>
@@ -227,7 +227,7 @@ function ReportControlForm({
                 setSelectedCollectionPeriod(nextPeriod);
                 applyReportFilters({ collectionPeriod: nextPeriod });
               }}
-              className="h-[42px] w-full rounded-xl border border-zinc-300 bg-white px-3 text-sm font-semibold text-zinc-900 outline-none transition focus:border-[#1d66d6]"
+              className="min-h-[44px] w-full rounded-xl border border-zinc-300 bg-white px-3 text-sm font-semibold text-zinc-900 outline-none transition focus:border-[#1d66d6]"
             >
               <option value="monthly">Bulanan</option>
               <option value="yearly">Tahunan</option>
@@ -256,7 +256,7 @@ function ReportControlForm({
                   setSelectedCollectionYear(nextYear);
                   applyReportFilters({ collectionYear: nextYear });
                 }}
-                className="h-[42px] w-full rounded-xl border border-zinc-300 bg-white px-3 text-sm font-semibold text-zinc-900 outline-none transition focus:border-[#1d66d6]"
+                className="min-h-[44px] w-full rounded-xl border border-zinc-300 bg-white px-3 text-sm font-semibold text-zinc-900 outline-none transition focus:border-[#1d66d6]"
               />
             ) : selectedCollectionPeriod === "monthly" ? (
               <input
@@ -269,10 +269,10 @@ function ReportControlForm({
                   setSelectedCollectionMonth(nextMonth);
                   applyReportFilters({ collectionMonth: nextMonth });
                 }}
-                className="h-[42px] w-full rounded-xl border border-zinc-300 bg-white px-3 text-sm font-semibold text-zinc-900 outline-none transition focus:border-[#1d66d6]"
+                className="min-h-[44px] w-full rounded-xl border border-zinc-300 bg-white px-3 text-sm font-semibold text-zinc-900 outline-none transition focus:border-[#1d66d6]"
               />
             ) : (
-              <div className="flex h-[42px] items-center rounded-xl border border-zinc-200 bg-zinc-50 px-3 text-sm font-semibold text-zinc-500">
+              <div className="flex min-h-[44px] items-center rounded-xl border border-zinc-200 bg-zinc-50 px-3 text-sm font-semibold text-zinc-500">
                 Semua data
               </div>
             )}
@@ -280,7 +280,7 @@ function ReportControlForm({
         </div>
 
         <ControlField label="Format">
-          <div className="flex h-[42px] items-center gap-4 rounded-xl border border-zinc-300 bg-white px-3">
+          <div className="flex min-h-[44px] items-center gap-4 rounded-xl border border-zinc-300 bg-white px-3">
             <label className="inline-flex items-center gap-2 text-sm font-semibold text-zinc-900">
               <input
                 type="radio"
@@ -316,7 +316,7 @@ function ReportControlForm({
           type="button"
           onClick={resetReportFilters}
           disabled={isFilterPending}
-          className="inline-flex h-[42px] items-center justify-center rounded-xl border border-zinc-300 bg-white px-4 text-sm font-semibold text-zinc-700 transition hover:bg-zinc-100 disabled:cursor-not-allowed disabled:bg-zinc-100 disabled:text-zinc-400"
+          className="inline-flex min-h-[44px] w-full items-center justify-center rounded-xl border border-zinc-300 bg-white px-4 text-sm font-semibold text-zinc-700 transition hover:bg-zinc-100 disabled:cursor-not-allowed disabled:bg-zinc-100 disabled:text-zinc-400 xl:w-auto"
         >
           Reset Filter
         </button>
@@ -325,7 +325,7 @@ function ReportControlForm({
           type="submit"
           name="unduh"
           value="1"
-          className="inline-flex h-[42px] items-center justify-center gap-2 rounded-xl bg-[#1d66d6] px-4 text-sm font-semibold text-white transition hover:bg-[#1553b2] active:bg-[#0f4698]"
+          className="inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl bg-[#1d66d6] px-4 text-sm font-semibold text-white transition hover:bg-[#1553b2] active:bg-[#0f4698] xl:w-auto"
         >
           <DownloadIcon />
           Unduh
@@ -351,14 +351,14 @@ function DownloadConfirmModal({
 }) {
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/50 p-4"
+      className="fixed inset-0 z-50 flex items-start justify-center bg-zinc-950/50 p-4 sm:items-center"
       onClick={onClose}
     >
       <article
         role="dialog"
         aria-modal="true"
         aria-labelledby="download-report-title"
-        className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl"
+        className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl bg-white p-4 shadow-xl sm:p-5"
         onClick={(event) => event.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-4">
@@ -410,17 +410,17 @@ function DownloadConfirmModal({
           </div>
         </div>
 
-        <div className="mt-5 flex justify-end gap-3">
+        <div className="mt-5 flex flex-col justify-end gap-3 sm:flex-row">
           <button
             type="button"
             onClick={onClose}
-            className="inline-flex min-w-24 items-center justify-center rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-700 transition hover:bg-zinc-100"
+            className="inline-flex min-h-[44px] w-full min-w-24 items-center justify-center rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-sm font-semibold text-zinc-700 transition hover:bg-zinc-100 sm:w-auto"
           >
             Kembali
           </button>
           <a
             href={buildReportDownloadHref(filters)}
-            className="inline-flex min-w-28 items-center justify-center gap-2 rounded-xl bg-[#1d66d6] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#1553b2]"
+            className="inline-flex min-h-[44px] w-full min-w-28 items-center justify-center gap-2 rounded-xl bg-[#1d66d6] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#1553b2] sm:w-auto"
           >
             <DownloadIcon />
             Unduh {filters.format === "excel" ? "Excel" : "PDF"}
@@ -551,7 +551,7 @@ function ReportSection({
   }, [activeHref, clearTabLoading]);
 
   return (
-    <section className="rounded-[1.75rem] border border-zinc-200 bg-white p-5 shadow-sm lg:p-6">
+    <section className="rounded-[1.75rem] border border-zinc-200 bg-white p-4 shadow-sm sm:p-5 lg:p-6">
       <div>
         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">
           {eyebrow}
@@ -562,7 +562,10 @@ function ReportSection({
         <p className="mt-1 text-sm text-zinc-500">{description}</p>
       </div>
 
-      <nav className="mt-5 flex flex-wrap gap-2" aria-label={`${eyebrow} tab`}>
+      <nav
+        className="-mx-4 mt-5 flex flex-nowrap gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0"
+        aria-label={`${eyebrow} tab`}
+      >
         {tabs.map((tab) => {
           const isLoading = loadingHref === tab.href && !tab.isActive;
           const isHighlighted = tab.isActive || isLoading;
@@ -587,7 +590,7 @@ function ReportSection({
 
                 startTabLoading(tab.href);
               }}
-              className={`inline-flex h-10 items-center gap-2 rounded-xl border px-4 text-sm font-semibold transition ${
+              className={`inline-flex min-h-[44px] shrink-0 items-center gap-2 rounded-xl border px-4 text-sm font-semibold transition ${
                 isHighlighted
                   ? "border-[#1d66d6] bg-[#1d66d6] text-white"
                   : "border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50"
@@ -867,17 +870,17 @@ function PaginatedReportTable<T>({
         </tbody>
       </ReportTable>
 
-      <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-zinc-600">
+      <div className="flex flex-col gap-3 text-sm text-zinc-600 sm:flex-row sm:items-center sm:justify-between">
         <span>
           Menampilkan {startIndex + 1}-{Math.min(startIndex + visibleRows.length, rows.length)} dari{" "}
           {rows.length} data
         </span>
-        <div className="inline-flex items-center gap-2">
+        <div className="flex w-full items-center gap-2 sm:w-auto">
           <button
             type="button"
             onClick={() => setPage((current) => Math.max(1, current - 1))}
             disabled={safePage <= 1}
-            className="inline-flex h-9 items-center rounded-lg border border-zinc-300 px-3 font-semibold text-zinc-700 transition hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-40"
+            className="inline-flex min-h-[40px] flex-1 items-center justify-center rounded-lg border border-zinc-300 px-3 font-semibold text-zinc-700 transition hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-40 sm:flex-none"
           >
             Sebelumnya
           </button>
@@ -890,7 +893,7 @@ function PaginatedReportTable<T>({
               setPage((current) => Math.min(totalPages, current + 1))
             }
             disabled={safePage >= totalPages}
-            className="inline-flex h-9 items-center rounded-lg border border-zinc-300 px-3 font-semibold text-zinc-700 transition hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-40"
+            className="inline-flex min-h-[40px] flex-1 items-center justify-center rounded-lg border border-zinc-300 px-3 font-semibold text-zinc-700 transition hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-40 sm:flex-none"
           >
             Berikutnya
           </button>
@@ -908,7 +911,7 @@ function ControlField({
   children: ReactNode;
 }) {
   return (
-    <label className="space-y-1.5 text-sm font-medium text-zinc-700">
+    <label className="min-w-0 space-y-1.5 text-sm font-medium text-zinc-700">
       <span>{label}</span>
       {children}
     </label>
@@ -942,7 +945,7 @@ function ReportTable({
 }) {
   return (
     <div className="overflow-hidden rounded-2xl border border-zinc-200">
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto pb-2">
         <table className="w-full border-collapse text-left" style={{ minWidth }}>
           {children}
         </table>

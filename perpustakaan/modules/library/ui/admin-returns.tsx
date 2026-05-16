@@ -334,7 +334,7 @@ export function AdminReturns({
             value={searchInput}
             onChange={(event) => setSearchInput(event.currentTarget.value)}
             placeholder="Cari nama, judul, NIS, atau ID transaksi"
-            className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2.5 text-sm text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-[#1d66d6]"
+            className="min-h-[44px] w-full rounded-xl border border-zinc-300 bg-white px-3 py-2.5 text-sm text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-[#1d66d6]"
           />
         </FilterField>
 
@@ -344,7 +344,7 @@ export function AdminReturns({
             onChange={(event) =>
               setStatusFilter(event.currentTarget.value as TransactionStatusFilter)
             }
-            className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2.5 text-sm text-zinc-900 outline-none transition focus:border-[#1d66d6]"
+            className="min-h-[44px] w-full rounded-xl border border-zinc-300 bg-white px-3 py-2.5 text-sm text-zinc-900 outline-none transition focus:border-[#1d66d6]"
           >
             <option value="all">Semua</option>
             {activeTab === "history" ? (
@@ -363,7 +363,7 @@ export function AdminReturns({
 
         <button
           type="submit"
-          className="inline-flex h-[42px] items-center justify-center rounded-xl bg-[#1d66d6] px-5 text-sm font-semibold text-white transition hover:bg-[#1553b2]"
+          className="inline-flex min-h-[44px] w-full items-center justify-center rounded-xl bg-[#1d66d6] px-5 text-sm font-semibold text-white transition hover:bg-[#1553b2] md:w-auto"
         >
           Cari
         </button>
@@ -415,14 +415,14 @@ function ReturnTabButton({
       type="button"
       onClick={onClick}
       aria-busy={loading}
-      className={`inline-flex h-12 items-center justify-center gap-2 rounded-xl text-sm font-semibold transition ${
+      className={`inline-flex h-12 min-w-0 items-center justify-center gap-2 rounded-xl px-2 text-sm font-semibold transition ${
         active
           ? "bg-[#1d66d6] text-white shadow-sm"
           : "bg-white text-zinc-900 hover:bg-zinc-50"
       }`}
     >
       {loading ? <ButtonLoadingSpinner /> : null}
-      <span>{label}</span>
+      <span className="truncate">{label}</span>
       <span
         className={`inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[10px] ${
           active ? "bg-white/20 text-white" : "bg-[#dbeafe] text-[#0b55ff]"
@@ -450,8 +450,8 @@ function ReturnTransactionsTable({
   const isHistory = mode === "history";
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-white">
-      <div className="grid grid-cols-[1fr_1fr_1.5fr_0.8fr_1fr_0.9fr] bg-zinc-50 px-4 py-3 text-xs font-semibold text-slate-600">
+    <div className="overflow-x-auto rounded-2xl border border-zinc-200 bg-white">
+      <div className="grid min-w-[860px] grid-cols-[1fr_1fr_1.5fr_0.8fr_1fr_0.9fr] bg-zinc-50 px-4 py-3 text-xs font-semibold text-slate-600">
         <span>ID Transaksi</span>
         <span>NIS</span>
         <span>Nama Siswa</span>
@@ -463,7 +463,7 @@ function ReturnTransactionsTable({
       </div>
 
       {transactions.length === 0 ? (
-        <div className="border-t border-zinc-200 px-4 py-8 text-center text-sm text-zinc-500">
+        <div className="min-w-[860px] border-t border-zinc-200 px-4 py-8 text-center text-sm text-zinc-500">
           {isHistory
             ? "Belum ada history pengembalian yang sesuai filter."
             : "Tidak ada transaksi pengembalian yang sesuai filter."}
@@ -475,7 +475,7 @@ function ReturnTransactionsTable({
           const isExpanded = expandedTransactionIds.has(transaction.id_transaksi);
 
           return (
-            <div key={transaction.id_transaksi} className="border-t border-zinc-200">
+            <div key={transaction.id_transaksi} className="min-w-[860px] border-t border-zinc-200">
               <div className="grid grid-cols-[1fr_1fr_1.5fr_0.8fr_1fr_0.9fr] items-center px-4 py-3 text-sm text-zinc-600">
                 <button
                   type="button"
@@ -534,7 +534,7 @@ function FilterField({
   children: ReactNode;
 }) {
   return (
-    <label className="space-y-1.5 text-sm font-medium text-zinc-700">
+    <label className="min-w-0 space-y-1.5 text-sm font-medium text-zinc-700">
       <span>{label}</span>
       {children}
     </label>
@@ -571,9 +571,9 @@ function TransactionItemsPanel({
 
   return (
     <div className="bg-zinc-50 px-4 pb-4">
-      <div className="ml-6 overflow-hidden rounded-xl border border-zinc-200 bg-white">
+      <div className="ml-0 overflow-x-auto rounded-xl border border-zinc-200 bg-white sm:ml-6">
         <div
-          className={`grid bg-zinc-100 px-4 py-2 text-xs font-semibold text-slate-600 ${
+          className={`grid min-w-[620px] bg-zinc-100 px-4 py-2 text-xs font-semibold text-slate-600 ${
             isHistory
               ? "grid-cols-[1fr_90px_90px_90px_90px]"
               : "grid-cols-[1fr_120px]"
@@ -601,7 +601,7 @@ function TransactionItemsPanel({
             return (
               <div
                 key={item.key}
-                className={`grid border-t border-zinc-200 px-4 py-3 text-sm ${
+                className={`grid min-w-[620px] border-t border-zinc-200 px-4 py-3 text-sm ${
                   isHistory
                     ? "grid-cols-[1fr_90px_90px_90px_90px]"
                     : "grid-cols-[1fr_120px]"
@@ -631,7 +631,7 @@ function TransactionItemsPanel({
       </div>
 
       {transaction.catatan ? (
-        <div className="ml-6 mt-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+        <div className="ml-0 mt-3 break-words rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 sm:ml-6">
           <p className="font-semibold">Catatan Pengembalian</p>
           <p className="mt-1 text-amber-900">{transaction.catatan}</p>
         </div>
@@ -746,7 +746,7 @@ function ReturnDetailModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-3"
+      className="fixed inset-0 z-50 flex items-start justify-center bg-black/60 p-3 sm:items-center"
       onClick={() => {
         if (!isPending) {
           onClose();
@@ -754,11 +754,11 @@ function ReturnDetailModal({
       }}
     >
       <section
-        className="flex max-h-[82vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl"
+        className="flex max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl"
         onClick={(event) => event.stopPropagation()}
       >
-        <div className="flex shrink-0 items-start justify-between gap-3 border-b border-zinc-200 px-5 py-3">
-          <h2 className="text-xl font-semibold text-black">
+        <div className="flex shrink-0 items-start justify-between gap-3 border-b border-zinc-200 px-4 py-3 sm:px-5">
+          <h2 className="text-lg font-semibold text-black sm:text-xl">
             Detail Transaksi Siswa
           </h2>
           <button
@@ -771,7 +771,7 @@ function ReturnDetailModal({
           </button>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto bg-[#f7f8fa] px-5 py-4">
+        <div className="min-h-0 flex-1 overflow-y-auto bg-[#f7f8fa] px-4 py-4 sm:px-5">
           <section>
             <h3 className="text-sm font-semibold text-slate-600">
               Informasi Siswa
@@ -833,30 +833,30 @@ function ReturnDetailModal({
                 onChange={(event) => setReturnNote(event.currentTarget.value)}
                 maxLength={1000}
                 placeholder="Tambahkan catatan bila diperlukan..."
-                className="min-h-16 w-full resize-y rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-[#1d66d6]"
+                className="min-h-24 w-full resize-y rounded-xl border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-[#1d66d6]"
               />
             </label>
 
             {conditionWarning ? (
-              <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800">
+              <div className="mt-3 break-words rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800">
                 {conditionWarning}
               </div>
             ) : null}
 
             {error ? (
-              <div className="mt-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700">
+              <div className="mt-3 break-words rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700">
                 {error}
               </div>
             ) : null}
           </section>
         </div>
 
-        <div className="flex shrink-0 justify-end gap-2.5 border-t border-zinc-200 bg-white px-5 py-3">
+        <div className="flex shrink-0 flex-col justify-end gap-2.5 border-t border-zinc-200 bg-white px-4 py-3 sm:flex-row sm:px-5">
           <button
             type="button"
             onClick={onClose}
             disabled={isPending}
-            className="inline-flex h-10 min-w-24 items-center justify-center rounded-xl bg-zinc-200 px-4 text-sm font-semibold text-slate-700 transition hover:bg-zinc-300 disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex min-h-[44px] w-full min-w-24 items-center justify-center rounded-xl bg-zinc-200 px-4 text-sm font-semibold text-slate-700 transition hover:bg-zinc-300 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
           >
             Batal
           </button>
@@ -864,7 +864,7 @@ function ReturnDetailModal({
             type="button"
             onClick={handleSubmit}
             disabled={isPending || transaction.items.length === 0}
-            className="inline-flex h-10 min-w-48 items-center justify-center rounded-xl bg-[#1d66d6] px-4 text-sm font-semibold text-white transition hover:bg-[#1553b2] disabled:cursor-not-allowed disabled:bg-zinc-400"
+            className="inline-flex min-h-[44px] w-full min-w-48 items-center justify-center rounded-xl bg-[#1d66d6] px-4 text-sm font-semibold text-white transition hover:bg-[#1553b2] disabled:cursor-not-allowed disabled:bg-zinc-400 sm:w-auto"
           >
             {isPending ? "Memproses..." : "Proses Pengembalian"}
           </button>
@@ -884,11 +884,11 @@ function InfoBlock({
   value: string;
 }) {
   return (
-    <div className="flex gap-2">
+    <div className="flex min-w-0 gap-2">
       {icon ? <span className="mt-4 text-slate-400">{icon}</span> : null}
-      <div>
+      <div className="min-w-0">
         <p className="text-xs text-slate-500">{label}</p>
-        <p className="mt-0.5 text-sm font-semibold text-black">{value}</p>
+        <p className="mt-0.5 break-words text-sm font-semibold text-black">{value}</p>
       </div>
     </div>
   );
@@ -1010,7 +1010,7 @@ function ConditionInput({
         value={value}
         readOnly={readOnly}
         onChange={(event) => onChange?.(event.currentTarget.value)}
-        className={`h-9 w-full rounded-lg border px-3 text-base text-black outline-none transition ${toneClass} ${
+        className={`min-h-[44px] w-full rounded-lg border px-3 text-base text-black outline-none transition ${toneClass} ${
           readOnly ? "cursor-not-allowed text-slate-700" : ""
         }`}
       />
@@ -1026,7 +1026,7 @@ function ActionToast({
   onClose: () => void;
 }) {
   return (
-    <div className="fixed right-6 top-6 z-[60] flex items-center gap-4 rounded-lg border border-emerald-200 bg-emerald-50 px-5 py-3 text-sm font-semibold text-emerald-700 shadow-lg">
+    <div className="fixed left-4 right-4 top-4 z-[60] flex items-center gap-4 rounded-lg border border-emerald-200 bg-emerald-50 px-5 py-3 text-sm font-semibold text-emerald-700 shadow-lg sm:left-auto sm:right-6 sm:top-6">
       <span>{message}</span>
       <button
         type="button"

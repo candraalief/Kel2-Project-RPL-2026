@@ -23,7 +23,7 @@ export function LoginForm({ title, description }: LoginFormProps) {
   const [isPublicPending, startPublicTransition] = useTransition();
 
   return (
-    <div className="relative w-full max-w-md rounded-[1.75rem] border border-white/80 bg-white/95 p-4 shadow-[0_20px_80px_rgba(35,40,52,0.18)] backdrop-blur sm:p-5">
+    <div className="relative w-full max-w-md overflow-hidden rounded-[1.75rem] border border-white/80 bg-white/95 p-4 shadow-[0_20px_80px_rgba(35,40,52,0.18)] backdrop-blur sm:p-5">
       {pending || isPublicPending ? (
         <div className="absolute inset-0 z-20 flex flex-col items-center justify-center rounded-[1.75rem] bg-white/92 backdrop-blur-sm">
           <div className="h-12 w-12 animate-spin rounded-full border-4 border-[#d6e7f8] border-t-[#145da0]" />
@@ -59,7 +59,7 @@ export function LoginForm({ title, description }: LoginFormProps) {
             type="text"
             required
             placeholder="Contoh : candraprasetyo"
-            className="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-950 outline-none transition focus:border-[#145da0]"
+          className="min-h-[44px] w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-950 outline-none transition focus:border-[#145da0]"
           />
         </div>
 
@@ -70,7 +70,7 @@ export function LoginForm({ title, description }: LoginFormProps) {
             required
             placeholder="Masukkan kata sandi"
             className="space-y-1"
-            inputClassName="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 pr-12 text-sm text-zinc-950 outline-none transition focus:border-[#145da0]"
+            inputClassName="min-h-[44px] w-full rounded-md border border-zinc-300 bg-white px-3 py-2 pr-12 text-sm text-zinc-950 outline-none transition focus:border-[#145da0]"
           />
           <div className="flex justify-end">
             <Link
@@ -83,7 +83,7 @@ export function LoginForm({ title, description }: LoginFormProps) {
         </div>
 
         {state?.error ? (
-          <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+          <p className="break-words rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
             {state.error}
           </p>
         ) : null}
@@ -91,7 +91,7 @@ export function LoginForm({ title, description }: LoginFormProps) {
         <button
           type="submit"
           disabled={pending}
-          className="inline-flex w-full items-center justify-center rounded-md bg-[#145da0] px-4 py-2.5 text-sm font-medium text-white transition hover:bg-[#0f4f8a] disabled:cursor-not-allowed disabled:bg-zinc-400"
+          className="inline-flex min-h-[44px] w-full items-center justify-center rounded-md bg-[#145da0] px-4 py-2.5 text-sm font-medium text-white transition hover:bg-[#0f4f8a] disabled:cursor-not-allowed disabled:bg-zinc-400"
         >
           {pending ? "Memverifikasi..." : "Masuk"}
         </button>
@@ -100,7 +100,7 @@ export function LoginForm({ title, description }: LoginFormProps) {
       <div className="mt-3 space-y-2.5 border-t border-zinc-200 pt-3">
         <Link
           href="/signup"
-          className="inline-flex w-full items-center justify-center rounded-md border border-[#145da0] px-4 py-2.5 text-sm font-medium text-[#145da0] transition hover:bg-[#f3f8ff]"
+          className="inline-flex min-h-[44px] w-full items-center justify-center rounded-md border border-[#145da0] px-4 py-2.5 text-sm font-medium text-[#145da0] transition hover:bg-[#f3f8ff]"
         >
           Daftar sebagai siswa
         </Link>
@@ -116,7 +116,7 @@ export function LoginForm({ title, description }: LoginFormProps) {
         >
           <button
             type="submit"
-            className="inline-flex w-full items-center justify-center rounded-md border border-zinc-300 px-4 py-2.5 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50"
+            className="inline-flex min-h-[44px] w-full items-center justify-center rounded-md border border-zinc-300 px-4 py-2.5 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50"
           >
             Masuk sebagai publik
           </button>
