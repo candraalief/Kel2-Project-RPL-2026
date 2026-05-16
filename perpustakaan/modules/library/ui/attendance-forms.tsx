@@ -205,20 +205,20 @@ export function PublicAttendanceForm({
     filteredStudents.length === 0;
 
   return (
-    <form action={formAction} className="space-y-5">
+    <form action={formAction} className="w-full space-y-5">
       <div className="space-y-2">
         <p className="text-sm font-medium text-zinc-800">
           Jenis pengunjung <span className="text-red-500">*</span>
         </p>
         <input type="hidden" name="jenis_pengunjung" value={visitorType ?? ""} />
-        <div className="inline-flex rounded-xl border border-zinc-300 bg-white p-1">
+        <div className="grid w-full grid-cols-2 rounded-xl border border-zinc-300 bg-white p-1 sm:inline-grid sm:w-auto">
           {visitorTypes.map((type) => (
             <button
               key={type}
               type="button"
               onClick={() => handleVisitorTypeChange(type)}
               aria-busy={loadingVisitorType === type}
-              className={`inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition ${
+              className={`inline-flex min-h-[44px] min-w-0 items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition ${
                 visitorType === type
                   ? "bg-[#1d66d6] text-white"
                   : "text-zinc-600 hover:bg-zinc-100"
@@ -226,7 +226,9 @@ export function PublicAttendanceForm({
               aria-pressed={visitorType === type}
             >
               {loadingVisitorType === type ? <ButtonLoadingSpinner /> : null}
-              {type === "siswa" ? "Siswa SMAN 10" : "Umum"}
+              <span className="truncate">
+                {type === "siswa" ? "Siswa SMAN 10" : "Umum"}
+              </span>
             </button>
           ))}
         </div>
@@ -250,7 +252,7 @@ export function PublicAttendanceForm({
             value={nameInput}
             autoComplete="off"
             onChange={(event) => handleNameChange(event.currentTarget.value)}
-            className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-[#1d66d6] disabled:cursor-not-allowed disabled:bg-zinc-100 disabled:text-zinc-500"
+            className="min-h-[44px] w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-[#1d66d6] disabled:cursor-not-allowed disabled:bg-zinc-100 disabled:text-zinc-500"
           />
 
           {shouldShowSuggestions ? (
@@ -264,7 +266,7 @@ export function PublicAttendanceForm({
                     setSelectedStudentId(student.id_siswa);
                     setKelasInput(student.kelas ?? "-");
                   }}
-                  className="flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2 text-left text-sm text-zinc-700 transition hover:bg-zinc-100"
+                  className="flex min-h-[44px] w-full items-center justify-between gap-3 rounded-lg px-3 py-2 text-left text-sm text-zinc-700 transition hover:bg-zinc-100"
                 >
                   <span className="min-w-0">
                     <span className="block truncate font-semibold text-zinc-900">
@@ -310,13 +312,13 @@ export function PublicAttendanceForm({
       />
 
       {formLocked ? (
-        <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+        <p className="break-words rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
           Pilih jenis pengunjung terlebih dahulu untuk mengisi form.
         </p>
       ) : null}
 
       {siswaSelectionIncomplete && !showNotRegisteredWarning ? (
-        <div className="space-y-2 rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-800">
+        <div className="space-y-2 break-words rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-800">
           <p>
             Siswa belum terdaftar? Daftar melalui{" "}
             <Link href="/signup" className="font-semibold text-[#1d66d6] underline">
@@ -328,7 +330,7 @@ export function PublicAttendanceForm({
       ) : null}
 
       {showNotRegisteredWarning ? (
-        <div className="space-y-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+        <div className="space-y-2 break-words rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
           <p>Nama siswa belum terdaftar di sistem.</p>
           <p>
             Daftar melalui{" "}
@@ -341,19 +343,19 @@ export function PublicAttendanceForm({
       ) : null}
 
       {state?.error ? (
-        <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+        <p className="break-words rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
           {state.error}
         </p>
       ) : null}
 
       {state?.success && !hideSuccessNotice ? (
-        <p className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+        <p className="break-words rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
           {state.success}
         </p>
       ) : null}
 
       {pending ? (
-        <div className="inline-flex items-center gap-2 rounded-xl border border-sky-200 bg-sky-50 px-4 py-2 text-sm text-sky-800">
+        <div className="inline-flex w-full items-center gap-2 rounded-xl border border-sky-200 bg-sky-50 px-4 py-2 text-sm text-sky-800 sm:w-auto">
           <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-sky-600" />
           Menyimpan absensi, mohon tunggu...
         </div>
@@ -362,7 +364,7 @@ export function PublicAttendanceForm({
       <button
         type="submit"
         disabled={pending || formLocked || siswaSelectionIncomplete}
-        className="inline-flex min-w-44 items-center justify-center rounded-xl bg-[#1d66d6] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#1553b2] disabled:cursor-not-allowed disabled:bg-zinc-400"
+        className="inline-flex min-h-[44px] w-full min-w-44 items-center justify-center rounded-xl bg-[#1d66d6] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#1553b2] disabled:cursor-not-allowed disabled:bg-zinc-400 sm:w-auto"
       >
         {pending ? "Menyimpan..." : "Simpan absensi"}
       </button>
@@ -412,14 +414,14 @@ export function SiswaAttendanceForm({
   const attendanceLocked = alreadyAttendedToday || Boolean(state?.success);
 
   return (
-    <form action={formAction} className="space-y-4">
-      <div className="rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-4 text-sm text-zinc-600">
+    <form action={formAction} className="w-full space-y-4">
+      <div className="break-words rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-4 text-sm text-zinc-600">
         <p>Nama: {userName}</p>
         <p>Kelas: {className ?? "-"}</p>
       </div>
 
       {alreadyAttendedToday ? (
-        <p className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+        <p className="break-words rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
           Kamu sudah absen hari ini
           {attendanceTime ? ` pada ${formatSiswaAttendanceTime(attendanceTime)}` : ""}.
         </p>
@@ -439,19 +441,19 @@ export function SiswaAttendanceForm({
       />
 
       {state?.error ? (
-        <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+        <p className="break-words rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
           {state.error}
         </p>
       ) : null}
 
       {state?.success && !hideSuccessNotice ? (
-        <p className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+        <p className="break-words rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
           {state.success}
         </p>
       ) : null}
 
       {pending ? (
-        <div className="inline-flex items-center gap-2 rounded-xl border border-sky-200 bg-sky-50 px-4 py-2 text-sm text-sky-800">
+        <div className="inline-flex w-full items-center gap-2 rounded-xl border border-sky-200 bg-sky-50 px-4 py-2 text-sm text-sky-800 sm:w-auto">
           <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-sky-600" />
           Menyimpan absensi, mohon tunggu...
         </div>
@@ -460,7 +462,7 @@ export function SiswaAttendanceForm({
       <button
         type="submit"
         disabled={pending || attendanceLocked}
-        className="inline-flex min-w-44 items-center justify-center rounded-xl bg-[#1d66d6] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#1553b2] disabled:cursor-not-allowed disabled:bg-zinc-400"
+        className="inline-flex min-h-[44px] w-full min-w-44 items-center justify-center rounded-xl bg-[#1d66d6] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#1553b2] disabled:cursor-not-allowed disabled:bg-zinc-400 sm:w-auto"
       >
         {attendanceLocked
           ? "Sudah absen hari ini"
@@ -506,7 +508,7 @@ function Field({
   readOnly?: boolean;
 }) {
   return (
-    <div className="space-y-2">
+    <div className="min-w-0 space-y-2">
       <label htmlFor={id} className="text-sm font-medium text-zinc-800">
         {label} {required ? <span className="text-red-500">*</span> : null}
       </label>
@@ -519,7 +521,7 @@ function Field({
         value={value}
         readOnly={readOnly}
         onChange={(event) => onChange?.(event.currentTarget.value)}
-        className="w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-[#1d66d6] read-only:cursor-not-allowed read-only:bg-zinc-100 read-only:text-zinc-600 disabled:cursor-not-allowed disabled:bg-zinc-100 disabled:text-zinc-500"
+        className="min-h-[44px] w-full rounded-xl border border-zinc-300 bg-white px-4 py-3 text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-[#1d66d6] read-only:cursor-not-allowed read-only:bg-zinc-100 read-only:text-zinc-600 disabled:cursor-not-allowed disabled:bg-zinc-100 disabled:text-zinc-500"
       />
     </div>
   );
