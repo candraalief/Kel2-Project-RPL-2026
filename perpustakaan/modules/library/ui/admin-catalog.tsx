@@ -446,9 +446,9 @@ export function AdminCatalog({
 
   return (
     <div className="space-y-5">
-      <section className="space-y-3">
-        <section className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
-          <div className="grid gap-3 md:grid-cols-[1fr_auto] md:items-center">
+      <section className="space-y-2 md:space-y-3">
+        <section className="rounded-2xl border border-zinc-200 bg-white p-3 shadow-sm md:p-4">
+          <div className="grid gap-2 md:grid-cols-[1fr_auto] md:items-center md:gap-3">
             <label className="relative block w-full">
               <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">
                 <SearchIcon />
@@ -460,14 +460,14 @@ export function AdminCatalog({
                   setCurrentPage(1);
                 }}
                 placeholder="Cari buku..."
-                className="min-h-[44px] w-full rounded-md border border-transparent bg-[#f1f1f4] pl-9 pr-3 text-sm font-semibold text-zinc-900 outline-none transition placeholder:text-slate-500 focus:border-[#1d66d6]"
+                className="min-h-9 w-full rounded-lg border border-transparent bg-[#f1f1f4] pl-9 pr-3 text-xs font-semibold text-zinc-900 outline-none transition placeholder:text-slate-500 focus:border-[#1d66d6] md:min-h-[44px] md:text-sm"
               />
             </label>
 
             {!readOnly ? (
               <Link
                 href="/admin/buku/tambah"
-                className="inline-flex min-h-[44px] w-full items-center justify-center gap-1.5 rounded-md bg-[#1768d8] px-4 text-sm font-semibold text-white transition hover:bg-[#1258ba] md:w-auto"
+                className="inline-flex min-h-9 w-full items-center justify-center gap-1.5 rounded-lg bg-[#1768d8] px-4 text-xs font-semibold text-white transition hover:bg-[#1258ba] md:min-h-[44px] md:w-auto md:text-sm"
               >
                 <PlusIcon />
                 Tambah Buku
@@ -475,7 +475,7 @@ export function AdminCatalog({
             ) : null}
           </div>
 
-          <div className="my-3 border-t border-zinc-200" />
+          <div className="my-2 border-t border-zinc-200 md:my-3" />
 
           {activeFilterCount > 0 ? (
             <>
@@ -490,7 +490,7 @@ export function AdminCatalog({
                 onClearYearTo={clearYearTo}
                 onReset={resetFilters}
               />
-              <div className="my-3 border-t border-zinc-200" />
+              <div className="my-2 border-t border-zinc-200 md:my-3" />
             </>
           ) : null}
 
@@ -768,22 +768,37 @@ function FilterPanel({
   showAllGenres: boolean;
   onShowAllGenresChange: (value: boolean) => void;
 }) {
+  const [isFilterOpen, setIsFilterOpen] = useState(activeFilterCount > 0);
   const visibleGenres = showAllGenres ? genres : genres.slice(0, 3);
   const hiddenGenreCount = Math.max(genres.length - visibleGenres.length, 0);
 
   return (
-    <section className="rounded-2xl border border-zinc-200 bg-zinc-50 p-3">
-      <div className="flex items-center gap-2 text-zinc-950">
-        <FilterIcon />
-        <h2 className="text-sm font-semibold">Filter</h2>
-        <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-[#dfeeff] px-1.5 text-[10px] font-semibold text-[#1768d8]">
-          {activeFilterCount}
+    <section className="rounded-xl border border-zinc-200 bg-zinc-50 p-2 md:rounded-2xl md:p-3">
+      <button
+        type="button"
+        onClick={() => setIsFilterOpen((current) => !current)}
+        aria-expanded={isFilterOpen}
+        aria-controls="catalog-mobile-filter-panel"
+        className="flex min-h-8 w-full items-center justify-between gap-2 text-zinc-950 md:pointer-events-none md:cursor-default"
+      >
+        <span className="inline-flex items-center gap-2">
+          <FilterIcon />
+          <span className="text-xs font-semibold md:text-sm">Filter</span>
+          <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-[#dfeeff] px-1.5 text-[10px] font-semibold text-[#1768d8]">
+            {activeFilterCount}
+          </span>
         </span>
-      </div>
+        <span className="text-[11px] font-semibold text-[#1768d8] md:hidden">
+          {isFilterOpen ? "Tutup" : "Buka"}
+        </span>
+      </button>
 
-      <div className="mt-3 space-y-3">
-        <div className="space-y-1.5">
-          <p className="text-sm font-medium text-zinc-700">Genre</p>
+      <div
+        id="catalog-mobile-filter-panel"
+        className={`${isFilterOpen ? "block" : "hidden"} mt-2 space-y-2 md:block md:mt-3 md:space-y-3`}
+      >
+        <div className="space-y-1">
+          <p className="text-xs font-medium text-zinc-700 md:text-sm">Genre</p>
           <div className="flex flex-wrap items-center gap-1.5">
             {genres.length === 0 ? (
               <p className="text-[11px] text-zinc-500">Belum ada genre.</p>
@@ -809,14 +824,14 @@ function FilterPanel({
           </div>
         </div>
 
-        <div className="grid gap-3 xl:grid-cols-[1fr_0.8fr_0.8fr] xl:items-end">
-          <CatalogFilterField label="Status Ketersediaan">
+        <div className="grid grid-cols-2 gap-2 md:gap-3 xl:grid-cols-[1fr_0.8fr_0.8fr] xl:items-end">
+          <CatalogFilterField label="Status Ketersediaan" className="col-span-2 xl:col-span-1">
             <select
               value={availability}
               onChange={(event) =>
                 onAvailabilityChange(event.currentTarget.value as AvailabilityFilter)
               }
-              className="min-h-[44px] w-full rounded-xl border border-zinc-300 bg-white px-3 py-2.5 text-sm text-zinc-900 outline-none transition focus:border-[#1d66d6]"
+              className="min-h-9 w-full rounded-lg border border-zinc-300 bg-white px-2 py-1.5 text-xs text-zinc-900 outline-none transition focus:border-[#1d66d6] md:min-h-[44px] md:rounded-xl md:px-3 md:py-2.5 md:text-sm"
             >
               <option value="all">Semua Status</option>
               <option value="available">Tersedia</option>
@@ -830,7 +845,7 @@ function FilterPanel({
               value={yearFrom}
               onChange={(event) => onYearFromChange(event.currentTarget.value)}
               placeholder="2000"
-              className="min-h-[44px] w-full rounded-xl border border-zinc-300 bg-white px-3 py-2.5 text-sm text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-[#1d66d6]"
+              className="min-h-9 w-full rounded-lg border border-zinc-300 bg-white px-2 py-1.5 text-xs text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-[#1d66d6] md:min-h-[44px] md:rounded-xl md:px-3 md:py-2.5 md:text-sm"
             />
           </CatalogFilterField>
 
@@ -840,7 +855,7 @@ function FilterPanel({
               value={yearTo}
               onChange={(event) => onYearToChange(event.currentTarget.value)}
               placeholder="2026"
-              className="min-h-[44px] w-full rounded-xl border border-zinc-300 bg-white px-3 py-2.5 text-sm text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-[#1d66d6]"
+              className="min-h-9 w-full rounded-lg border border-zinc-300 bg-white px-2 py-1.5 text-xs text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-[#1d66d6] md:min-h-[44px] md:rounded-xl md:px-3 md:py-2.5 md:text-sm"
             />
           </CatalogFilterField>
         </div>
@@ -852,12 +867,14 @@ function FilterPanel({
 function CatalogFilterField({
   label,
   children,
+  className = "",
 }: {
   label: string;
   children: ReactNode;
+  className?: string;
 }) {
   return (
-    <label className="space-y-1.5 text-sm font-medium text-zinc-700">
+    <label className={`min-w-0 space-y-1 text-xs font-medium text-zinc-700 md:space-y-1.5 md:text-sm ${className}`}>
       <span>{label}</span>
       {children}
     </label>
@@ -1018,11 +1035,14 @@ function BookCard({
           onOpen();
         }
       }}
-      className="flex cursor-pointer flex-col rounded-2xl border border-zinc-200 bg-white p-3 shadow-sm transition hover:-translate-y-0.5 hover:border-[#b9d3ff] hover:shadow-md"
+      className="grid cursor-pointer grid-cols-[92px_minmax(0,1fr)] gap-3 rounded-2xl border border-zinc-200 bg-white p-2.5 shadow-sm transition hover:-translate-y-0.5 hover:border-[#b9d3ff] hover:shadow-md sm:flex sm:flex-col sm:p-3"
     >
-      <BookCover book={book} />
+      <BookCover
+        book={book}
+        className="h-32 w-[92px] sm:aspect-[4/5] sm:h-auto sm:w-full"
+      />
 
-      <div className="mt-2 min-w-0">
+      <div className="min-w-0 sm:mt-2">
         <div className="flex items-start justify-between gap-3">
           <h3 className="line-clamp-2 text-sm font-semibold text-zinc-950">
             {book.title}
@@ -1041,13 +1061,13 @@ function BookCard({
         <p className="mt-1 text-[10px] text-zinc-500">{genreText(book)}</p>
       </div>
 
-      <div className="mt-2 space-y-0.5 text-[10px] text-zinc-600">
+      <div className="col-start-2 mt-0 space-y-0.5 text-[10px] text-zinc-600 sm:col-auto sm:mt-2">
         <p>Rak: <span className="font-semibold text-zinc-900">{book.shelfLocation ?? "-"}</span></p>
         <p>Tersedia: <span className="font-semibold text-zinc-900">{book.availableCount} eksemplar</span></p>
       </div>
 
       {!readOnly ? (
-        <div className="mt-auto space-y-1.5 pt-2">
+        <div className="col-span-2 mt-auto space-y-1.5 pt-1 sm:pt-2">
           <button
             type="button"
             onClick={(event) => {
@@ -1087,7 +1107,13 @@ function BookCard({
   );
 }
 
-function BookCover({ book }: { book: AdminCatalogBook }) {
+function BookCover({
+  book,
+  className = "aspect-[4/5] w-full",
+}: {
+  book: AdminCatalogBook;
+  className?: string;
+}) {
   const coverUrl = getBookCoverDisplayUrl(book);
 
   if (coverUrl) {
@@ -1095,14 +1121,14 @@ function BookCover({ book }: { book: AdminCatalogBook }) {
       <div
         role="img"
         aria-label={`Sampul ${book.title}`}
-        className="aspect-[4/5] w-full rounded-xl bg-cover bg-center"
+        className={`${className} rounded-xl bg-cover bg-center`}
         style={{ backgroundImage: `url("${coverUrl}")` }}
       />
     );
   }
 
   return (
-    <div className="flex aspect-[4/5] w-full items-center justify-center rounded-xl bg-zinc-200 text-center text-xl font-semibold text-zinc-700">
+    <div className={`flex ${className} items-center justify-center rounded-xl bg-zinc-200 text-center text-xl font-semibold text-zinc-700`}>
       Foto
       <br />
       Buku
