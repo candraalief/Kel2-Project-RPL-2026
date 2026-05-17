@@ -1035,14 +1035,14 @@ function BookCard({
           onOpen();
         }
       }}
-      className="grid cursor-pointer grid-cols-[92px_minmax(0,1fr)] gap-3 rounded-2xl border border-zinc-200 bg-white p-2.5 shadow-sm transition hover:-translate-y-0.5 hover:border-[#b9d3ff] hover:shadow-md sm:flex sm:flex-col sm:p-3"
+      className="grid cursor-pointer grid-cols-[92px_minmax(0,1fr)] gap-3 rounded-2xl border border-zinc-200 bg-white p-2.5 shadow-sm transition hover:-translate-y-0.5 hover:border-[#b9d3ff] hover:shadow-md lg:flex lg:flex-col lg:p-3"
     >
       <BookCover
         book={book}
-        className="h-32 w-[92px] sm:aspect-[4/5] sm:h-auto sm:w-full"
+        className="h-32 w-[92px] lg:aspect-[4/5] lg:h-auto lg:w-full"
       />
 
-      <div className="min-w-0 sm:mt-2">
+      <div className="min-w-0 lg:mt-2">
         <div className="flex items-start justify-between gap-3">
           <h3 className="line-clamp-2 text-sm font-semibold text-zinc-950">
             {book.title}
@@ -1061,13 +1061,13 @@ function BookCard({
         <p className="mt-1 text-[10px] text-zinc-500">{genreText(book)}</p>
       </div>
 
-      <div className="col-start-2 mt-0 space-y-0.5 text-[10px] text-zinc-600 sm:col-auto sm:mt-2">
+      <div className="col-start-2 mt-0 space-y-0.5 text-[10px] text-zinc-600 lg:col-auto lg:mt-2">
         <p>Rak: <span className="font-semibold text-zinc-900">{book.shelfLocation ?? "-"}</span></p>
         <p>Tersedia: <span className="font-semibold text-zinc-900">{book.availableCount} eksemplar</span></p>
       </div>
 
       {!readOnly ? (
-        <div className="col-span-2 mt-auto space-y-1.5 pt-1 sm:pt-2">
+        <div className="col-span-2 mt-auto space-y-1.5 pt-1 lg:pt-2">
           <button
             type="button"
             onClick={(event) => {
