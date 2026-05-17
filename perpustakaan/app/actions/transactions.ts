@@ -34,6 +34,7 @@ export type CreateBorrowTransactionInput = {
 };
 
 const copyIdColumns = ["id_copy", "id_copy_buku", "copy_id", "id_eksemplar", "id"];
+const jakartaOffsetMinutes = 7 * 60;
 
 async function requireAdminAction() {
   const sessionUser = await getSessionUser();
@@ -65,15 +66,53 @@ function isDateTimeLocalInput(value: string) {
   return /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?$/.test(value);
 }
 
+function localJakartaDateToUtcDate(
+  year: number,
+  month: number,
+  day: number,
+  hour = 0,
+  minute = 0,
+  second = 0
+) {
+  return new Date(
+    Date.UTC(year, month - 1, day, hour, minute, second) -
+      jakartaOffsetMinutes * 60_000
+  );
+}
+
 function parseBorrowDateTime(value: string) {
   if (isDateInput(value)) {
-    const date = new Date(`${value}T00:00:00`);
+    const [year, month, day] = value.split("-").map(Number);
+    const date = localJakartaDateToUtcDate(year, month, day);
+
     return Number.isNaN(date.getTime()) ? null : date;
   }
 
   if (isDateTimeLocalInput(value)) {
     const normalized = value.length === 16 ? `${value}:00` : value;
-    const date = new Date(normalized);
+    const match = normalized.match(
+      /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})$/
+    );
+
+    if (!match) {
+      return null;
+    }
+
+    const year = Number(match[1]);
+    const month = Number(match[2]);
+    const day = Number(match[3]);
+    const hour = Number(match[4]);
+    const minute = Number(match[5]);
+    const second = Number(match[6]);
+    const date = localJakartaDateToUtcDate(
+      year,
+      month,
+      day,
+      hour,
+      minute,
+      second
+    );
+
     return Number.isNaN(date.getTime()) ? null : date;
   }
 

@@ -47,6 +47,40 @@ function dateTimeToTime(value: string) {
   return Date.UTC(year, month - 1, day);
 }
 
+function toJakartaDateKey(value: string | null) {
+  if (!value) {
+    return null;
+  }
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return value;
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    day: "2-digit",
+    month: "2-digit",
+    timeZone: "Asia/Jakarta",
+    year: "numeric",
+  }).formatToParts(date);
+  const year = parts.find((part) => part.type === "year")?.value;
+  const month = parts.find((part) => part.type === "month")?.value;
+  const day = parts.find((part) => part.type === "day")?.value;
+
+  return year && month && day ? `${year}-${month}-${day}` : null;
+}
+
+function dateKeyToUtcTime(dateKey: string) {
+  const [year, month, day] = dateKey.split("-").map(Number);
+
+  return Date.UTC(year, month - 1, day);
+}
+
 function formatDate(value: string | null) {
   if (!value) {
     return "-";
@@ -68,17 +102,19 @@ function formatDate(value: string | null) {
 }
 
 function getDueInfo(dueDate: string, todayDate: string): DueInfo {
-  const dueTime = dateTimeToTime(dueDate);
-  const todayTime = dateTimeToTime(todayDate);
+  const dueDateKey = toJakartaDateKey(dueDate);
+  const todayDateKey = toJakartaDateKey(todayDate);
 
-  if (dueTime === null || todayTime === null) {
+  if (!dueDateKey || !todayDateKey) {
     return {
       label: "Tanggal belum valid",
       tone: "warn",
     };
   }
 
-  const days = Math.round((dueTime - todayTime) / dayInMs);
+  const days = Math.round(
+    (dateKeyToUtcTime(dueDateKey) - dateKeyToUtcTime(todayDateKey)) / dayInMs
+  );
 
   if (days < 0) {
     return {

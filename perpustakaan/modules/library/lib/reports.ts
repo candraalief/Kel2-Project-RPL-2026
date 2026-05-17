@@ -407,10 +407,8 @@ function toDateKey(value: string | null) {
     return null;
   }
 
-  const match = value.match(/\d{4}-\d{2}-\d{2}/);
-
-  if (match) {
-    return match[0];
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return value;
   }
 
   const date = new Date(value);
@@ -419,7 +417,17 @@ function toDateKey(value: string | null) {
     return null;
   }
 
-  return date.toISOString().slice(0, 10);
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    day: "2-digit",
+    month: "2-digit",
+    timeZone: "Asia/Jakarta",
+    year: "numeric",
+  }).formatToParts(date);
+  const year = parts.find((part) => part.type === "year")?.value;
+  const month = parts.find((part) => part.type === "month")?.value;
+  const day = parts.find((part) => part.type === "day")?.value;
+
+  return year && month && day ? `${year}-${month}-${day}` : null;
 }
 
 function formatReportTime(value: string | null) {

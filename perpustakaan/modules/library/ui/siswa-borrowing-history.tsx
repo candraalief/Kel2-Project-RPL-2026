@@ -36,6 +36,40 @@ function dateTimeToTime(value: string | null) {
   return Date.UTC(year, month - 1, day);
 }
 
+function toJakartaDateKey(value: string | null) {
+  if (!value) {
+    return null;
+  }
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return value;
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    day: "2-digit",
+    month: "2-digit",
+    timeZone: "Asia/Jakarta",
+    year: "numeric",
+  }).formatToParts(date);
+  const year = parts.find((part) => part.type === "year")?.value;
+  const month = parts.find((part) => part.type === "month")?.value;
+  const day = parts.find((part) => part.type === "day")?.value;
+
+  return year && month && day ? `${year}-${month}-${day}` : null;
+}
+
+function dateKeyToUtcTime(dateKey: string) {
+  const [year, month, day] = dateKey.split("-").map(Number);
+
+  return Date.UTC(year, month - 1, day);
+}
+
 function formatDate(value: string | null) {
   if (!value) {
     return "-";
@@ -55,14 +89,16 @@ function formatDate(value: string | null) {
 }
 
 function getDaysBetween(from: string | null, to: string | null) {
-  const fromTime = dateTimeToTime(from);
-  const toTime = dateTimeToTime(to);
+  const fromDateKey = toJakartaDateKey(from);
+  const toDateKey = toJakartaDateKey(to);
 
-  if (fromTime === null || toTime === null) {
+  if (!fromDateKey || !toDateKey) {
     return null;
   }
 
-  return Math.round((toTime - fromTime) / dayInMs);
+  return Math.round(
+    (dateKeyToUtcTime(toDateKey) - dateKeyToUtcTime(fromDateKey)) / dayInMs
+  );
 }
 
 function getTotalBooks(transaction: SiswaDetailedTransactionRecord) {

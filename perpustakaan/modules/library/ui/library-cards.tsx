@@ -110,8 +110,8 @@ export function TransactionsTable({
         >
           <span className="font-medium text-zinc-900">{trx.id_transaksi}</span>
           <span>{trx.id_siswa}</span>
-          <span>{trx.tanggal_pinjam}</span>
-          <span>{trx.tanggal_jatuh_tempo}</span>
+          <span>{formatAttendanceTime(trx.tanggal_pinjam)}</span>
+          <span>{formatAttendanceTime(trx.tanggal_jatuh_tempo)}</span>
           <span>{trx.status ?? "-"}</span>
         </div>
       ))}
