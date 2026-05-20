@@ -37,7 +37,11 @@ export type TransactionReportRow = {
   borrowedAt: string;
   dueAt: string;
   returnedAt: string;
-  statusLabel: "Dipinjam" | "Dikembalikan" | "Terlambat";
+  statusLabel:
+    | "Dipinjam"
+    | "Dipinjam-Terlambat"
+    | "Dikembalikan"
+    | "Dikembalikan-Terlambat";
   statusTone: "blue" | "green" | "red" | "amber";
 };
 
@@ -488,7 +492,7 @@ function getTransactionStatus(
       return {
         daysLate,
         isLate: true,
-        label: "Terlambat" as const,
+        label: "Dikembalikan-Terlambat" as const,
         tone: "amber" as const,
       };
     }
@@ -508,7 +512,7 @@ function getTransactionStatus(
       return {
         daysLate,
         isLate: true,
-        label: "Terlambat" as const,
+        label: "Dipinjam-Terlambat" as const,
         tone: "red" as const,
       };
     }
