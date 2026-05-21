@@ -188,6 +188,31 @@ function getStatusLabel(transaction: SiswaDetailedTransactionRecord) {
   return transaction.status ?? "Aktif";
 }
 
+function getReturnConditionCounts(
+  transaction: SiswaDetailedTransactionRecord,
+  item: SiswaDetailedTransactionRecord["items"][number]
+) {
+  const note = transaction.catatan ?? "";
+  const segments = note
+    .split(/[|;]/)
+    .map((segment) => segment.trim())
+    .filter(Boolean);
+  const itemSegment = segments.find((segment) =>
+    segment.toLowerCase().startsWith(`${item.title.toLowerCase()}:`)
+  );
+  const damagedMatch =
+    itemSegment?.match(/rusak\s*:\s*(\d+)/i) ??
+    itemSegment?.match(/(\d+)\s+rusak/i);
+  const lostMatch =
+    itemSegment?.match(/hilang\s*:\s*(\d+)/i) ??
+    itemSegment?.match(/(\d+)\s+hilang/i);
+  const damaged = damagedMatch?.[1] ? Number(damagedMatch[1]) : 0;
+  const lost = lostMatch?.[1] ? Number(lostMatch[1]) : 0;
+  const good = Math.max(item.quantity - damaged - lost, 0);
+
+  return { good, damaged, lost };
+}
+
 function ChevronIcon({ expanded }: { expanded: boolean }) {
   return (
     <svg
@@ -235,13 +260,21 @@ function TransactionItemsPanel({
   transaction: SiswaDetailedTransactionRecord;
   id: string;
 }) {
+  const isHistory = Boolean(transaction.tanggal_kembali);
+
   if (transaction.items.length === 0) {
     return (
       <div
         id={id}
-        className="border-t border-zinc-200 bg-zinc-50 px-4 py-4 text-sm text-zinc-500 sm:px-5"
+        className="space-y-3 border-t border-zinc-200 bg-zinc-50 px-4 py-4 text-sm text-zinc-500 sm:px-5"
       >
-        Detail buku untuk transaksi ini belum tersedia.
+        <p>Detail buku untuk transaksi ini belum tersedia.</p>
+        {isHistory && transaction.catatan ? (
+          <div className="break-words rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            <p className="font-semibold">Catatan Pengembalian</p>
+            <p className="mt-1 text-amber-900">{transaction.catatan}</p>
+          </div>
+        ) : null}
       </div>
     );
   }
@@ -252,29 +285,78 @@ function TransactionItemsPanel({
       className="border-t border-zinc-200 bg-zinc-50 px-4 py-4 sm:px-5"
     >
       <p className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-400">
-        Detail Buku
+        {isHistory ? "Detail Pengembalian" : "Detail Buku"}
       </p>
-      <div className="mt-3 grid gap-2">
-        {transaction.items.map((item) => (
-          <div
-            key={item.key}
-            className="grid gap-2 rounded-xl border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-600 md:grid-cols-[1.4fr_0.5fr_1fr]"
-          >
-            <div>
-              <p className="font-semibold text-zinc-950">{item.title}</p>
-              <p className="mt-1 text-xs text-zinc-500">
-                {item.author ?? "Penulis tidak tersedia"}
-              </p>
+      <div className="mt-3 overflow-x-auto rounded-xl border border-zinc-200 bg-white">
+        <div
+          className={`grid min-w-[620px] bg-zinc-100 px-4 py-2 text-xs font-semibold text-slate-600 ${
+            isHistory
+              ? "grid-cols-[1fr_90px_90px_90px_90px]"
+              : "grid-cols-[1fr_120px_180px]"
+          }`}
+        >
+          <span>Judul Buku</span>
+          <span className="text-center">Jumlah</span>
+          {isHistory ? (
+            <>
+              <span className="text-center">Baik</span>
+              <span className="text-center">Rusak</span>
+              <span className="text-center">Hilang</span>
+            </>
+          ) : (
+            <span>Deadline</span>
+          )}
+        </div>
+
+        {transaction.items.map((item) => {
+          const conditionCounts = getReturnConditionCounts(transaction, item);
+
+          return (
+            <div
+              key={item.key}
+              className={`grid min-w-[620px] border-t border-zinc-200 px-4 py-3 text-sm text-zinc-600 ${
+                isHistory
+                  ? "grid-cols-[1fr_90px_90px_90px_90px]"
+                  : "grid-cols-[1fr_120px_180px]"
+              }`}
+            >
+              <div className="min-w-0">
+                <p className="truncate font-semibold text-zinc-950">{item.title}</p>
+                <p className="mt-1 truncate text-xs text-zinc-500">
+                  {item.author ?? "Penulis tidak tersedia"}
+                </p>
+              </div>
+              <span className="text-center text-slate-600">
+                {item.quantity} buku
+              </span>
+              {isHistory ? (
+                <>
+                  <span className="text-center text-emerald-700">
+                    {conditionCounts.good}
+                  </span>
+                  <span className="text-center text-amber-700">
+                    {conditionCounts.damaged}
+                  </span>
+                  <span className="text-center text-red-600">
+                    {conditionCounts.lost}
+                  </span>
+                </>
+              ) : (
+                <span className="font-medium text-zinc-700">
+                  {formatDate(transaction.tanggal_jatuh_tempo)}
+                </span>
+              )}
             </div>
-            <span className="inline-flex w-fit rounded-lg bg-[#dbeafe] px-3 py-1 text-xs font-semibold text-[#0b55ff]">
-              {item.quantity} buku
-            </span>
-            <span className="text-sm font-medium text-zinc-700">
-              Deadline {formatDate(transaction.tanggal_jatuh_tempo)}
-            </span>
-          </div>
-        ))}
+          );
+        })}
       </div>
+
+      {isHistory && transaction.catatan ? (
+        <div className="mt-3 break-words rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          <p className="font-semibold">Catatan Pengembalian</p>
+          <p className="mt-1 text-amber-900">{transaction.catatan}</p>
+        </div>
+      ) : null}
     </div>
   );
 }
