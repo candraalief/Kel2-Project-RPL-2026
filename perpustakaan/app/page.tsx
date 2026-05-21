@@ -1,6 +1,9 @@
 import { redirect } from "next/navigation";
+import Image from "next/image";
 import { getSessionUser } from "@/modules/access/lib/session";
 import { LoginForm } from "@/modules/access/ui/login-form";
+
+const schoolLogoPath = "/sman10-logo.png";
 
 export default async function Home() {
   const sessionUser = await getSessionUser();
@@ -26,13 +29,24 @@ export default async function Home() {
           <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(16,20,28,0.64),rgba(16,20,28,0.26))]" />
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.16)_0%,rgba(20,24,30,0.06)_35%,rgba(10,14,20,0.30)_100%)]" />
           <div className="absolute inset-x-0 top-0 flex items-center justify-between px-10 py-6 text-sm text-zinc-700 xl:px-12 xl:py-8">
-            <div>
+            <div className="flex items-center gap-4">
+              <span className="flex h-16 w-16 items-center justify-center rounded-2xl border border-white/25 bg-white/95 p-2 shadow-lg shadow-zinc-950/20">
+                <Image
+                  src={schoolLogoPath}
+                  alt="Logo SMA Negeri 10 Kota Bogor"
+                  width={64}
+                  height={64}
+                  className="h-full w-full object-contain"
+                />
+              </span>
+              <div>
               <p className="text-xs font-semibold uppercase tracking-[0.3em] text-white/80">
                 SMAN 10 Bogor
               </p>
               <p className="mt-2 text-lg font-semibold text-white">
                 Sistem Informasi Perpustakaan
               </p>
+              </div>
             </div>
           </div>
 
