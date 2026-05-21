@@ -58,7 +58,7 @@ export function ResetSiswaPasswordForm() {
             name="identifier"
             type="text"
             required
-            placeholder="Contoh : candraprasetyo"
+            placeholder="Masukkan username, nama lengkap, atau email"
             className="w-full rounded-md border border-zinc-300 bg-white px-3 py-2.5 text-zinc-950 outline-none transition focus:border-[#145da0]"
           />
         </div>

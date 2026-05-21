@@ -92,7 +92,7 @@ export function LoginForm({ title, description }: LoginFormProps) {
             name="identifier"
             type="text"
             required
-            placeholder="Contoh : candraprasetyo"
+            placeholder="Masukkan username, nama lengkap, atau email"
           className="min-h-[44px] w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-950 outline-none transition focus:border-[#145da0]"
           />
         </div>

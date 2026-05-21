@@ -286,7 +286,7 @@ function AdminDetailModal({
             name="nomor_telephone"
             value={fields.nomorTelephone}
             onChange={(value) => updateField("nomorTelephone", value)}
-            placeholder="08xxxxxxxxxx"
+            placeholder="Nomor telepon admin"
             disabled={!canManageAdmins || !fields.supportsNomorTelephone}
           />
           <Field
@@ -390,7 +390,7 @@ function AddAdminModal({
           <Field
             label="Nomor Telephone"
             name="nomor_telephone"
-            placeholder="08xxxxxxxxxx"
+            placeholder="Nomor telepon admin"
             disabled={!supportsNomorTelephone}
           />
           <Field

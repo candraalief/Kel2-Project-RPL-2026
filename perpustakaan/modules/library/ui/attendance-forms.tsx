@@ -151,7 +151,7 @@ export function PublicAttendanceForm({
     }
 
     if (visitorType === "umum") {
-      return "Contoh: SMPN 7 Bogor";
+      return "Nama sekolah, instansi, atau asal pengunjung";
     }
 
     return "Pilih jenis pengunjung terlebih dahulu";

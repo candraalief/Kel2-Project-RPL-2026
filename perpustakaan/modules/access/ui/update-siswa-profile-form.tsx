@@ -85,7 +85,7 @@ export function UpdateSiswaProfileForm({ siswa }: { siswa: SiswaRecord }) {
           name="kelas"
           value={fields.kelas}
           onChange={(value) => updateField("kelas", value)}
-          placeholder="Contoh: XII IPA 2"
+          placeholder="Masukkan kelas resmi"
         />
         <Field
           label="Tahun masuk"
@@ -93,7 +93,7 @@ export function UpdateSiswaProfileForm({ siswa }: { siswa: SiswaRecord }) {
           type="number"
           value={fields.tahunMasuk}
           onChange={(value) => updateField("tahunMasuk", value)}
-          placeholder="Contoh: 2024"
+          placeholder="Masukkan tahun masuk"
           disabled
         />
         <Field
@@ -101,7 +101,7 @@ export function UpdateSiswaProfileForm({ siswa }: { siswa: SiswaRecord }) {
           name="nomor_whatsapp"
           value={fields.nomorWhatsapp}
           onChange={(value) => updateField("nomorWhatsapp", value)}
-          placeholder="08xxxxxxxxxx"
+          placeholder="Masukkan nomor WhatsApp aktif"
         />
       </div>
 

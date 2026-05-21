@@ -1390,7 +1390,7 @@ function SiswaForm({
         <Field
           label="Kelas"
           name="kelas"
-          placeholder="Contoh: XII IPA 1"
+          placeholder="Masukkan kelas resmi siswa"
           defaultValue={fields.kelas}
           value={isEditMode ? fields.kelas : undefined}
           onChange={(value) => updateField("kelas", value)}
@@ -1420,7 +1420,7 @@ function SiswaForm({
           label="Email"
           name="email"
           type="email"
-          placeholder="contoh@sekolah.id"
+          placeholder="Masukkan email resmi siswa"
           defaultValue={fields.email}
           value={isEditMode ? fields.email : undefined}
           onChange={(value) => updateField("email", value)}
@@ -1431,7 +1431,7 @@ function SiswaForm({
           label="Tahun Masuk"
           name="tahun_masuk"
           type="number"
-          placeholder="Contoh: 2024"
+          placeholder="Masukkan tahun masuk siswa"
           defaultValue={fields.tahunMasuk}
           value={isEditMode ? fields.tahunMasuk : undefined}
           onChange={(value) => updateField("tahunMasuk", value)}
@@ -1440,7 +1440,7 @@ function SiswaForm({
         <Field
           label="No. Telepon"
           name="nomor_whatsapp"
-          placeholder="08xxxxxxxxxx"
+          placeholder="Masukkan nomor WhatsApp aktif"
           defaultValue={fields.nomorWhatsapp}
           value={isEditMode ? fields.nomorWhatsapp : undefined}
           onChange={(value) => updateField("nomorWhatsapp", value)}
