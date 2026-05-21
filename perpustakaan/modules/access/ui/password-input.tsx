@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type RefObject } from "react";
 
 type PasswordInputProps = {
   id: string;
@@ -14,6 +14,7 @@ type PasswordInputProps = {
   className?: string;
   inputClassName?: string;
   labelClassName?: string;
+  inputRef?: RefObject<HTMLInputElement | null>;
 };
 
 const defaultInputClassName =
@@ -31,6 +32,7 @@ export function PasswordInput({
   className = "space-y-2",
   inputClassName = defaultInputClassName,
   labelClassName = "text-sm font-medium text-zinc-800",
+  inputRef,
 }: PasswordInputProps) {
   const [isVisible, setIsVisible] = useState(false);
 
@@ -43,6 +45,7 @@ export function PasswordInput({
         <input
           id={id}
           name={name}
+          ref={inputRef}
           type={isVisible ? "text" : "password"}
           value={value}
           onChange={(event) => onChange?.(event.target.value)}

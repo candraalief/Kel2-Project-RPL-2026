@@ -140,18 +140,6 @@ export async function findSessionUserByCredentials(
 ): Promise<SessionUser | null> {
   const normalizedIdentifier = identifier.trim();
 
-  if (
-    normalizedIdentifier.toLowerCase() === "public" &&
-    password === "public"
-  ) {
-    return {
-      id: 0,
-      role: "public",
-      name: "Monitor Publik",
-      identifier: "public",
-    };
-  }
-
   const admin = await findAdminByIdentifier(normalizedIdentifier);
 
   if (admin && (await verifyPassword(password, admin.password))) {

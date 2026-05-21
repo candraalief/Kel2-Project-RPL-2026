@@ -193,7 +193,7 @@ export function DashboardShell({
 
             <div className="mt-auto shrink-0 space-y-3">
               <div className="rounded-2xl border border-white/15 bg-white/10 p-[clamp(0.6rem,1.5vh,1rem)] backdrop-blur-sm">
-                <LogoutForm />
+                <LogoutForm role={role} />
               </div>
               <div className="rounded-2xl border border-white/15 bg-white/10 p-[clamp(0.6rem,1.5vh,1rem)] backdrop-blur-sm">
                 <p className="text-[11px] font-semibold text-[#dbeaff]">

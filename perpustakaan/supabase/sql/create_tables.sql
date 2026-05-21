@@ -276,6 +276,16 @@ create table if not exists public.absensi_umum (
   unique (id_absensi)
 );
 
+create table if not exists public.public_session_settings (
+  id integer primary key default 1,
+  password_hash text not null,
+  updated_by integer references public.admin(id_admin) on delete set null,
+  updated_at timestamptz not null default now(),
+  constraint public_session_settings_singleton check (id = 1)
+);
+
+alter table public.public_session_settings enable row level security;
+
 do $$
 begin
   if not exists (
@@ -404,6 +414,7 @@ grant select, insert, update, delete on table public.detail_transaksi to service
 grant select, insert, update, delete on table public.absensi to service_role;
 grant select, insert, update, delete on table public.absensi_siswa to service_role;
 grant select, insert, update, delete on table public.absensi_umum to service_role;
+grant select, insert, update, delete on table public.public_session_settings to service_role;
 grant usage, select on all sequences in schema public to service_role;
 
 -- Superadmin memakai id_admin = 0 di aplikasi.

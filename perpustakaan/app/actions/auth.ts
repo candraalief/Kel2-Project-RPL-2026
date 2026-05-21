@@ -19,8 +19,19 @@ import {
   type SessionUser,
   type UserRole,
 } from "@/modules/access/lib/session";
+import {
+  updatePublicSessionPassword,
+  verifyPublicSessionPassword,
+} from "@/modules/access/lib/public-session-settings";
 
 export type LoginState = {
+  error: string;
+};
+export type PublicSessionPasswordState = {
+  error: string;
+  success: string;
+};
+export type LogoutState = {
   error: string;
 };
 
@@ -1276,7 +1287,38 @@ export async function deleteAdminAccount(
   };
 }
 
-export async function loginAsPublic() {
+export async function loginAsPublic(
+  _prevState: PublicSessionPasswordState | undefined,
+  formData: FormData
+) {
+  const password = String(formData.get("public_password") ?? "");
+
+  if (!password) {
+    return {
+      error: "Password publik wajib diisi.",
+      success: "",
+    };
+  }
+
+  try {
+    const isPasswordValid = await verifyPublicSessionPassword(password);
+
+    if (!isPasswordValid) {
+      return {
+        error: "Password publik tidak sesuai.",
+        success: "",
+      };
+    }
+  } catch (error) {
+    return {
+      error:
+        error instanceof Error
+          ? error.message
+          : "Gagal memverifikasi password publik.",
+      success: "",
+    };
+  }
+
   await createSession({
     id: 0,
     role: "public",
@@ -1287,7 +1329,99 @@ export async function loginAsPublic() {
   redirect("/public");
 }
 
-export async function logoutUser() {
+export async function changePublicSessionPassword(
+  _prevState: PublicSessionPasswordState | undefined,
+  formData: FormData
+) {
+  const sessionUser = await getSessionUser();
+
+  if (!sessionUser || sessionUser.role !== "admin") {
+    return {
+      error: "Sesi admin tidak ditemukan.",
+      success: "",
+    };
+  }
+
+  const newPassword = String(formData.get("new_public_password") ?? "");
+  const confirmPassword = String(formData.get("confirm_public_password") ?? "");
+
+  if (!newPassword || !confirmPassword) {
+    return {
+      error: "Password baru dan konfirmasi password wajib diisi.",
+      success: "",
+    };
+  }
+
+  if (newPassword.length < 6) {
+    return {
+      error: "Password publik minimal 6 karakter.",
+      success: "",
+    };
+  }
+
+  if (newPassword !== confirmPassword) {
+    return {
+      error: "Konfirmasi password publik belum sama.",
+      success: "",
+    };
+  }
+
+  try {
+    await updatePublicSessionPassword({
+      password: newPassword,
+      adminId: sessionUser.id,
+    });
+
+    revalidatePath("/admin");
+
+    return {
+      error: "",
+      success: "Password mode publik berhasil diperbarui.",
+    };
+  } catch (error) {
+    return {
+      error:
+        error instanceof Error
+          ? error.message
+          : "Gagal memperbarui password mode publik.",
+      success: "",
+    };
+  }
+}
+
+export async function logoutUser(
+  _prevState: LogoutState | undefined,
+  formData: FormData
+) {
+  const sessionUser = await getSessionUser();
+
+  if (sessionUser?.role === "public") {
+    const password = String(formData.get("public_password") ?? "");
+
+    if (!password) {
+      return {
+        error: "Password publik wajib diisi untuk keluar.",
+      };
+    }
+
+    try {
+      const isPasswordValid = await verifyPublicSessionPassword(password);
+
+      if (!isPasswordValid) {
+        return {
+          error: "Password publik tidak sesuai.",
+        };
+      }
+    } catch (error) {
+      return {
+        error:
+          error instanceof Error
+            ? error.message
+            : "Gagal memverifikasi password publik.",
+      };
+    }
+  }
+
   await clearSession();
   redirect("/");
 }

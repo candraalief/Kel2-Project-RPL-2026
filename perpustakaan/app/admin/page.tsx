@@ -7,14 +7,17 @@ import {
 import { DashboardShell } from "@/modules/access/ui/dashboard-shell";
 import { MetricCard, SectionCard } from "@/modules/library/ui/library-cards";
 import { requireRole } from "@/modules/access/lib/guards";
+import { getPublicSessionSettings } from "@/modules/access/lib/public-session-settings";
+import { PublicSessionPasswordForm } from "@/modules/access/ui/public-session-password-form";
 
 export default async function AdminHomePage() {
   const user = await requireRole("admin");
-  const [books, students, transactions, attendance] = await Promise.all([
+  const [books, students, transactions, attendance, publicSessionSettings] = await Promise.all([
     getBooks(),
     getStudents(),
     getTransactions(),
     getAttendanceRecords(5),
+    getPublicSessionSettings(),
   ]);
 
   return (
@@ -31,6 +34,15 @@ export default async function AdminHomePage() {
         <MetricCard label="Total transaksi" value={transactions.length} />
         <MetricCard label="Absensi terbaru" value={attendance.length} />
       </section>
+
+      <SectionCard
+        title="Mode publik"
+        subtitle="Password masuk dan keluar sesi publik"
+      >
+        <PublicSessionPasswordForm
+          updatedAt={publicSessionSettings?.updated_at ?? null}
+        />
+      </SectionCard>
 
       <section className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
         <SectionCard title="Status sistem" subtitle="Ringkasan operasional">
