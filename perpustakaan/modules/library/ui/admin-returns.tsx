@@ -78,6 +78,49 @@ function getDaysLate(value: string | null) {
   return Math.ceil(difference / 86_400_000);
 }
 
+function normalizeSearchText(value: string) {
+  return value.trim().toLowerCase();
+}
+
+function normalizeCompactSearchText(value: string) {
+  return normalizeSearchText(value).replace(/[^a-z0-9]/g, "");
+}
+
+function matchesTransactionSearch(
+  transaction: DetailedTransactionRecord,
+  query: string,
+  values: Array<string | number | null | undefined>
+) {
+  const normalizedQuery = normalizeSearchText(query);
+
+  if (!normalizedQuery) {
+    return true;
+  }
+
+  const compactQuery = normalizeCompactSearchText(normalizedQuery);
+  const transactionId = String(transaction.id_transaksi);
+  const transactionIdAliases = [
+    transactionId,
+    `#${transactionId}`,
+    `id ${transactionId}`,
+    `id transaksi ${transactionId}`,
+    `transaksi ${transactionId}`,
+    `trx ${transactionId}`,
+    `trx-${transactionId}`,
+    `trx${transactionId}`,
+  ];
+  const searchableText = [...transactionIdAliases, ...values]
+    .filter((value) => value !== null && value !== undefined && value !== "")
+    .join(" ")
+    .toLowerCase();
+  const compactSearchableText = normalizeCompactSearchText(searchableText);
+
+  return (
+    searchableText.includes(normalizedQuery) ||
+    compactSearchableText.includes(compactQuery)
+  );
+}
+
 function getTransactionStatus(transaction: DetailedTransactionRecord) {
   if (transaction.tanggal_kembali) {
     const normalizedStatus = (transaction.status ?? "").toLowerCase();
@@ -218,38 +261,32 @@ export function AdminReturns({
     useButtonPressLoading<ReturnTab>();
 
   const visibleActiveTransactions = useMemo(() => {
-    const query = appliedSearch.trim().toLowerCase();
+    const query = appliedSearch.trim();
 
     return transactions.filter((transaction) => {
       const statusInfo = getTransactionStatus(transaction);
       const matchesStatus =
         statusFilter === "all" || statusInfo.filter === statusFilter;
-      const searchableText = [
-        transaction.id_transaksi,
+      const matchesSearch = matchesTransactionSearch(transaction, query, [
         transaction.siswa?.nisn,
         transaction.siswa?.nama,
         statusInfo.label,
         transaction.catatan,
         ...transaction.items.map((item) => item.title),
-      ]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase();
-      const matchesSearch = !query || searchableText.includes(query);
+      ]);
 
       return matchesStatus && matchesSearch;
     });
   }, [appliedSearch, statusFilter, transactions]);
 
   const visibleHistoryTransactions = useMemo(() => {
-    const query = appliedSearch.trim().toLowerCase();
+    const query = appliedSearch.trim();
 
     return history.filter((transaction) => {
       const statusInfo = getTransactionStatus(transaction);
       const matchesStatus =
         statusFilter === "all" || statusInfo.filter === statusFilter;
-      const searchableText = [
-        transaction.id_transaksi,
+      const matchesSearch = matchesTransactionSearch(transaction, query, [
         transaction.siswa?.nisn,
         transaction.siswa?.nama,
         statusInfo.label,
@@ -257,11 +294,7 @@ export function AdminReturns({
         transaction.catatan,
         transaction.tanggal_kembali ? formatDate(transaction.tanggal_kembali) : null,
         ...transaction.items.map((item) => item.title),
-      ]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase();
-      const matchesSearch = !query || searchableText.includes(query);
+      ]);
 
       return matchesStatus && matchesSearch;
     });
