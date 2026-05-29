@@ -36,7 +36,7 @@ Catatan:
 
 ### Siswa
 
-Siswa login dari tabel `siswa`. Identifier login yang didukung adalah `nama`, `username`, atau `email`.
+Siswa login dari tabel `siswa`. Identifier login yang didukung adalah `nis`, `nisn`, `nama`, `username`, atau `email`.
 
 Route siswa:
 
@@ -100,7 +100,7 @@ File utama:
 
 - Signup siswa dengan status awal `menunggu_verifikasi`.
 - Validasi duplikasi `nisn`, `username`, dan `email`.
-- Data signup: nama, NISN, tahun masuk, nomor WhatsApp/telepon, email, username, password, dan kelas.
+- Data signup: nama, NIS, NISN, tahun masuk, nomor WhatsApp/telepon, email, username, password, dan kelas.
 - Password signup wajib dikonfirmasi.
 - Siswa dapat memperbarui profil sendiri.
 - Session siswa diperbarui setelah profil disimpan.

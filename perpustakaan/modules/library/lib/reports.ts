@@ -31,6 +31,7 @@ export type TransactionReportSummary = {
 
 export type TransactionReportRow = {
   id: number;
+  studentNis: string;
   studentName: string;
   className: string;
   bookTitle: string;
@@ -47,6 +48,7 @@ export type TransactionReportRow = {
 
 export type StudentTransactionReportRow = {
   id: number;
+  studentNis: string;
   studentName: string;
   className: string;
   totalTransactions: number;
@@ -101,6 +103,7 @@ export type AttendanceReportData = {
 
 type StudentAccumulator = {
   id: number;
+  studentNis: string;
   studentName: string;
   className: string;
   totalTransactions: number;
@@ -231,6 +234,7 @@ export function buildTransactionReport(
 
       rows.push({
         id: transaction.id_transaksi,
+        studentNis: transaction.siswa?.nis ?? "-",
         studentName: transaction.siswa?.nama ?? "Siswa tidak diketahui",
         className: transaction.siswa?.kelas ?? "-",
         bookTitle,
@@ -256,6 +260,7 @@ export function buildTransactionReport(
     students: Array.from(studentMap.values())
       .map((item) => ({
         id: item.id,
+        studentNis: item.studentNis,
         studentName: item.studentName,
         className: item.className,
         totalTransactions: item.totalTransactions,
@@ -535,6 +540,7 @@ function collectStudentSummary(
   const id = transaction.siswa?.id_siswa ?? transaction.id_siswa;
   const current = studentMap.get(id) ?? {
     id,
+    studentNis: transaction.siswa?.nis ?? "-",
     studentName: transaction.siswa?.nama ?? "Siswa tidak diketahui",
     className: transaction.siswa?.kelas ?? "-",
     totalTransactions: 0,

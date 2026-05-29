@@ -29,7 +29,8 @@ function normalizeStudentText(value: string) {
 function studentDisplayName(student: StudentSuggestion) {
   return [
     student.nama,
-    student.nisn ? `NIS ${student.nisn}` : "",
+    student.nis ? `NIS ${student.nis}` : "",
+    student.nisn ? `NISN ${student.nisn}` : "",
     student.kelas ?? "",
   ]
     .filter(Boolean)
@@ -90,6 +91,7 @@ export function PublicAttendanceForm({
       [
         normalizeStudentText(student.nama),
         normalizeStudentText(studentDisplayName(student)),
+        student.nis ? normalizeStudentText(student.nis) : "",
         student.nisn ? normalizeStudentText(student.nisn) : "",
       ]
         .filter(Boolean)
@@ -126,7 +128,7 @@ export function PublicAttendanceForm({
     }
 
     return studentNameSuggestions.filter((student) =>
-      [student.nama, student.nisn, student.kelas]
+      [student.nama, student.nis, student.nisn, student.kelas]
         .filter(Boolean)
         .join(" ")
         .toLowerCase()
@@ -246,7 +248,7 @@ export function PublicAttendanceForm({
             required
             placeholder={
               visitorType === "siswa"
-                ? "Cari nama, NIS, atau kelas..."
+                ? "Cari nama, NIS, NISN, atau kelas..."
                 : "Nama lengkap"
             }
             disabled={formLocked}
@@ -274,7 +276,8 @@ export function PublicAttendanceForm({
                       {student.nama}
                     </span>
                     <span className="block truncate text-xs text-zinc-500">
-                      {student.nisn ? `NIS ${student.nisn}` : "NIS -"}
+                      {student.nis ? `NIS ${student.nis}` : "NIS -"}
+                      {student.nisn ? ` / NISN ${student.nisn}` : ""}
                     </span>
                   </span>
                   <span className="shrink-0 text-xs text-zinc-500">

@@ -13,6 +13,7 @@ export type BukuRecord = {
 export type SiswaRecord = {
   id_siswa: number;
   nama: string;
+  nis: string | null;
   nisn: string | null;
   username: string | null;
   email: string | null;
@@ -69,6 +70,7 @@ export type DetailedTransactionRecord = TransaksiRecord & {
   siswa: {
     id_siswa: number;
     nama: string;
+    nis: string | null;
     nisn: string | null;
     kelas: string | null;
     nomor_whatsapp: string | null;
@@ -174,7 +176,7 @@ export async function getStudents() {
   const { data, error } = await supabase
     .from("siswa")
     .select(
-      "id_siswa, nama, nisn, username, email, kelas, tahun_masuk, nomor_whatsapp, status_keanggotaan"
+      "id_siswa, nama, nis, nisn, username, email, kelas, tahun_masuk, nomor_whatsapp, status_keanggotaan"
     )
     .order("id_siswa", { ascending: false })
     .returns<SiswaRecord[]>();
@@ -191,7 +193,7 @@ export async function getStudentById(idSiswa: number) {
   const { data, error } = await supabase
     .from("siswa")
     .select(
-      "id_siswa, nama, nisn, username, email, kelas, tahun_masuk, nomor_whatsapp, status_keanggotaan"
+      "id_siswa, nama, nis, nisn, username, email, kelas, tahun_masuk, nomor_whatsapp, status_keanggotaan"
     )
     .eq("id_siswa", idSiswa)
     .limit(1)
@@ -360,6 +362,7 @@ export async function getDetailedTransactions(): Promise<DetailedTransactionReco
         ? {
             id_siswa: siswa.id_siswa,
             nama: siswa.nama,
+            nis: siswa.nis,
             nisn: siswa.nisn,
             kelas: siswa.kelas,
             nomor_whatsapp: siswa.nomor_whatsapp,
@@ -850,6 +853,7 @@ export async function getSiswaAttendanceToday(idSiswa: number) {
 export type StudentSuggestion = {
   id_siswa: number;
   nama: string;
+  nis: string | null;
   nisn: string | null;
   kelas: string | null;
 };
@@ -858,7 +862,7 @@ export async function getStudentNameSuggestions(limit = 250) {
   const supabase = getServerSupabaseClient();
   const { data, error } = await supabase
     .from("siswa")
-    .select("id_siswa, nama, nisn, kelas")
+    .select("id_siswa, nama, nis, nisn, kelas")
     .in("status_keanggotaan", ["aktif", "menunggu_verifikasi"])
     .not("nama", "is", null)
     .order("nama", { ascending: true })

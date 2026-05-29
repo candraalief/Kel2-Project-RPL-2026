@@ -10,6 +10,7 @@ export type SignupState = {
 export type PendingSiswa = {
   id_siswa: number;
   nama: string;
+  nis: string | null;
   nisn: string | null;
   username: string | null;
   email: string | null;
@@ -27,7 +28,7 @@ export const siswaAccountLimitOptions = [5, 10, 25, 50, 100] as const;
 export const defaultSiswaAccountLimit = 5;
 
 export type SiswaAccountTab = "registered" | "pending";
-export type SiswaAccountSortKey = "nisn" | "nama" | "kelas";
+export type SiswaAccountSortKey = "nis" | "nisn" | "nama" | "kelas";
 export type SiswaAccountSortDirection = "asc" | "desc";
 export type SiswaAccountStatusFilter = "aktif" | "nonaktif" | null;
 
@@ -52,7 +53,7 @@ export type SiswaAccountPage = {
 };
 
 const siswaAccountSelect =
-  "id_siswa, nama, nisn, username, email, kelas, tahun_masuk, nomor_whatsapp, status_keanggotaan, password";
+  "id_siswa, nama, nis, nisn, username, email, kelas, tahun_masuk, nomor_whatsapp, status_keanggotaan, password";
 
 function normalizeValue(value: string | null) {
   return value?.trim() ?? "";
@@ -73,17 +74,24 @@ function sanitizeSearchFilter(value: string) {
 
 async function checkExistingSiswa(
   nama: string,
+  nis: string,
   nisn: string,
   username: string,
   email: string
 ) {
   const supabase = getServerSupabaseClient();
 
-  const [nameCheck, nisnCheck, usernameCheck, emailCheck] = await Promise.all([
+  const [nameCheck, nisCheck, nisnCheck, usernameCheck, emailCheck] = await Promise.all([
     supabase
       .from("siswa")
       .select("id_siswa")
       .ilike("nama", nama)
+      .limit(1)
+      .maybeSingle(),
+    supabase
+      .from("siswa")
+      .select("id_siswa")
+      .eq("nis", nis)
       .limit(1)
       .maybeSingle(),
     supabase
@@ -110,6 +118,10 @@ async function checkExistingSiswa(
     throw new Error(`Failed to validate nama siswa: ${nameCheck.error.message}`);
   }
 
+  if (nisCheck.error) {
+    throw new Error(`Failed to validate NIS: ${nisCheck.error.message}`);
+  }
+
   if (nisnCheck.error) {
     throw new Error(`Failed to validate NISN: ${nisnCheck.error.message}`);
   }
@@ -126,6 +138,10 @@ async function checkExistingSiswa(
 
   if (nameCheck.data) {
     return "Nama lengkap sudah digunakan.";
+  }
+
+  if (nisCheck.data) {
+    return "NIS sudah terdaftar.";
   }
 
   if (nisnCheck.data) {
@@ -146,6 +162,7 @@ async function checkExistingSiswa(
 export async function registerSiswaAccount(formData: FormData): Promise<SignupState> {
   const returnTo = normalizeValue(String(formData.get("return_to") ?? ""));
   const nama = normalizeValue(String(formData.get("nama") ?? ""));
+  const nis = normalizeValue(String(formData.get("nis") ?? ""));
   const nisn = normalizeValue(String(formData.get("nisn") ?? ""));
   const tahunMasuk = normalizeValue(String(formData.get("tahun_masuk") ?? ""));
   const nomorWhatsapp = normalizeValue(String(formData.get("nomor_whatsapp") ?? ""));
@@ -157,6 +174,7 @@ export async function registerSiswaAccount(formData: FormData): Promise<SignupSt
 
   if (
     !nama ||
+    !nis ||
     !nisn ||
     !tahunMasuk ||
     !nomorWhatsapp ||
@@ -189,7 +207,7 @@ export async function registerSiswaAccount(formData: FormData): Promise<SignupSt
     };
   }
 
-  const duplicateMessage = await checkExistingSiswa(nama, nisn, username, email);
+  const duplicateMessage = await checkExistingSiswa(nama, nis, nisn, username, email);
 
   if (duplicateMessage) {
     return {
@@ -204,6 +222,7 @@ export async function registerSiswaAccount(formData: FormData): Promise<SignupSt
 
   const { error } = await supabase.from("siswa").insert({
     nama,
+    nis,
     nisn,
     tahun_masuk: Number(tahunMasuk),
     nomor_whatsapp: nomorWhatsapp,
@@ -232,7 +251,7 @@ export async function getPendingSiswaRegistrations() {
   const { data, error } = await supabase
     .from("siswa")
     .select(
-      "id_siswa, nama, nisn, username, email, kelas, tahun_masuk, nomor_whatsapp, status_keanggotaan"
+      "id_siswa, nama, nis, nisn, username, email, kelas, tahun_masuk, nomor_whatsapp, status_keanggotaan"
     )
     .eq("status_keanggotaan", "menunggu_verifikasi")
     .order("id_siswa", { ascending: false })
@@ -308,6 +327,7 @@ export async function getSiswaAccountPage(
     const pattern = `%${search}%`;
     query = query.or(
       [
+        `nis.ilike.${pattern}`,
         `nisn.ilike.${pattern}`,
         `nama.ilike.${pattern}`,
         `kelas.ilike.${pattern}`,

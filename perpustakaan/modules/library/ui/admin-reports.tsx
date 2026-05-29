@@ -626,10 +626,11 @@ function TransactionsReportTable({
     <PaginatedReportTable
       rows={rows}
       emptyText="Belum ada peminjaman pada periode ini."
-      minWidth="980px"
+      minWidth="1080px"
       columns={
         <>
           <ReportHeader>ID Transaksi</ReportHeader>
+          <ReportHeader>NIS</ReportHeader>
           <ReportHeader>Nama Siswa</ReportHeader>
           <ReportHeader>Kelas</ReportHeader>
           <ReportHeader>Judul Buku</ReportHeader>
@@ -645,6 +646,7 @@ function TransactionsReportTable({
           <ReportCell className="font-semibold text-zinc-950">
             #{row.id}
           </ReportCell>
+          <ReportCell>{row.studentNis}</ReportCell>
           <ReportCell className="font-semibold text-zinc-950">
             {row.studentName}
           </ReportCell>
@@ -673,9 +675,10 @@ function StudentReportTable({
     <PaginatedReportTable
       rows={rows}
       emptyText="Belum ada rekap siswa pada periode ini."
-      minWidth="820px"
+      minWidth="920px"
       columns={
         <>
+          <ReportHeader>NIS</ReportHeader>
           <ReportHeader>Nama Siswa</ReportHeader>
           <ReportHeader>Kelas</ReportHeader>
           <ReportHeader>Total Transaksi</ReportHeader>
@@ -687,6 +690,7 @@ function StudentReportTable({
       rowKey={(row) => row.id}
       renderRow={(row) => (
         <>
+          <ReportCell>{row.studentNis}</ReportCell>
           <ReportCell className="font-semibold text-zinc-950">
             {row.studentName}
           </ReportCell>

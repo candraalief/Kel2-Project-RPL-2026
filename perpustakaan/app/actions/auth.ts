@@ -71,6 +71,7 @@ export type SiswaAdminActionState = {
   siswa?: {
     id_siswa: number;
     nama: string;
+    nis: string;
     nisn: string;
     username: string;
     email: string;
@@ -107,7 +108,7 @@ export async function loginFromHome(
 
   if (!identifier || !password) {
     return {
-      error: "Nama, username, atau email dan password wajib diisi.",
+      error: "NIS, NISN, nama, username, atau email dan password wajib diisi.",
     };
   }
 
@@ -208,12 +209,14 @@ function isForeignKeyConstraintError(error: { code?: string; message?: string })
 
 async function validateUniqueSiswaFields({
   nama,
+  nis,
   nisn,
   username,
   email,
   currentSiswaId,
 }: {
   nama: string;
+  nis: string;
   nisn: string;
   username: string;
   email: string;
@@ -221,11 +224,17 @@ async function validateUniqueSiswaFields({
 }) {
   const supabase = getServerSupabaseClient();
 
-  const [nameCheck, nisnCheck, usernameCheck, emailCheck] = await Promise.all([
+  const [nameCheck, nisCheck, nisnCheck, usernameCheck, emailCheck] = await Promise.all([
     supabase
       .from("siswa")
       .select("id_siswa")
       .ilike("nama", nama)
+      .limit(1)
+      .maybeSingle<{ id_siswa: number }>(),
+    supabase
+      .from("siswa")
+      .select("id_siswa")
+      .eq("nis", nis)
       .limit(1)
       .maybeSingle<{ id_siswa: number }>(),
     supabase
@@ -252,6 +261,10 @@ async function validateUniqueSiswaFields({
     throw new Error(`Gagal memvalidasi nama lengkap: ${nameCheck.error.message}`);
   }
 
+  if (nisCheck.error) {
+    throw new Error(`Gagal memvalidasi NIS: ${nisCheck.error.message}`);
+  }
+
   if (nisnCheck.error) {
     throw new Error(`Gagal memvalidasi NISN: ${nisnCheck.error.message}`);
   }
@@ -266,6 +279,10 @@ async function validateUniqueSiswaFields({
 
   if (nameCheck.data && nameCheck.data.id_siswa !== currentSiswaId) {
     return "Nama lengkap sudah digunakan.";
+  }
+
+  if (nisCheck.data && nisCheck.data.id_siswa !== currentSiswaId) {
+    return "NIS sudah terdaftar.";
   }
 
   if (nisnCheck.data && nisnCheck.data.id_siswa !== currentSiswaId) {
@@ -297,6 +314,7 @@ export async function createSiswaByAdmin(
   }
 
   const nama = String(formData.get("nama") ?? "").trim();
+  const nis = String(formData.get("nis") ?? "").trim();
   const nisn = String(formData.get("nisn") ?? "").trim();
   const username = String(formData.get("username") ?? "").trim().toLowerCase();
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
@@ -309,6 +327,7 @@ export async function createSiswaByAdmin(
 
   if (
     !nama ||
+    !nis ||
     !nisn ||
     !username ||
     !email ||
@@ -334,6 +353,7 @@ export async function createSiswaByAdmin(
   try {
     const duplicateMessage = await validateUniqueSiswaFields({
       nama,
+      nis,
       nisn,
       username,
       email,
@@ -349,6 +369,7 @@ export async function createSiswaByAdmin(
     const supabase = getServerSupabaseClient();
     const { error } = await supabase.from("siswa").insert({
       nama,
+      nis,
       nisn,
       username,
       email,
@@ -398,6 +419,7 @@ export async function updateSiswaByAdmin(
 
   const siswaId = Number(formData.get("id_siswa"));
   const nama = String(formData.get("nama") ?? "").trim();
+  const nis = String(formData.get("nis") ?? "").trim();
   const nisn = String(formData.get("nisn") ?? "").trim();
   const username = String(formData.get("username") ?? "").trim().toLowerCase();
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
@@ -417,6 +439,7 @@ export async function updateSiswaByAdmin(
 
   if (
     !nama ||
+    !nis ||
     !nisn ||
     !username ||
     !email ||
@@ -442,6 +465,7 @@ export async function updateSiswaByAdmin(
   try {
     const duplicateMessage = await validateUniqueSiswaFields({
       nama,
+      nis,
       nisn,
       username,
       email,
@@ -460,6 +484,7 @@ export async function updateSiswaByAdmin(
       .from("siswa")
       .update({
         nama,
+        nis,
         nisn,
         username,
         email,
@@ -485,6 +510,7 @@ export async function updateSiswaByAdmin(
       siswa: {
         id_siswa: siswaId,
         nama,
+        nis,
         nisn,
         username,
         email,

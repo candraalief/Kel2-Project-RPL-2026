@@ -268,6 +268,7 @@ export function AdminReturns({
       const matchesStatus =
         statusFilter === "all" || statusInfo.filter === statusFilter;
       const matchesSearch = matchesTransactionSearch(transaction, query, [
+        transaction.siswa?.nis,
         transaction.siswa?.nisn,
         transaction.siswa?.nama,
         statusInfo.label,
@@ -287,6 +288,7 @@ export function AdminReturns({
       const matchesStatus =
         statusFilter === "all" || statusInfo.filter === statusFilter;
       const matchesSearch = matchesTransactionSearch(transaction, query, [
+        transaction.siswa?.nis,
         transaction.siswa?.nisn,
         transaction.siswa?.nama,
         statusInfo.label,
@@ -366,7 +368,7 @@ export function AdminReturns({
           <input
             value={searchInput}
             onChange={(event) => setSearchInput(event.currentTarget.value)}
-            placeholder="Cari nama, judul, NIS, atau ID transaksi"
+            placeholder="Cari nama, judul, NIS, NISN, atau ID transaksi"
             className="min-h-[44px] w-full rounded-xl border border-zinc-300 bg-white px-3 py-2.5 text-sm text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-[#1d66d6]"
           />
         </FilterField>
@@ -484,9 +486,10 @@ function ReturnTransactionsTable({
 
   return (
     <div className="overflow-x-auto rounded-2xl border border-zinc-200 bg-white">
-      <div className="grid min-w-[860px] grid-cols-[1fr_1fr_1.5fr_0.8fr_1fr_0.9fr] bg-zinc-50 px-4 py-3 text-xs font-semibold text-slate-600">
+      <div className="grid min-w-[980px] grid-cols-[1fr_1fr_1fr_1.5fr_0.8fr_1fr_0.9fr] bg-zinc-50 px-4 py-3 text-xs font-semibold text-slate-600">
         <span>ID Transaksi</span>
         <span>NIS</span>
+        <span>NISN</span>
         <span>Nama Siswa</span>
         <span>Total Buku</span>
         <span>Status</span>
@@ -496,7 +499,7 @@ function ReturnTransactionsTable({
       </div>
 
       {transactions.length === 0 ? (
-        <div className="min-w-[860px] border-t border-zinc-200 px-4 py-8 text-center text-sm text-zinc-500">
+        <div className="min-w-[980px] border-t border-zinc-200 px-4 py-8 text-center text-sm text-zinc-500">
           {isHistory
             ? "Belum ada history pengembalian yang sesuai filter."
             : "Tidak ada transaksi pengembalian yang sesuai filter."}
@@ -508,8 +511,8 @@ function ReturnTransactionsTable({
           const isExpanded = expandedTransactionIds.has(transaction.id_transaksi);
 
           return (
-            <div key={transaction.id_transaksi} className="min-w-[860px] border-t border-zinc-200">
-              <div className="grid grid-cols-[1fr_1fr_1.5fr_0.8fr_1fr_0.9fr] items-center px-4 py-3 text-sm text-zinc-600">
+            <div key={transaction.id_transaksi} className="min-w-[980px] border-t border-zinc-200">
+              <div className="grid grid-cols-[1fr_1fr_1fr_1.5fr_0.8fr_1fr_0.9fr] items-center px-4 py-3 text-sm text-zinc-600">
                 <button
                   type="button"
                   onClick={() => onToggleExpanded(transaction.id_transaksi)}
@@ -519,6 +522,7 @@ function ReturnTransactionsTable({
                   <ChevronIcon expanded={isExpanded} />
                   <span>{transaction.id_transaksi}</span>
                 </button>
+                <span>{transaction.siswa?.nis ?? "-"}</span>
                 <span>{transaction.siswa?.nisn ?? "-"}</span>
                 <span className="font-medium text-zinc-900">
                   {transaction.siswa?.nama ?? `Siswa #${transaction.id_siswa}`}
@@ -822,7 +826,8 @@ function ReturnDetailModal({
                 />
               </div>
               <div className="space-y-2">
-                <InfoBlock label="NIS" value={transaction.siswa?.nisn ?? "-"} />
+                <InfoBlock label="NIS" value={transaction.siswa?.nis ?? "-"} />
+                <InfoBlock label="NISN" value={transaction.siswa?.nisn ?? "-"} />
                 <InfoBlock
                   icon={<Icon name="phone" className="h-3.5 w-3.5" />}
                   label="No. Telepon"

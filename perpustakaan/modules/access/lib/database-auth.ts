@@ -13,6 +13,8 @@ type AdminRow = {
 type SiswaRow = {
   id_siswa: number;
   nama: string;
+  nis: string | null;
+  nisn: string | null;
   username: string | null;
   email: string | null;
   password: string | null;
@@ -78,7 +80,7 @@ async function findSiswaByIdentifier(identifier: string) {
 
   const usernameResult = await supabase
     .from("siswa")
-    .select("id_siswa, nama, username, email, password, kelas, status_keanggotaan")
+    .select("id_siswa, nama, nis, nisn, username, email, password, kelas, status_keanggotaan")
     .eq("username", lowerIdentifier)
     .limit(1)
     .maybeSingle<SiswaRow>();
@@ -95,7 +97,7 @@ async function findSiswaByIdentifier(identifier: string) {
 
   const emailResult = await supabase
     .from("siswa")
-    .select("id_siswa, nama, username, email, password, kelas, status_keanggotaan")
+    .select("id_siswa, nama, nis, nisn, username, email, password, kelas, status_keanggotaan")
     .eq("email", lowerIdentifier)
     .limit(1)
     .maybeSingle<SiswaRow>();
@@ -108,9 +110,39 @@ async function findSiswaByIdentifier(identifier: string) {
     return emailResult.data;
   }
 
+  const nisResult = await supabase
+    .from("siswa")
+    .select("id_siswa, nama, nis, nisn, username, email, password, kelas, status_keanggotaan")
+    .eq("nis", normalizedIdentifier)
+    .limit(1)
+    .maybeSingle<SiswaRow>();
+
+  if (nisResult.error) {
+    throw new Error(`Failed to query siswa by NIS: ${nisResult.error.message}`);
+  }
+
+  if (nisResult.data) {
+    return nisResult.data;
+  }
+
+  const nisnResult = await supabase
+    .from("siswa")
+    .select("id_siswa, nama, nis, nisn, username, email, password, kelas, status_keanggotaan")
+    .eq("nisn", normalizedIdentifier)
+    .limit(1)
+    .maybeSingle<SiswaRow>();
+
+  if (nisnResult.error) {
+    throw new Error(`Failed to query siswa by NISN: ${nisnResult.error.message}`);
+  }
+
+  if (nisnResult.data) {
+    return nisnResult.data;
+  }
+
   const nameResult = await supabase
     .from("siswa")
-    .select("id_siswa, nama, username, email, password, kelas, status_keanggotaan")
+    .select("id_siswa, nama, nis, nisn, username, email, password, kelas, status_keanggotaan")
     .ilike("nama", normalizedIdentifier)
     .limit(1)
     .maybeSingle<SiswaRow>();

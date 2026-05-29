@@ -26,7 +26,7 @@ import {
 
 type ActiveTab = "registered" | "pending";
 type ModalMode = "add" | "detail" | "edit";
-type SortKey = "nisn" | "nama" | "kelas";
+type SortKey = "nis" | "nisn" | "nama" | "kelas";
 type SortDirection = "asc" | "desc";
 type StatusFilter = SiswaAccountStatusFilter;
 type MemberModal =
@@ -412,7 +412,7 @@ export function AdminMembers({
             <input
               value={search}
               onChange={(event) => setSearch(event.currentTarget.value)}
-              placeholder="Cari berdasarkan nama, NIS, atau nomor telepon..."
+              placeholder="Cari berdasarkan nama, NIS, NISN, atau nomor telepon..."
               className="h-12 w-full rounded-lg border border-transparent bg-[#f1f1f4] pl-12 pr-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-500 focus:border-[#020016]"
             />
           </label>
@@ -430,38 +430,46 @@ export function AdminMembers({
       <div className="px-4 py-5 sm:px-7">
         <div className="min-w-0">
           <div className="overflow-x-auto pb-2">
-          <table className="min-w-[760px] w-full table-fixed border-collapse text-center">
+          <table className="min-w-[900px] w-full table-fixed border-collapse text-center">
             <thead>
               <tr className="border-b border-zinc-200 text-sm font-semibold text-black">
-                <th className="w-[12%] px-2 py-2.5">
+                <th className="w-[10%] px-2 py-2.5">
                   <SortHeader
                     label="NIS"
+                    numeric
+                    active={sortConfig?.key === "nis" ? sortConfig.direction : null}
+                    onClick={() => toggleSort("nis")}
+                  />
+                </th>
+                <th className="w-[12%] px-2 py-2.5">
+                  <SortHeader
+                    label="NISN"
                     numeric
                     active={sortConfig?.key === "nisn" ? sortConfig.direction : null}
                     onClick={() => toggleSort("nisn")}
                   />
                 </th>
-                <th className="w-[20%] px-2 py-2.5">
+                <th className="w-[18%] px-2 py-2.5">
                   <SortHeader
                     label="Nama"
                     active={sortConfig?.key === "nama" ? sortConfig.direction : null}
                     onClick={() => toggleSort("nama")}
                   />
                 </th>
-                <th className="w-[18%] px-2 py-2.5">
+                <th className="w-[16%] px-2 py-2.5">
                   <PlainHeader label="Nomor Telepon" />
                 </th>
-                <th className="w-[19%] px-2 py-2.5">
+                <th className="w-[18%] px-2 py-2.5">
                   <StatusHeader
                     label={activeTab === "registered" ? "Status Keanggotaan" : "Status"}
                     active={statusFilter}
                     onClick={toggleStatusFilter}
                   />
                 </th>
-                <th className="w-[16%] px-2 py-2.5">
+                <th className="w-[13%] px-2 py-2.5">
                   <PlainHeader label="Reset Password" />
                 </th>
-                <th className="w-[15%] px-2 py-2.5">
+                <th className="w-[13%] px-2 py-2.5">
                   <PlainHeader label="Aksi" />
                 </th>
               </tr>
@@ -469,26 +477,27 @@ export function AdminMembers({
           </table>
 
           <div className="max-h-[310px] overflow-y-auto">
-          <table className="min-w-[760px] w-full table-fixed border-collapse text-center">
+          <table className="min-w-[900px] w-full table-fixed border-collapse text-center">
             <tbody>
               {filteredSiswa.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-3 py-10 text-center text-sm text-zinc-500">
+                  <td colSpan={7} className="px-3 py-10 text-center text-sm text-zinc-500">
                     Tidak ada data siswa yang cocok.
                   </td>
                 </tr>
               ) : (
                 filteredSiswa.map((item) => (
                   <tr key={item.id_siswa} className="border-b border-zinc-200 text-sm text-black last:border-b-0">
+                    <td className="w-[10%] px-2 py-4">{item.nis ?? "-"}</td>
                     <td className="w-[12%] px-2 py-4">{item.nisn ?? "-"}</td>
-                    <td className="w-[20%] truncate px-2 py-4" title={item.nama}>
+                    <td className="w-[18%] truncate px-2 py-4" title={item.nama}>
                       {item.nama}
                     </td>
-                    <td className="w-[18%] px-2 py-4">{item.nomor_whatsapp ?? "-"}</td>
-                    <td className="w-[19%] px-2 py-4">
+                    <td className="w-[16%] px-2 py-4">{item.nomor_whatsapp ?? "-"}</td>
+                    <td className="w-[18%] px-2 py-4">
                       <StatusBadge status={item.status_keanggotaan} />
                     </td>
-                    <td className="w-[16%] px-2 py-4">
+                    <td className="w-[13%] px-2 py-4">
                       <button
                         type="button"
                         disabled={isResetPasswordDisabled(item)}
@@ -499,7 +508,7 @@ export function AdminMembers({
                         Reset
                       </button>
                     </td>
-                    <td className="w-[15%] px-2 py-4">
+                    <td className="w-[13%] px-2 py-4">
                       <div className="flex items-center justify-center gap-3">
                         <button
                           type="button"
@@ -1282,7 +1291,8 @@ function SiswaModal({
 function SiswaDetail({ siswa }: { siswa: SiswaAccount }) {
   return (
     <div className="grid gap-3 px-4 py-5 sm:grid-cols-2 sm:px-7 sm:py-7">
-      <DetailItem label="NIS" value={siswa.nisn} />
+      <DetailItem label="NIS" value={siswa.nis} />
+      <DetailItem label="NISN" value={siswa.nisn} />
       <DetailItem label="Nama Lengkap" value={siswa.nama} />
       <DetailItem label="Username" value={siswa.username} />
       <DetailItem label="Email" value={siswa.email} />
@@ -1299,6 +1309,7 @@ function SiswaDetail({ siswa }: { siswa: SiswaAccount }) {
 }
 
 type SiswaFormFields = {
+  nis: string;
   nisn: string;
   kelas: string;
   nama: string;
@@ -1311,6 +1322,7 @@ type SiswaFormFields = {
 
 function getSiswaFormFields(siswa?: SiswaAccount): SiswaFormFields {
   return {
+    nis: siswa?.nis ?? "",
     nisn: siswa?.nisn ?? "",
     kelas: siswa?.kelas ?? "",
     nama: siswa?.nama ?? "",
@@ -1380,8 +1392,17 @@ function SiswaForm({
       <div className="grid gap-x-5 gap-y-4 sm:grid-cols-2">
         <Field
           label="NIS"
-          name="nisn"
+          name="nis"
           placeholder="Masukkan NIS"
+          defaultValue={fields.nis}
+          value={isEditMode ? fields.nis : undefined}
+          onChange={(value) => updateField("nis", value)}
+          required
+        />
+        <Field
+          label="NISN"
+          name="nisn"
+          placeholder="Masukkan NISN"
           defaultValue={fields.nisn}
           value={isEditMode ? fields.nisn : undefined}
           onChange={(value) => updateField("nisn", value)}

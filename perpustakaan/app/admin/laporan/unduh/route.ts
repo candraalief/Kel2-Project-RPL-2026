@@ -192,6 +192,7 @@ function buildBorrowingReportSheets(reportData: TransactionReportData): XlsxShee
       name: "Semua Peminjaman",
       columns: [
         "ID Transaksi",
+        "NIS",
         "Nama Siswa",
         "Kelas",
         "Judul Buku",
@@ -202,6 +203,7 @@ function buildBorrowingReportSheets(reportData: TransactionReportData): XlsxShee
       ],
       rows: reportData.transactions.map((row) => [
         row.id,
+        row.studentNis,
         row.studentName,
         row.className,
         row.bookTitle,
@@ -214,6 +216,7 @@ function buildBorrowingReportSheets(reportData: TransactionReportData): XlsxShee
     {
       name: "Rekap Per Siswa",
       columns: [
+        "NIS",
         "Nama Siswa",
         "Kelas",
         "Total Transaksi",
@@ -222,6 +225,7 @@ function buildBorrowingReportSheets(reportData: TransactionReportData): XlsxShee
         "Terlambat",
       ],
       rows: reportData.students.map((row) => [
+        row.studentNis,
         row.studentName,
         row.className,
         row.totalTransactions,

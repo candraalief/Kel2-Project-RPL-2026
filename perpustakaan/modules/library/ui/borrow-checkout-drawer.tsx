@@ -11,6 +11,7 @@ import { useCartStore } from "@/store/use-cart-store";
 export type BorrowStudentOption = {
   id: number;
   name: string;
+  nis: string | null;
   nisn: string | null;
   className: string | null;
 };
@@ -54,7 +55,8 @@ function normalizeStudentText(value: string) {
 function studentDisplayName(student: BorrowStudentOption) {
   return [
     student.name,
-    student.nisn ? `NIS ${student.nisn}` : "",
+    student.nis ? `NIS ${student.nis}` : "",
+    student.nisn ? `NISN ${student.nisn}` : "",
     student.className ?? "",
   ]
     .filter(Boolean)
@@ -166,6 +168,7 @@ export function BorrowCheckoutDrawer({
       students.flatMap((student) => [
         [normalizeStudentText(student.name), student],
         [normalizeStudentText(studentDisplayName(student)), student],
+        student.nis ? [normalizeStudentText(student.nis), student] : null,
         student.nisn ? [normalizeStudentText(student.nisn), student] : null,
       ].filter((entry): entry is [string, BorrowStudentOption] => entry !== null))
     );
@@ -185,7 +188,7 @@ export function BorrowCheckoutDrawer({
     }
 
     return students.filter((student) =>
-      [student.name, student.nisn, student.className]
+      [student.name, student.nis, student.nisn, student.className]
         .filter(Boolean)
         .join(" ")
         .toLowerCase()
@@ -387,7 +390,7 @@ export function BorrowCheckoutDrawer({
                         onChange={(event) =>
                           handleStudentQueryChange(event.currentTarget.value)
                         }
-                        placeholder="Cari nama, NIS, atau kelas..."
+                        placeholder="Cari nama, NIS, NISN, atau kelas..."
                         className="min-h-[44px] w-full rounded-xl border border-zinc-300 bg-white px-3 text-sm text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-[#1d66d6]"
                       />
 
@@ -408,7 +411,8 @@ export function BorrowCheckoutDrawer({
                                   {student.name}
                                 </span>
                                 <span className="block truncate text-xs text-zinc-500">
-                                  {student.nisn ? `NIS ${student.nisn}` : "NIS -"}
+                                  {student.nis ? `NIS ${student.nis}` : "NIS -"}
+                                  {student.nisn ? ` / NISN ${student.nisn}` : ""}
                                 </span>
                               </span>
                               <span className="shrink-0 text-xs text-zinc-500">
@@ -429,7 +433,7 @@ export function BorrowCheckoutDrawer({
 
                   {showStudentNotFound ? (
                     <div className="break-words rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800">
-                      Siswa aktif tidak ditemukan. Coba nama, NIS, atau kelas lain.
+                      Siswa aktif tidak ditemukan. Coba nama, NIS, NISN, atau kelas lain.
                     </div>
                   ) : null}
 

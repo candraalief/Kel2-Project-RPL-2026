@@ -106,6 +106,7 @@ export function UpdateSiswaProfileForm({ siswa }: { siswa: SiswaRecord }) {
       </div>
 
       <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-600">
+        <p>NIS: {siswa.nis ?? "-"}</p>
         <p>NISN: {siswa.nisn ?? "-"}</p>
         <p>Status keanggotaan: {siswa.status_keanggotaan ?? "-"}</p>
       </div>

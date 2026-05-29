@@ -13,6 +13,7 @@ const initialState: SignupFormState = {
 
 type SignupFields = {
   nama: string;
+  nis: string;
   nisn: string;
   username: string;
   email: string;
@@ -25,6 +26,7 @@ type SignupFields = {
 
 const initialFields: SignupFields = {
   nama: "",
+  nis: "",
   nisn: "",
   username: "",
   email: "",
@@ -117,6 +119,12 @@ export function SignupForm({
           label="Nama lengkap"
           value={fields.nama}
           onChange={(value) => updateField("nama", value)}
+        />
+        <Field
+          id="nis"
+          label="NIS"
+          value={fields.nis}
+          onChange={(value) => updateField("nis", value)}
         />
         <Field
           id="nisn"

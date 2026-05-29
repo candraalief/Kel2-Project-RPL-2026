@@ -62,7 +62,7 @@ function parseStatus(value: string, tab: SiswaAccountTab): SiswaAccountStatusFil
 }
 
 function parseSort(value: string): SiswaAccountSortKey | null {
-  return value === "nisn" || value === "nama" || value === "kelas"
+  return value === "nis" || value === "nisn" || value === "nama" || value === "kelas"
     ? value
     : null;
 }

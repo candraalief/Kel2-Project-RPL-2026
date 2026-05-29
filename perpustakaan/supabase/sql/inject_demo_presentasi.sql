@@ -123,6 +123,7 @@ values
 insert into public.siswa (
   id_siswa,
   nama,
+  nis,
   nisn,
   username,
   email,
@@ -136,6 +137,7 @@ values
   (
     9100,
     'Andi Demo Pratama',
+    '2419100',
     'DEMO9100',
     'demo_siswa',
     'demo.siswa@sman10bogor.sch.id',
@@ -148,6 +150,7 @@ values
   (
     9101,
     'Bunga Demo Lestari',
+    '2519101',
     'DEMO9101',
     'demo_pending',
     'demo.pending@sman10bogor.sch.id',
@@ -160,6 +163,7 @@ values
   (
     9102,
     'Citra Demo Sari',
+    '2319102',
     'DEMO9102',
     'demo_siswa_dua',
     'demo.siswa.dua@sman10bogor.sch.id',
@@ -172,6 +176,7 @@ values
   (
     9103,
     'Dimas Demo Saputra',
+    '2319103',
     'DEMO9103',
     'demo_nonaktif',
     'demo.nonaktif@sman10bogor.sch.id',

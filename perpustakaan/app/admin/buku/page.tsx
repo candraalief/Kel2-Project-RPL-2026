@@ -17,6 +17,7 @@ export default async function AdminBooksPage() {
     .map((student) => ({
       id: student.id_siswa,
       name: student.nama,
+      nis: student.nis,
       nisn: student.nisn,
       className: student.kelas,
     }));
