@@ -47,7 +47,8 @@ const emptyCopySummary: CatalogCopySummary = {
 const emptyBorrowSchedule: CatalogBorrowScheduleItem[] = [];
 
 type AvailabilityFilter = "all" | "available" | "unavailable";
-type PageSize = 5 | 10 | 25;
+type PageSize = 4 | 16 | 32;
+const catalogPageSizeOptions: PageSize[] = [4, 16, 32];
 type CatalogBorrowScheduleCalendarItem = CatalogBorrowScheduleItem & {
   dateKey: string;
 };
@@ -184,7 +185,7 @@ export function AdminCatalog({
   const [availability, setAvailability] = useState<AvailabilityFilter>("all");
   const [yearFrom, setYearFrom] = useState("");
   const [yearTo, setYearTo] = useState("");
-  const [pageSize, setPageSize] = useState<PageSize>(5);
+  const [pageSize, setPageSize] = useState<PageSize>(4);
   const [currentPage, setCurrentPage] = useState(1);
   const [showAllGenres, setShowAllGenres] = useState(false);
   const [selectedBook, setSelectedBook] = useState<AdminCatalogBook | null>(null);
@@ -517,7 +518,7 @@ export function AdminCatalog({
         </div>
       ) : (
         <section className="space-y-3">
-          <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
             {paginatedBooks.map((book) => (
               <BookCard
                 key={book.id}
@@ -971,9 +972,11 @@ function CatalogPaginationControls({
             }
             className="h-8 rounded-md border border-zinc-300 bg-white px-2 text-xs font-semibold text-zinc-900 outline-none transition focus:border-[#1d66d6]"
           >
-            <option value={5}>5</option>
-            <option value={10}>10</option>
-            <option value={25}>25</option>
+            {catalogPageSizeOptions.map((option) => (
+              <option key={option} value={option}>
+                {option}
+              </option>
+            ))}
           </select>
         </label>
 
