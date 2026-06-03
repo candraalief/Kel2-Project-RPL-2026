@@ -23,6 +23,20 @@ export async function redirectLoggedInUser() {
   }
 }
 
+export async function requirePublicSession() {
+  const sessionUser = await getSessionUser();
+
+  if (!sessionUser) {
+    redirect("/");
+  }
+
+  if (sessionUser.role !== "public") {
+    redirect(getDashboardPath(sessionUser.role));
+  }
+
+  return sessionUser;
+}
+
 export function getDashboardPath(role: UserRole) {
   if (role === "admin") {
     return "/admin";
